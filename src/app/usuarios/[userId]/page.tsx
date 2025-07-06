@@ -4,12 +4,13 @@ import UserProfileClient from '../UserProfileClient'
 import { redirect } from 'next/navigation'
 
 interface UserProfilePageProps {
-  params: { userId: string }
+  params: Promise<{ userId: string }>
 }
 
 export default async function UserProfilePage({ params }: UserProfilePageProps) {
-  // Utilizar params antes de cualquier await según guía Next.js
-  const userIdNum = parseInt(params.userId)
+  // Await params first according to Next.js 15 guidelines
+  const { userId } = await params
+  const userIdNum = parseInt(userId)
   if (isNaN(userIdNum)) {
     redirect('/usuarios')
   }
