@@ -4,7 +4,50 @@ import { auth0 } from "./lib/auth0";
 
 export async function middleware(request: NextRequest) {
   try {
-  return await auth0.middleware(request);
+    const response = await auth0.middleware(request);
+    
+    // Verificar si el usuario está autenticado y necesita seleccionar gimnasio
+    const pathname = request.nextUrl.pathname;
+    
+    // Páginas que no requieren verificación de gimnasio
+    const publicPaths = [
+      '/auth/login',
+      '/auth/callback', 
+      '/auth/logout',
+      '/select-gym',
+      '/api/',
+      '/_next/',
+      '/favicon.ico'
+    ];
+    
+    // Si es una ruta pública, continuar
+    if (publicPaths.some(path => pathname.startsWith(path))) {
+      return response;
+    }
+    
+    // Verificar si hay sesión
+    const session = await auth0.getSession(request);
+    
+    if (session) {
+      // Usuario autenticado, verificar si tiene gimnasio seleccionado
+      const selectedGymId = request.cookies.get('selectedGymId')?.value || 
+                           request.headers.get('X-Gym-ID');
+      
+      // Si no tiene gimnasio seleccionado y no está en la página de selección
+      if (!selectedGymId && pathname !== '/select-gym') {
+        const selectGymUrl = new URL('/select-gym', request.url);
+        return NextResponse.redirect(selectGymUrl);
+      }
+      
+      // Si tiene gimnasio seleccionado pero está en la página de selección, redirigir al dashboard
+      if (selectedGymId && pathname === '/select-gym') {
+        const dashboardUrl = new URL('/', request.url);
+        return NextResponse.redirect(dashboardUrl);
+      }
+    }
+    
+    return response;
+    
   } catch (error: any) {
     // Si hay error de descifrado JWE, limpiar cookies y continuar
     if (error.code === 'ERR_JWE_DECRYPTION_FAILED' || 
@@ -22,7 +65,8 @@ export async function middleware(request: NextRequest) {
         'appSession.0',
         'appSession.1', 
         'appSession.2',
-        'auth0.is.authenticated'
+        'auth0.is.authenticated',
+        'selectedGymId' // También limpiar el gym seleccionado
       ];
       
       cookiesToClear.forEach(cookieName => {

@@ -72,7 +72,7 @@ export const handleGymAPIError = (error: unknown, operation: string = 'operació
 // Función para obtener el gym_id seleccionado
 export const getSelectedGymId = (): string => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('selected_gym_id') || DEFAULT_GYM_ID;
+    return localStorage.getItem('selectedGymId') || DEFAULT_GYM_ID;
   }
   return DEFAULT_GYM_ID;
 };
@@ -80,7 +80,9 @@ export const getSelectedGymId = (): string => {
 // Función para establecer el gym_id seleccionado
 export const setSelectedGymId = (gymId: string): void => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('selected_gym_id', gymId);
+    localStorage.setItem('selectedGymId', gymId);
+    // También establecer como cookie para el middleware
+    document.cookie = `selectedGymId=${gymId}; path=/; max-age=${60 * 60 * 24 * 30}`; // 30 días
   }
 };
 
