@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { gymsAPI, UserGymMembership } from '@/lib/api'
+import { gymsAPI, UserGymMembership, setSelectedGymId } from '@/lib/api'
 import { Building, Users, Calendar, ChevronRight, Loader2 } from 'lucide-react'
 
 interface GymSelectorClientProps {
@@ -18,6 +18,7 @@ export default function GymSelectorClient({ user }: GymSelectorClientProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedGym, setSelectedGym] = useState<number | null>(null)
+  const [selecting, setSelecting] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export default function GymSelectorClient({ user }: GymSelectorClientProps) {
         gym.user_role_in_gym === 'ADMIN' || gym.user_role_in_gym === 'OWNER'
       )
       
+      console.log('Gimnasios donde es admin/owner:', adminGyms)
       setGyms(adminGyms)
       
       // Si solo tiene un gimnasio, seleccionarlo automáticamente
@@ -48,12 +50,30 @@ export default function GymSelectorClient({ user }: GymSelectorClientProps) {
     }
   }
 
-  const handleGymSelect = (gymId: number) => {
-    // Guardar el gym seleccionado en localStorage
-    localStorage.setItem('selectedGymId', gymId.toString())
-    
-    // Redirigir al dashboard
-    router.push('/')
+  const handleGymSelect = async (gymId: number) => {
+    try {
+      setSelecting(true)
+      setSelectedGym(gymId)
+      
+      console.log('Seleccionando gimnasio:', gymId)
+      
+      // Usar la función de la API que establece localStorage y cookie
+      setSelectedGymId(gymId.toString())
+      
+      console.log('Gimnasio guardado, redirigiendo...')
+      
+      // Pequeña pausa para asegurar que se guarde
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Forzar recarga de la página para que el middleware tome efecto
+      window.location.href = '/'
+      
+    } catch (error) {
+      console.error('Error al seleccionar gimnasio:', error)
+      setError('Error al seleccionar el gimnasio. Por favor, intenta de nuevo.')
+      setSelecting(false)
+      setSelectedGym(null)
+    }
   }
 
   const getRoleDisplayName = (role: string) => {
@@ -122,12 +142,21 @@ export default function GymSelectorClient({ user }: GymSelectorClientProps) {
 
   return (
     <div className="space-y-4">
+      {selecting && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+          <Loader2 className="h-5 w-5 animate-spin text-blue-600 mx-auto mb-2" />
+          <p className="text-blue-800">Configurando gimnasio seleccionado...</p>
+        </div>
+      )}
+      
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {gyms.map((gym) => (
           <div
             key={gym.id}
-            className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
-            onClick={() => handleGymSelect(gym.id)}
+            className={`bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group ${
+              selectedGym === gym.id ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+            } ${selecting ? 'pointer-events-none opacity-75' : ''}`}
+            onClick={() => !selecting && handleGymSelect(gym.id)}
           >
             {/* Header con logo o placeholder */}
             <div className="h-32 bg-gradient-to-br from-blue-500 to-blue-600 relative overflow-hidden">
@@ -149,6 +178,13 @@ export default function GymSelectorClient({ user }: GymSelectorClientProps) {
                   {getRoleDisplayName(gym.user_role_in_gym)}
                 </span>
               </div>
+
+              {/* Indicador de selección */}
+              {selectedGym === gym.id && (
+                <div className="absolute top-3 left-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-white" />
+                </div>
+              )}
             </div>
 
             {/* Contenido */}
@@ -190,7 +226,7 @@ export default function GymSelectorClient({ user }: GymSelectorClientProps) {
         ))}
       </div>
 
-      {gyms.length > 1 && (
+      {gyms.length > 1 && !selecting && (
         <div className="text-center pt-4">
           <p className="text-sm text-gray-500">
             Haz clic en cualquier gimnasio para comenzar a administrarlo
