@@ -18,7 +18,9 @@ import {
   Apple,
   Star,
   Calendar,
-  User
+  User,
+  Heart,
+  TrendingUp
 } from 'lucide-react';
 
 interface NutritionPlan {
@@ -395,144 +397,179 @@ export default function NutritionPlansPage() {
         ) : (
           <>
             {/* Lista de planes */}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    {pagination.total} plan{pagination.total !== 1 ? 'es' : ''} encontrado{pagination.total !== 1 ? 's' : ''}
-                  </h2>
-                  <span className="text-sm text-slate-600">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-slate-900">
+                  {pagination.total} plan{pagination.total !== 1 ? 'es' : ''} nutricional{pagination.total !== 1 ? 'es' : ''}
+                </h2>
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
                     Página {pagination.page} de {Math.ceil(pagination.total / pagination.per_page)}
                   </span>
                 </div>
               </div>
 
-              <div className="divide-y divide-slate-200">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
                 {plans.map((plan) => (
-                  <div key={plan.id} className="p-6 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
+                  <div key={plan.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+                    {/* Header de la tarjeta */}
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 border-b border-slate-100">
+                      <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-4">
-                          <div className="p-3 bg-green-100 rounded-lg">
-                            <Apple size={20} className="text-green-600" />
+                          <div className="p-3 bg-green-100 rounded-xl shadow-sm">
+                            <Apple size={24} className="text-green-600" />
                           </div>
-                          
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center space-x-3">
-                              <h3 className="text-lg font-semibold text-slate-900">{plan.title}</h3>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getGoalColor(plan.goal)}`}>
-                                {plan.goal === 'bulk' ? 'Volumen' : 
-                                 plan.goal === 'cut' ? 'Definición' : 
-                                 plan.goal === 'maintain' ? 'Mantenimiento' : 
-                                 plan.goal === 'performance' ? 'Rendimiento' : plan.goal}
-                              </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(plan.difficulty_level)}`}>
-                                {plan.difficulty_level === 'beginner' ? 'Principiante' : 
-                                 plan.difficulty_level === 'intermediate' ? 'Intermedio' : 
-                                 plan.difficulty_level === 'advanced' ? 'Avanzado' : plan.difficulty_level}
-                              </span>
-                              {!plan.is_active && (
-                                <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
-                                  Inactivo
+                          <div className="flex-1">
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">{plan.title}</h3>
+                            <p className="text-slate-600 text-sm leading-relaxed">{plan.description}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Acciones */}
+                        <div className="flex items-center space-x-1">
+                          <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                            <Eye size={18} />
+                          </button>
+                          <button className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+                            <Edit size={18} />
+                          </button>
+                          <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Badges */}
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getGoalColor(plan.goal)}`}>
+                          {plan.goal === 'bulk' ? 'Volumen' : 
+                           plan.goal === 'cut' ? 'Definición' : 
+                           plan.goal === 'maintain' ? 'Mantenimiento' : 
+                           plan.goal === 'performance' ? 'Rendimiento' : plan.goal}
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getDifficultyColor(plan.difficulty_level)}`}>
+                          {plan.difficulty_level === 'beginner' ? 'Principiante' : 
+                           plan.difficulty_level === 'intermediate' ? 'Intermedio' : 
+                           plan.difficulty_level === 'advanced' ? 'Avanzado' : plan.difficulty_level}
+                        </span>
+                        {!plan.is_active && (
+                          <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold">
+                            Inactivo
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Contenido de la tarjeta */}
+                    <div className="p-6 space-y-6">
+                      {/* Información del creador */}
+                      {plan.creator && (
+                        <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
+                          {plan.creator.picture ? (
+                            <img 
+                              src={plan.creator.picture} 
+                              alt={`${plan.creator.first_name} ${plan.creator.last_name}`}
+                              className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-sm">
+                              <User size={16} className="text-white" />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-slate-900">
+                              {`${plan.creator.first_name} ${plan.creator.last_name}`.trim() || plan.creator.email}
+                            </p>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <span className="text-xs text-slate-500">Creador</span>
+                              {plan.creator.gym_role && (
+                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                  plan.creator.gym_role === 'admin' ? 'bg-red-100 text-red-700' :
+                                  plan.creator.gym_role === 'trainer' ? 'bg-green-100 text-green-700' :
+                                  'bg-blue-100 text-blue-700'
+                                }`}>
+                                  {plan.creator.gym_role === 'admin' ? 'Administrador' :
+                                   plan.creator.gym_role === 'trainer' ? 'Entrenador' :
+                                   plan.creator.gym_role}
                                 </span>
                               )}
                             </div>
-                            
-                            <p className="text-slate-600">{plan.description}</p>
-                            
-                            {/* Información del creador */}
-                            {plan.creator && (
-                              <div className="flex items-center space-x-3 mt-3 p-3 bg-slate-50 rounded-lg">
-                                <div className="flex items-center space-x-2">
-                                  {plan.creator.picture ? (
-                                    <img 
-                                      src={plan.creator.picture} 
-                                      alt={`${plan.creator.first_name} ${plan.creator.last_name}`}
-                                      className="w-8 h-8 rounded-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
-                                      <User size={14} className="text-white" />
-                                    </div>
-                                  )}
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-900">
-                                      Creado por {`${plan.creator.first_name} ${plan.creator.last_name}`.trim() || plan.creator.email}
-                                    </p>
-                                    {plan.creator.gym_role && (
-                                      <span className={`text-xs px-2 py-1 rounded-full ${
-                                        plan.creator.gym_role === 'admin' ? 'bg-red-100 text-red-700' :
-                                        plan.creator.gym_role === 'trainer' ? 'bg-green-100 text-green-700' :
-                                        'bg-blue-100 text-blue-700'
-                                      }`}>
-                                        {plan.creator.gym_role === 'admin' ? 'Administrador' :
-                                         plan.creator.gym_role === 'trainer' ? 'Entrenador' :
-                                         plan.creator.gym_role}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                            
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                              <div className="flex items-center space-x-2 text-sm text-slate-600">
-                                <Target size={14} />
-                                <span>{plan.target_calories} kcal</span>
-                              </div>
-                              <div className="flex items-center space-x-2 text-sm text-slate-600">
-                                <Clock size={14} />
-                                <span>{plan.duration_days} días</span>
-                              </div>
-                              <div className="flex items-center space-x-2 text-sm text-slate-600">
-                                <Users size={14} />
-                                <span>{plan.total_followers || 0} seguidores</span>
-                              </div>
-                              <div className="flex items-center space-x-2 text-sm text-slate-600">
-                                <Calendar size={14} />
-                                <span>{formatDate(plan.created_at)}</span>
-                              </div>
-                            </div>
+                          </div>
+                        </div>
+                      )}
 
-                            {/* Macronutrientes */}
-                            <div className="flex items-center space-x-4 text-sm">
-                              <span className="text-slate-600">
-                                <strong>Proteína:</strong> {plan.target_protein_g}g
-                              </span>
-                              <span className="text-slate-600">
-                                <strong>Carbohidratos:</strong> {plan.target_carbs_g}g
-                              </span>
-                              <span className="text-slate-600">
-                                <strong>Grasas:</strong> {plan.target_fat_g}g
-                              </span>
-                            </div>
+                      {/* Estadísticas principales */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Target size={16} className="text-blue-600" />
+                            <span className="text-xs font-medium text-blue-700 uppercase tracking-wide">Calorías</span>
+                          </div>
+                          <p className="text-2xl font-bold text-blue-900">{plan.target_calories}</p>
+                          <p className="text-xs text-blue-600">kcal diarias</p>
+                        </div>
+                        <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-100">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Clock size={16} className="text-purple-600" />
+                            <span className="text-xs font-medium text-purple-700 uppercase tracking-wide">Duración</span>
+                          </div>
+                          <p className="text-2xl font-bold text-purple-900">{plan.duration_days}</p>
+                          <p className="text-xs text-purple-600">días</p>
+                        </div>
+                      </div>
 
-                            {/* Tags */}
-                            {plan.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-2">
-                                {plan.tags.map((tag, index) => (
-                                  <span key={index} className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs">
-                                    #{tag}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
+                      {/* Macronutrientes */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wide">Macronutrientes</h4>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="text-center p-3 bg-red-50 rounded-lg border border-red-100">
+                            <p className="text-lg font-bold text-red-900">{plan.target_protein_g}g</p>
+                            <p className="text-xs text-red-600 font-medium">Proteína</p>
+                          </div>
+                          <div className="text-center p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                            <p className="text-lg font-bold text-yellow-900">{plan.target_carbs_g}g</p>
+                            <p className="text-xs text-yellow-600 font-medium">Carbohidratos</p>
+                          </div>
+                          <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-100">
+                            <p className="text-lg font-bold text-orange-900">{plan.target_fat_g}g</p>
+                            <p className="text-xs text-orange-600 font-medium">Grasas</p>
                           </div>
                         </div>
                       </div>
 
-                      {/* Acciones */}
-                      <div className="flex items-center space-x-2 ml-4">
-                        <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                          <Eye size={16} />
-                        </button>
-                        <button className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
-                          <Edit size={16} />
-                        </button>
-                        <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                          <Trash2 size={16} />
-                        </button>
+                      {/* Información adicional */}
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                        <div className="flex items-center space-x-4 text-sm text-slate-600">
+                          <div className="flex items-center space-x-1">
+                            <Users size={14} />
+                            <span>{plan.total_followers || 0}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Calendar size={14} />
+                            <span>{formatDate(plan.created_at)}</span>
+                          </div>
+                        </div>
+                        {plan.avg_satisfaction && (
+                          <div className="flex items-center space-x-1">
+                            <Star size={14} className="text-yellow-500 fill-current" />
+                            <span className="text-sm font-medium text-slate-900">{plan.avg_satisfaction.toFixed(1)}</span>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Tags */}
+                      {plan.tags.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Tags</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {plan.tags.map((tag, index) => (
+                              <span key={index} className="px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-medium hover:bg-slate-200 transition-colors">
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
