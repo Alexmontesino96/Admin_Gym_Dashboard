@@ -10,7 +10,6 @@
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
     "build:analyze": "ANALYZE=true next build",
-    "postbuild": "next-sitemap",
     "pre-deploy": "node scripts/pre-deploy.js",
     "deploy:check": "npm run lint && npm run type-check && npm run pre-deploy"
   },
