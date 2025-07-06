@@ -61,9 +61,9 @@ export default function CreatePlanClient() {
   // Función para obtener el gym ID seleccionado
   const getSelectedGymId = () => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('selected_gym_id') || '1';
+      return localStorage.getItem('selectedGymId');
     }
-    return '1';
+    return null;
   };
 
   // Función para manejar cambios en el formulario
@@ -107,6 +107,12 @@ export default function CreatePlanClient() {
       return;
     }
 
+    const gymId = getSelectedGymId();
+    if (!gymId) {
+      setError('No hay gimnasio seleccionado. Por favor, selecciona un gimnasio.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -115,7 +121,7 @@ export default function CreatePlanClient() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Gym-ID': getSelectedGymId()
+          'X-Gym-ID': gymId
         },
         body: JSON.stringify(formData)
       });

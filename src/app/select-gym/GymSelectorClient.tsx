@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { gymsAPI, UserGymMembership, setSelectedGymId } from '@/lib/api'
+import { gymsAPI, UserGymMembership, setSelectedGymId, clearSelectedGymId } from '@/lib/api'
 import { Building, Users, Calendar, ChevronRight, Loader2 } from 'lucide-react'
 
 interface GymSelectorClientProps {
@@ -22,6 +22,8 @@ export default function GymSelectorClient({ user }: GymSelectorClientProps) {
   const router = useRouter()
 
   useEffect(() => {
+    // Limpiar cualquier selección previa para forzar la selección
+    clearSelectedGymId()
     fetchUserGyms()
   }, [])
 

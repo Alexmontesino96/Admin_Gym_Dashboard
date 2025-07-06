@@ -1,6 +1,5 @@
 // Configuración de la API
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://gymapi-eh6m.onrender.com/api/v1';
-const DEFAULT_GYM_ID = process.env.NEXT_PUBLIC_DEFAULT_GYM_ID || '1';
 
 // Interface para errores de API estructurados
 export interface APIError extends Error {
@@ -70,11 +69,11 @@ export const handleGymAPIError = (error: unknown, operation: string = 'operació
 };
 
 // Función para obtener el gym_id seleccionado
-export const getSelectedGymId = (): string => {
+export const getSelectedGymId = (): string | null => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('selectedGymId') || DEFAULT_GYM_ID;
+    return localStorage.getItem('selectedGymId');
   }
-  return DEFAULT_GYM_ID;
+  return null;
 };
 
 // Función para establecer el gym_id seleccionado
@@ -83,6 +82,15 @@ export const setSelectedGymId = (gymId: string): void => {
     localStorage.setItem('selectedGymId', gymId);
     // También establecer como cookie para el middleware
     document.cookie = `selectedGymId=${gymId}; path=/; max-age=${60 * 60 * 24 * 30}`; // 30 días
+  }
+};
+
+// Función para limpiar el gym_id seleccionado
+export const clearSelectedGymId = (): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('selectedGymId');
+    // También limpiar la cookie
+    document.cookie = 'selectedGymId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   }
 };
 
@@ -187,8 +195,8 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}, custo
       ...options.headers as Record<string, string>,
     };
 
-    // Solo agregar X-Gym-ID si no es 'none'
-    if (gymId !== 'none') {
+    // Solo agregar X-Gym-ID si no es 'none' y existe un gymId
+    if (gymId && gymId !== 'none') {
       headers['X-Gym-ID'] = gymId;
     }
     
@@ -480,10 +488,11 @@ export const getUsersAPI = {
       
       // Si es el caso específico de usuario ya existente, devolver un objeto válido
       if (errorInfo.type === 'USER_ALREADY_EXISTS') {
+        const selectedGymId = getSelectedGymId();
         return {
           message: errorInfo.message,
           user_id: userId,
-          gym_id: parseInt(getSelectedGymId()),
+          gym_id: selectedGymId ? parseInt(selectedGymId) : 1,
           role: 'MEMBER' // asumimos MEMBER por defecto
         };
       }
@@ -552,8 +561,14 @@ export const gymsAPI = {
 
   // Obtener información detallada de un gimnasio específico
   getGymInfo: async (gymId?: number): Promise<GymWithStats> => {
-    const id = gymId || parseInt(getSelectedGymId());
-    return apiCall(`/gyms/${id}`);
+    if (!gymId) {
+      const selectedGymId = getSelectedGymId();
+      if (!selectedGymId) {
+        throw new Error('No hay gimnasio seleccionado');
+      }
+      gymId = parseInt(selectedGymId);
+    }
+    return apiCall(`/gyms/${gymId}`);
   },
 
   // Actualizar información de un gimnasio

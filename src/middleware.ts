@@ -14,6 +14,8 @@ export async function middleware(request: NextRequest) {
       '/auth/login',
       '/auth/callback', 
       '/auth/logout',
+      '/login',
+      '/post-login',
       '/select-gym',
       '/api/',
       '/_next/',
@@ -22,30 +24,39 @@ export async function middleware(request: NextRequest) {
     
     // Si es una ruta pública, continuar
     if (publicPaths.some(path => pathname.startsWith(path))) {
+      console.log(`[Middleware] Ruta pública permitida: ${pathname}`);
       return response;
     }
     
     // Verificar si hay sesión
     const session = await auth0.getSession(request);
     
-    if (session) {
-      // Usuario autenticado, verificar si tiene gimnasio seleccionado
-      const selectedGymId = request.cookies.get('selectedGymId')?.value || 
-                           request.headers.get('X-Gym-ID');
-      
-      // Si no tiene gimnasio seleccionado y no está en la página de selección
-      if (!selectedGymId && pathname !== '/select-gym') {
-        const selectGymUrl = new URL('/select-gym', request.url);
-        return NextResponse.redirect(selectGymUrl);
-      }
-      
-      // Si tiene gimnasio seleccionado pero está en la página de selección, redirigir al dashboard
-      if (selectedGymId && pathname === '/select-gym') {
-        const dashboardUrl = new URL('/', request.url);
-        return NextResponse.redirect(dashboardUrl);
-      }
+    if (!session) {
+      // Si no hay sesión, redirigir a login
+      console.log(`[Middleware] No hay sesión, redirigiendo a /login desde: ${pathname}`);
+      const loginUrl = new URL('/login', request.url);
+      return NextResponse.redirect(loginUrl);
     }
     
+    // Usuario autenticado, verificar si tiene gimnasio seleccionado
+    const selectedGymId = request.cookies.get('selectedGymId')?.value;
+    console.log(`[Middleware] Usuario autenticado en ${pathname}, gymId: ${selectedGymId || 'NO_SELECCIONADO'}`);
+    
+    // Si no tiene gimnasio seleccionado y no está en la página de selección
+    if (!selectedGymId && pathname !== '/select-gym') {
+      console.log(`[Middleware] No hay gimnasio seleccionado, redirigiendo a /select-gym desde: ${pathname}`);
+      const selectGymUrl = new URL('/select-gym', request.url);
+      return NextResponse.redirect(selectGymUrl);
+    }
+    
+    // Si tiene gimnasio seleccionado pero está en la página de selección, redirigir al dashboard
+    if (selectedGymId && pathname === '/select-gym') {
+      console.log(`[Middleware] Gimnasio ya seleccionado (${selectedGymId}), redirigiendo al dashboard`);
+      const dashboardUrl = new URL('/', request.url);
+      return NextResponse.redirect(dashboardUrl);
+    }
+    
+    console.log(`[Middleware] Permitiendo acceso a ${pathname} con gimnasio ${selectedGymId}`);
     return response;
     
   } catch (error: any) {
@@ -83,6 +94,7 @@ export async function middleware(request: NextRequest) {
     }
     
     // Para otros errores, relanzar
+    console.error('[Middleware] Error inesperado:', error);
     throw error;
   }
 }

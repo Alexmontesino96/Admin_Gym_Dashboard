@@ -87,9 +87,9 @@ export default function NutritionPlansClient() {
   // Función para obtener el gym ID seleccionado
   const getSelectedGymId = () => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('selected_gym_id') || '1';
+      return localStorage.getItem('selectedGymId');
     }
-    return '1';
+    return null;
   };
 
   // Función para obtener información de usuarios con cache
@@ -100,6 +100,11 @@ export default function NutritionPlansClient() {
     }
 
     const gymId = getSelectedGymId();
+    if (!gymId) {
+      console.error('No gym selected, cannot fetch user info');
+      return null;
+    }
+    
     console.log('Fetching user info for:', { userId, gymId });
 
     try {
@@ -138,6 +143,13 @@ export default function NutritionPlansClient() {
     setLoading(true);
     setError(null);
     
+    const gymId = getSelectedGymId();
+    if (!gymId) {
+      setError('No hay gimnasio seleccionado. Por favor, selecciona un gimnasio.');
+      setLoading(false);
+      return;
+    }
+    
     try {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -153,7 +165,7 @@ export default function NutritionPlansClient() {
 
       const response = await fetch(`/api/v1/nutrition/plans?${params.toString()}`, {
         headers: {
-          'X-Gym-ID': getSelectedGymId(),
+          'X-Gym-ID': gymId,
           'Content-Type': 'application/json'
         }
       });
