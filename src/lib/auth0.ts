@@ -4,9 +4,5 @@ export const auth0 = new Auth0Client({
   authorizationParameters: {
     scope: 'openid profile email read:users read:user_idp_tokens',
     audience: process.env.AUTH0_API_AUDIENCE
-  },
-  baseURL: process.env.AUTH0_BASE_URL,
-  routes: {
-    postLogoutRedirect: '/login'
   }
 }); 
