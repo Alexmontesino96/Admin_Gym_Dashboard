@@ -423,6 +423,181 @@ export interface EventCreateData {
   first_message_chat?: string;
 }
 
+// Interfaces para Planes Nutricionales
+export interface NutritionPlan {
+  // Campos originales
+  id: number;
+  title: string;
+  description: string;
+  goal: string;
+  difficulty_level: string;
+  budget_level: string;
+  dietary_restrictions: string;
+  duration_days: number;
+  is_recurring: boolean;
+  target_calories: number;
+  target_protein_g: number;
+  target_carbs_g: number;
+  target_fat_g: number;
+  is_public: boolean;
+  tags: string[];
+  creator_id: number;
+  gym_id: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  total_followers?: number | null;
+  avg_satisfaction?: number | null;
+  daily_plans?: DailyPlan[];
+  creator_name?: string | null;
+  is_followed_by_user?: boolean | null;
+  
+  // ✨ NUEVOS campos híbridos
+  plan_type: PlanType;
+  live_start_date?: string; // ISO datetime
+  live_end_date?: string;
+  is_live_active: boolean;
+  live_participants_count: number;
+  original_live_plan_id?: number;
+  archived_at?: string;
+  original_participants_count?: number;
+  
+  // Campos calculados dinámicamente
+  current_day?: number;
+  status?: PlanStatus;
+  days_until_start?: number;
+  is_following?: boolean;
+}
+
+export interface DailyPlan {
+  id?: number;
+  day_number: number;
+  planned_date: string;
+  total_calories: number;
+  total_protein_g: number;
+  total_carbs_g: number;
+  total_fat_g: number;
+  notes: string;
+  nutrition_plan_id: number;
+  is_published?: boolean;
+  published_at?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface NutritionPlanCreateData {
+  title: string;
+  description: string;
+  goal: string;
+  difficulty_level: string;
+  budget_level: string;
+  dietary_restrictions: string;
+  duration_days: number;
+  is_recurring: boolean;
+  target_calories: number;
+  target_protein_g: number;
+  target_carbs_g: number;
+  target_fat_g: number;
+  is_public: boolean;
+  tags: string[];
+}
+
+export interface DailyPlanCreateData {
+  day_number: number;
+  planned_date: string;
+  total_calories: number;
+  total_protein_g: number;
+  total_carbs_g: number;
+  total_fat_g: number;
+  notes: string;
+  nutrition_plan_id: number;
+}
+
+// ===== NUEVAS INTERFACES HÍBRIDAS =====
+export interface NutritionPlanFilters {
+  // Filtros existentes
+  goal?: string;
+  difficulty_level?: string;
+  search_query?: string;
+  page?: number;
+  per_page?: number;
+  budget_level?: string;
+  dietary_restrictions?: string;
+  
+  // ✨ NUEVOS filtros híbridos
+  plan_type?: PlanType;
+  status?: PlanStatus;
+  is_live_active?: boolean;
+}
+
+export interface TodayMealPlan {
+  date: string;
+  meals: any[];
+  completion_percentage: number;
+  
+  // ✨ NUEVOS campos híbridos
+  plan?: NutritionPlan;
+  current_day: number;
+  status: PlanStatus;
+  days_until_start?: number;
+}
+
+export interface NutritionDashboardHybrid {
+  // Planes categorizados por tipo
+  template_plans: NutritionPlan[];
+  live_plans: NutritionPlan[];
+  available_plans: NutritionPlan[];
+  
+  // Plan actual del usuario
+  today_plan?: TodayMealPlan;
+  
+  // Estadísticas
+  completion_streak: number;
+  weekly_progress: any[];
+}
+
+export interface PlanStatusInfo {
+  plan_id: number;
+  plan_type: PlanType;
+  current_day: number;
+  status: PlanStatus;
+  days_until_start?: number;
+  is_live_active: boolean;
+  live_participants_count: number;
+  is_following: boolean;
+}
+
+export interface LivePlanStatusUpdate {
+  is_live_active: boolean;
+  live_participants_count?: number;
+}
+
+export interface ArchivePlanRequest {
+  create_template_version: boolean;
+  template_title?: string;
+}
+
+export interface CreateNutritionPlanRequestHybrid {
+  title: string;
+  description: string;
+  goal: string;
+  difficulty_level: string;
+  budget_level: string;
+  dietary_restrictions: string;
+  duration_days: number;
+  is_recurring: boolean;
+  target_calories: number;
+  target_protein_g: number;
+  target_carbs_g: number;
+  target_fat_g: number;
+  is_public: boolean;
+  tags: string[];
+  
+  // ✨ NUEVOS campos híbridos opcionales
+  plan_type?: PlanType;
+  live_start_date?: string; // requerido si plan_type es 'live'
+}
+
 // Funciones específicas para endpoints de usuarios
 export const getUsersAPI = {
   // Obtener participantes del gimnasio (ADMIN ONLY)
@@ -940,4 +1115,366 @@ export const eventsAPI = {
       body: JSON.stringify(data)
     });
   },
+};
+
+// Funciones específicas para endpoints de nutrición
+export const nutritionAPI = {
+  // ===== ENDPOINTS HÍBRIDOS NUEVOS =====
+  
+  // Obtener dashboard híbrido categorizado
+  getDashboardHybrid: async (): Promise<NutritionDashboardHybrid> => {
+    return apiCall('/nutrition/dashboard');
+  },
+
+  // Obtener planes categorizados por tipos
+  getPlansHybrid: async (params: Partial<NutritionPlanFilters> = {}): Promise<{
+    plans: NutritionPlan[];
+    total: number;
+    page: number;
+    per_page: number;
+    has_next: boolean;
+    has_prev: boolean;
+  }> => {
+    const searchParams = new URLSearchParams();
+    
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        searchParams.append(key, value.toString());
+      }
+    });
+    
+    // Ahora usa el mismo endpoint que getPlans ya que el backend fusionó ambos endpoints
+    const endpoint = `/nutrition/plans${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    return apiCall(endpoint);
+  },
+
+  // Obtener estado de un plan en tiempo real
+  getPlanStatus: async (planId: number): Promise<PlanStatusInfo> => {
+    return apiCall(`/nutrition/plans/${planId}/status`);
+  },
+
+  // Actualizar estado de plan live (solo creadores)
+  updateLiveStatus: async (planId: number, update: LivePlanStatusUpdate): Promise<PlanStatusInfo> => {
+    return apiCall(`/nutrition/plans/${planId}/live-status`, {
+      method: 'PUT',
+      body: JSON.stringify(update),
+    });
+  },
+
+  // Archivar plan live terminado
+  archivePlan: async (planId: number, request: ArchivePlanRequest): Promise<{ message: string; template_plan_id?: number }> => {
+    return apiCall(`/nutrition/plans/${planId}/archive`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  // Obtener plan de hoy extendido
+  getTodayPlan: async (): Promise<TodayMealPlan | null> => {
+    return apiCall('/nutrition/today');
+  },
+
+  // ===== ENDPOINTS MEJORADOS (BACKWARD COMPATIBLE) =====
+
+  // Obtener lista de planes nutricionales con filtros híbridos opcionales
+  getPlans: async (params: Partial<NutritionPlanFilters> = {}): Promise<{
+    plans: NutritionPlan[];
+    total: number;
+    page: number;
+    per_page: number;
+    has_next: boolean;
+    has_prev: boolean;
+  }> => {
+    const searchParams = new URLSearchParams();
+    
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        searchParams.append(key, value.toString());
+      }
+    });
+    
+    const endpoint = `/nutrition/plans${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    return apiCall(endpoint);
+  },
+
+  // Obtener un plan nutricional específico
+  getPlan: async (planId: number): Promise<NutritionPlan> => {
+    return apiCall(`/nutrition/plans/${planId}`);
+  },
+
+  // Crear un nuevo plan nutricional (mejorado con soporte híbrido)
+  createPlan: async (planData: NutritionPlanCreateData | CreateNutritionPlanRequestHybrid): Promise<NutritionPlan> => {
+    return apiCall('/nutrition/plans', {
+      method: 'POST',
+      body: JSON.stringify(planData),
+    });
+  },
+
+  // Actualizar un plan nutricional existente
+  updatePlan: async (planId: number, planData: Partial<NutritionPlanCreateData>): Promise<NutritionPlan> => {
+    return apiCall(`/nutrition/plans/${planId}`, {
+      method: 'PUT',
+      body: JSON.stringify(planData),
+    });
+  },
+
+  // Eliminar un plan nutricional
+  deletePlan: async (planId: number): Promise<{ message: string }> => {
+    return apiCall(`/nutrition/plans/${planId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Obtener días de un plan nutricional
+  getPlanDays: async (planId: number, params: {
+    skip?: number;
+    limit?: number;
+  } = {}): Promise<DailyPlan[]> => {
+    const searchParams = new URLSearchParams();
+    if (params.skip !== undefined) searchParams.append('skip', params.skip.toString());
+    if (params.limit !== undefined) searchParams.append('limit', params.limit.toString());
+    
+    const endpoint = `/nutrition/plans/${planId}/days${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    return apiCall(endpoint);
+  },
+
+  // Crear un día en un plan nutricional
+  createPlanDay: async (planId: number, dayData: DailyPlanCreateData): Promise<DailyPlan> => {
+    return apiCall(`/nutrition/plans/${planId}/days`, {
+      method: 'POST',
+      body: JSON.stringify(dayData),
+    });
+  },
+
+  // Obtener un día específico de un plan
+  getPlanDay: async (planId: number, dayId: number): Promise<DailyPlan> => {
+    return apiCall(`/nutrition/plans/${planId}/days/${dayId}`);
+  },
+
+  // Actualizar un día específico de un plan
+  updatePlanDay: async (planId: number, dayId: number, dayData: Partial<DailyPlanCreateData>): Promise<DailyPlan> => {
+    return apiCall(`/nutrition/plans/${planId}/days/${dayId}`, {
+      method: 'PUT',
+      body: JSON.stringify(dayData),
+    });
+  },
+
+  // Eliminar un día específico de un plan
+  deletePlanDay: async (planId: number, dayId: number): Promise<{ message: string }> => {
+    return apiCall(`/nutrition/plans/${planId}/days/${dayId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // ===== ENDPOINTS DE ENUMS =====
+  
+  // Obtener tipos de planes disponibles
+  getPlanTypes: async (): Promise<EnumOption[]> => {
+    return apiCall('/nutrition/enums/plan-types');
+  },
+
+  // Obtener estados de planes disponibles
+  getPlanStatuses: async (): Promise<EnumOption[]> => {
+    return apiCall('/nutrition/enums/plan-statuses');
+  },
+
+  // Obtener objetivos nutricionales disponibles
+  getNutritionGoals: async (): Promise<EnumOption[]> => {
+    return apiCall('/nutrition/enums/goals');
+  },
+
+  // Obtener niveles de dificultad disponibles
+  getDifficultyLevels: async (): Promise<EnumOption[]> => {
+    return apiCall('/nutrition/enums/difficulties');
+  },
+
+  // Obtener niveles de presupuesto disponibles
+  getBudgetLevels: async (): Promise<EnumOption[]> => {
+    return apiCall('/nutrition/enums/budgets');
+  },
+};
+
+// ===== CONSTANTES API ENDPOINTS =====
+export const NUTRITION_ENDPOINTS = {
+  // Endpoints existentes (ahora con soporte híbrido)
+  PLANS: '/nutrition/plans',
+  PLAN_DETAIL: (id: number) => `/nutrition/plans/${id}`,
+  TODAY: '/nutrition/today',
+  DASHBOARD: '/nutrition/dashboard',
+  
+  // Nuevos endpoints híbridos específicos
+  PLAN_STATUS: (id: number) => `/nutrition/plans/${id}/status`,
+  LIVE_STATUS: (id: number) => `/nutrition/plans/${id}/live-status`,
+  ARCHIVE: (id: number) => `/nutrition/plans/${id}/archive`,
+  
+  // Enums
+  PLAN_TYPES: '/nutrition/enums/plan-types',
+  PLAN_STATUSES: '/nutrition/enums/plan-statuses',
+  GOALS: '/nutrition/enums/goals',
+  DIFFICULTIES: '/nutrition/enums/difficulties',
+  BUDGETS: '/nutrition/enums/budgets'
+} as const;
+
+// ===== HELPER FUNCTIONS ADICIONALES =====
+export const buildPlanFilters = (filters: Partial<NutritionPlanFilters>): URLSearchParams => {
+  const params = new URLSearchParams();
+  
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      params.append(key, value.toString());
+    }
+  });
+  
+  return params;
+};
+
+// ===== ENUMS HÍBRIDOS =====
+export enum PlanType {
+  TEMPLATE = 'template',
+  LIVE = 'live',
+  ARCHIVED = 'archived'
+}
+
+export enum PlanStatus {
+  NOT_STARTED = 'not_started',
+  RUNNING = 'running',
+  FINISHED = 'finished',
+  ARCHIVED = 'archived'
+}
+
+export enum NutritionGoal {
+  WEIGHT_LOSS = 'weight_loss',
+  MUSCLE_GAIN = 'muscle_gain',
+  MAINTENANCE = 'maintenance',
+  HEALTHY_EATING = 'healthy_eating'
+}
+
+export enum DifficultyLevel {
+  BEGINNER = 'beginner',
+  INTERMEDIATE = 'intermediate',
+  ADVANCED = 'advanced'
+}
+
+export enum Budget {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high'
+}
+
+// ===== INTERFACES BASE =====
+export interface BaseModel {
+  id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EnumOption {
+  value: string;
+  label: string;
+}
+
+// ===== HELPER TYPES =====
+export interface PlanTypeConfig {
+  icon: string;
+  color: string;
+  label: string;
+  description: string;
+}
+
+export interface PlanStatusConfig {
+  icon: string;
+  color: string;
+  label: string;
+  description: string;
+}
+
+export const PLAN_TYPE_CONFIG: Record<PlanType, PlanTypeConfig> = {
+  [PlanType.TEMPLATE]: {
+    icon: '📋',
+    color: 'blue',
+    label: 'Template',
+    description: 'Empieza cuando quieras'
+  },
+  [PlanType.LIVE]: {
+    icon: '🔴',
+    color: 'red',
+    label: 'Live',
+    description: 'Sincronizado con otros usuarios'
+  },
+  [PlanType.ARCHIVED]: {
+    icon: '📦',
+    color: 'purple',
+    label: 'Archived',
+    description: 'Plan exitoso archivado'
+  }
+};
+
+export const PLAN_STATUS_CONFIG: Record<PlanStatus, PlanStatusConfig> = {
+  [PlanStatus.NOT_STARTED]: {
+    icon: '⏰',
+    color: 'gray',
+    label: 'Próximamente',
+    description: 'Aún no ha comenzado'
+  },
+  [PlanStatus.RUNNING]: {
+    icon: '▶️',
+    color: 'green',
+    label: 'Activo',
+    description: 'En progreso'
+  },
+  [PlanStatus.FINISHED]: {
+    icon: '✅',
+    color: 'blue',
+    label: 'Terminado',
+    description: 'Completado'
+  },
+  [PlanStatus.ARCHIVED]: {
+    icon: '📦',
+    color: 'purple',
+    label: 'Archivado',
+    description: 'Guardado como template'
+  }
+};
+
+// ===== HELPER FUNCTIONS =====
+export const formatDate = (dateString: string): string => {
+  return new Date(dateString).toLocaleDateString('es-ES', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
+
+export const formatDateShort = (dateString: string): string => {
+  return new Date(dateString).toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
+
+export const getDaysUntilStart = (startDate: string): number => {
+  const today = new Date();
+  const start = new Date(startDate);
+  const diffTime = start.getTime() - today.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+export const isPlanActive = (plan: NutritionPlan): boolean => {
+  return plan.status === PlanStatus.RUNNING;
+};
+
+export const isPlanStartingSoon = (plan: NutritionPlan): boolean => {
+  return plan.status === PlanStatus.NOT_STARTED && 
+         plan.days_until_start !== undefined && 
+         plan.days_until_start <= 3;
+};
+
+export const getPlanTypeConfig = (planType: PlanType): PlanTypeConfig => {
+  return PLAN_TYPE_CONFIG[planType];
+};
+
+export const getPlanStatusConfig = (status: PlanStatus): PlanStatusConfig => {
+  return PLAN_STATUS_CONFIG[status];
 };

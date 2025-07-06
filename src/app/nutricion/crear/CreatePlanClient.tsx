@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { nutritionAPI, NutritionPlanCreateData, DailyPlanCreateData, CreateNutritionPlanRequestHybrid, PlanType } from '@/lib/api';
 import { 
   PlusCircle, 
   Save, 
@@ -20,7 +21,9 @@ import {
   Plus,
   Trash2,
   Check,
-  Edit
+  Edit,
+  PlayCircle,
+  FileText
 } from 'lucide-react';
 
 interface CreatePlanForm {
@@ -38,6 +41,10 @@ interface CreatePlanForm {
   target_fat_g: number;
   is_public: boolean;
   tags: string[];
+  
+  // ✨ Campos híbridos
+  plan_type: PlanType;
+  live_start_date?: string;
 }
 
 interface DailyPlan {
@@ -93,7 +100,9 @@ export default function CreatePlanClient() {
     target_carbs_g: 250,
     target_fat_g: 67,
     is_public: true,
-    tags: []
+    tags: [],
+    plan_type: PlanType.TEMPLATE,
+    live_start_date: undefined
   });
 
   // Estado para el formulario de día diario
@@ -107,20 +116,29 @@ export default function CreatePlanClient() {
     notes: ''
   });
 
-  // Función para obtener el gym ID seleccionado
-  const getSelectedGymId = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('selectedGymId');
-    }
-    return null;
-  };
-
   // Función para manejar cambios en el formulario principal
   const handleInputChange = (field: keyof CreatePlanForm, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [field]: value
+      };
+
+      // Si cambia a plan live y no hay fecha, establecer una fecha por defecto
+      if (field === 'plan_type' && value === PlanType.LIVE && !prev.live_start_date) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(8, 0, 0, 0); // 8:00 AM por defecto
+        newData.live_start_date = tomorrow.toISOString().slice(0, 16);
+      }
+
+      // Si cambia a template, limpiar la fecha
+      if (field === 'plan_type' && value === PlanType.TEMPLATE) {
+        newData.live_start_date = undefined;
+      }
+
+      return newData;
+    });
   };
 
   // Función para manejar cambios en el formulario de días
@@ -164,9 +182,9 @@ export default function CreatePlanClient() {
       return;
     }
 
-    const gymId = getSelectedGymId();
-    if (!gymId) {
-      setError('No hay gimnasio seleccionado. Por favor, selecciona un gimnasio.');
+    // Validar fecha de inicio para planes live
+    if (formData.plan_type === PlanType.LIVE && !formData.live_start_date) {
+      setError('La fecha de inicio es obligatoria para planes live');
       return;
     }
 
@@ -174,21 +192,14 @@ export default function CreatePlanClient() {
     setError(null);
 
     try {
-      const response = await fetch('/api/v1/nutrition/plans', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Gym-ID': gymId
-        },
-        body: JSON.stringify(formData)
-      });
+      // Preparar datos para la API híbrida
+      const planData: CreateNutritionPlanRequestHybrid = {
+        ...formData,
+        live_start_date: formData.plan_type === PlanType.LIVE ? formData.live_start_date : undefined
+      };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Error ${response.status}: ${response.statusText}`);
-      }
-
-      const newPlan = await response.json();
+      // Usar la función centralizada de la API
+      const newPlan = await nutritionAPI.createPlan(planData);
       console.log('Plan created successfully:', newPlan);
       
       setCreatedPlan(newPlan);
@@ -216,37 +227,18 @@ export default function CreatePlanClient() {
   const handleCreateDay = async () => {
     if (!createdPlan) return;
 
-    const gymId = getSelectedGymId();
-    if (!gymId) {
-      setError('No hay gimnasio seleccionado');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
-      const dayData = {
+      const dayData: DailyPlanCreateData = {
         ...dayForm,
         planned_date: new Date(dayForm.planned_date).toISOString(),
         nutrition_plan_id: createdPlan.id
       };
 
-      const response = await fetch(`/api/v1/nutrition/plans/${createdPlan.id}/days`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Gym-ID': gymId
-        },
-        body: JSON.stringify(dayData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Error ${response.status}: ${response.statusText}`);
-      }
-
-      const newDay = await response.json();
+      // Usar la función centralizada de la API
+      const newDay = await nutritionAPI.createPlanDay(createdPlan.id, dayData);
       setDailyPlans(prev => [...prev, newDay]);
       
       // Resetear formulario para el siguiente día
@@ -816,6 +808,51 @@ export default function CreatePlanClient() {
           </h2>
           
           <div className="space-y-4">
+            {/* Tipo de Plan */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Tipo de Plan
+              </label>
+              <select
+                value={formData.plan_type}
+                onChange={(e) => handleInputChange('plan_type', e.target.value as PlanType)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value={PlanType.TEMPLATE}>
+                  📋 Template - Flexible (empiezan cuando quieran)
+                </option>
+                <option value={PlanType.LIVE}>
+                  🔴 Live - Sincronizado (fecha específica de inicio)
+                </option>
+              </select>
+              <p className="text-xs text-slate-500 mt-1">
+                {formData.plan_type === PlanType.TEMPLATE 
+                  ? "Los usuarios pueden empezar el plan cuando quieran"
+                  : "Todos los usuarios empiezan el plan en la misma fecha"
+                }
+              </p>
+            </div>
+
+            {/* Fecha de Inicio Live (solo si es plan live) */}
+            {formData.plan_type === PlanType.LIVE && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Fecha y Hora de Inicio *
+                </label>
+                <input
+                  type="datetime-local"
+                  value={formData.live_start_date || ''}
+                  onChange={(e) => handleInputChange('live_start_date', e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  required={formData.plan_type === PlanType.LIVE}
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Todos los participantes empezarán el plan en esta fecha
+                </p>
+              </div>
+            )}
+            
             <div className="flex items-center space-x-3">
               <input
                 type="checkbox"

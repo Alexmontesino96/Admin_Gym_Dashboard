@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getUsersAPI, nutritionAPI, NutritionPlan, DailyPlan, GymParticipant, PlanType } from '@/lib/api';
+import PlanTypeIndicator from '@/components/ui/plan-type-indicator';
+import LivePlanStatus from '@/components/ui/live-plan-status';
 import { 
   FileText, 
   Search, 
@@ -19,40 +23,15 @@ import {
   Calendar,
   User,
   Heart,
-  TrendingUp
+  TrendingUp,
+  Plus,
+  Check
 } from 'lucide-react';
 
-interface NutritionPlan {
-  id: number;
-  title: string;
-  description: string;
-  goal: string;
-  difficulty_level: string;
-  budget_level: string;
-  dietary_restrictions: string;
-  duration_days: number;
-  is_recurring: boolean;
-  target_calories: number;
-  target_protein_g: number;
-  target_carbs_g: number;
-  target_fat_g: number;
-  is_public: boolean;
-  tags: string[];
-  creator_id: number;
-  gym_id: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  total_followers: number | null;
-  avg_satisfaction: number | null;
-  creator?: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    email: string;
-    picture?: string;
-    gym_role?: string;
-  };
+interface EnrichedNutritionPlan extends NutritionPlan {
+  creator?: GymParticipant;
+  days?: DailyPlan[];
+  daysCount?: number;
 }
 
 interface PlansResponse {
@@ -65,7 +44,8 @@ interface PlansResponse {
 }
 
 export default function NutritionPlansClient() {
-  const [plans, setPlans] = useState<NutritionPlan[]>([]);
+  const router = useRouter();
+  const [plans, setPlans] = useState<EnrichedNutritionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,107 +62,109 @@ export default function NutritionPlansClient() {
     has_next: false,
     has_prev: false
   });
-  const [userCache, setUserCache] = useState<{[key: number]: any}>({});
+  const [userCache, setUserCache] = useState<{[key: number]: GymParticipant}>({});
 
-  // Función para obtener el gym ID seleccionado
-  const getSelectedGymId = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('selectedGymId');
-    }
-    return null;
-  };
+
 
   // Función para obtener información de usuarios con cache
-  const fetchUserInfo = async (userId: number) => {
+  const fetchUserInfo = async (userId: number): Promise<GymParticipant | undefined> => {
     // Verificar cache primero
     if (userCache[userId]) {
+      console.log(`Cache hit para usuario ${userId}:`, userCache[userId]);
       return userCache[userId];
     }
-
-    const gymId = getSelectedGymId();
-    if (!gymId) {
-      console.error('No gym selected, cannot fetch user info');
-      return null;
-    }
     
-    console.log('Fetching user info for:', { userId, gymId });
+    console.log('Fetching gym participant info for userId:', userId);
 
     try {
-      const response = await fetch(`/api/v1/users/${userId}`, {
-        headers: {
-          'X-Gym-ID': gymId,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        console.log('User data received:', userData);
-        // Guardar en cache
-        setUserCache(prev => ({
-          ...prev,
-          [userId]: userData
-        }));
-        return userData;
-      } else {
-        console.error('Error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          userId,
-          gymId
-        });
+      // Usar el endpoint específico para participantes del gimnasio (más completo)
+      const userData = await getUsersAPI.getGymParticipantById(userId);
+      console.log('Gym participant data received:', userData);
+      
+      // Validar que la respuesta tenga datos básicos
+      if (!userData || !userData.id) {
+        console.warn(`Datos incompletos recibidos para usuario ${userId}:`, userData);
+        return undefined;
       }
+      
+      // Guardar en cache
+      setUserCache(prev => ({
+        ...prev,
+        [userId]: userData
+      }));
+      
+      return userData;
     } catch (error) {
-      console.error('Error fetching user info:', error);
+      console.error(`Error fetching gym participant info para usuario ${userId}:`, error);
+      
+      // No guardar datos fallback en cache para este endpoint ya que requiere permisos de admin
+      return undefined;
     }
-    return null;
   };
+
+
 
   // Función para cargar planes
   const fetchPlans = async (page = 1) => {
     setLoading(true);
     setError(null);
     
-    const gymId = getSelectedGymId();
-    if (!gymId) {
-      setError('No hay gimnasio seleccionado. Por favor, selecciona un gimnasio.');
-      setLoading(false);
-      return;
-    }
-    
     try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        per_page: pagination.per_page.toString()
+      // Usar la función centralizada de la API
+      const data = await nutritionAPI.getPlans({
+        page,
+        per_page: pagination.per_page,
+        search_query: searchQuery.trim() || undefined,
+        goal: filters.goal || undefined,
+        difficulty_level: filters.difficulty_level || undefined,
+        budget_level: filters.budget_level || undefined,
+        dietary_restrictions: filters.dietary_restrictions || undefined,
       });
-
-      // Agregar filtros si están definidos
-      if (searchQuery.trim()) params.append('search_query', searchQuery.trim());
-      if (filters.goal) params.append('goal', filters.goal);
-      if (filters.difficulty_level) params.append('difficulty_level', filters.difficulty_level);
-      if (filters.budget_level) params.append('budget_level', filters.budget_level);
-      if (filters.dietary_restrictions) params.append('dietary_restrictions', filters.dietary_restrictions);
-
-      const response = await fetch(`/api/v1/nutrition/plans?${params.toString()}`, {
-        headers: {
-          'X-Gym-ID': gymId,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-
-      const data: PlansResponse = await response.json();
       
-      // Enriquecer planes con información del creador
-      const enrichedPlans = await Promise.all(
+      // Enriquecer planes con información del creador y obtener días individuales
+      const enrichedPlans: EnrichedNutritionPlan[] = await Promise.all(
         data.plans.map(async (plan) => {
+          // Obtener información completa del creador desde el endpoint de participantes del gimnasio
+          // Este endpoint requiere permisos de admin pero devuelve información más completa
+          // incluyendo first_name, last_name, email, gym_role, etc.
           const creatorInfo = await fetchUserInfo(plan.creator_id);
+          
+          if (!creatorInfo) {
+            console.warn(`No se pudo obtener información del creador para el plan ${plan.id} (creator_id: ${plan.creator_id})`);
+          }
+          
+          // Si no vienen los daily_plans en la lista, obtenerlos individualmente
+          let planDays: DailyPlan[] = [];
+          let daysCount = 0;
+          
+          if (plan.daily_plans) {
+            planDays = plan.daily_plans;
+            daysCount = plan.daily_plans.length;
+          } else {
+            // Obtener el plan individual que sí incluye los días
+            try {
+              const fullPlan = await nutritionAPI.getPlan(plan.id);
+              planDays = fullPlan.daily_plans || [];
+              daysCount = planDays.length;
+            } catch (error) {
+              console.error(`Error obteniendo días del plan ${plan.id}:`, error);
+              planDays = [];
+              daysCount = 0;
+            }
+          }
+          
+          console.log(`Plan ${plan.id}: ${daysCount} días de ${plan.duration_days} - Creador: ${creatorInfo ? getCreatorDisplayName(creatorInfo) : 'No disponible'}`, {
+            daily_plans: planDays,
+            daysCount,
+            duration_days: plan.duration_days,
+            creator_info: creatorInfo
+          });
+          
           return {
             ...plan,
-            creator: creatorInfo
+            creator: creatorInfo,
+            days: planDays,
+            daysCount
           };
         })
       );
@@ -255,6 +237,47 @@ export default function NutritionPlansClient() {
       advanced: 'bg-red-100 text-red-800'
     };
     return colors[difficulty as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Función para navegar a la página de editar días
+  const handleEditDays = (planId: number) => {
+    router.push(`/nutricion/planes/${planId}/editar-dias`);
+  };
+
+  // Función para obtener el nombre del creador
+  const getCreatorDisplayName = (creator: GymParticipant | undefined) => {
+    if (!creator) return 'Información no disponible';
+    
+    // Construir nombre completo, manejando strings vacíos y null/undefined
+    const firstName = creator.first_name?.trim() || '';
+    const lastName = creator.last_name?.trim() || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    
+    // Usar email como fallback si no hay nombre
+    const email = creator.email?.trim() || '';
+    
+    // Determinar qué mostrar como nombre principal
+    let displayName = '';
+    if (fullName) {
+      displayName = fullName;
+    } else if (email) {
+      displayName = email;
+    } else {
+      displayName = `Usuario ${creator.id}`;
+    }
+    
+    // Añadir información del rol si es relevante (no mostrar MEMBER por ser el rol por defecto)
+    if (creator.gym_role && creator.gym_role !== 'MEMBER') {
+      const roleTranslation = {
+        'OWNER': '👑 Propietario',
+        'ADMIN': '⚙️ Administrador', 
+        'TRAINER': '💪 Entrenador'
+      };
+      const roleText = roleTranslation[creator.gym_role as keyof typeof roleTranslation] || creator.gym_role;
+      return `${displayName} (${roleText})`;
+    }
+    
+    return displayName;
   };
 
   return (
@@ -408,167 +431,142 @@ export default function NutritionPlansClient() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {plans.map((plan) => (
-                <div key={plan.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-                  {/* Header de la tarjeta */}
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 border-b border-slate-100">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-4">
-                        <div className="p-3 bg-green-100 rounded-xl shadow-sm">
-                          <Apple size={24} className="text-green-600" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-xl font-bold text-slate-900 mb-2">{plan.title}</h3>
-                          <p className="text-slate-600 text-sm leading-relaxed">{plan.description}</p>
-                        </div>
+                <div key={plan.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden max-w-sm mx-auto">
+                  
+                  {/* Header simple */}
+                  <div className="p-6 pb-4">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <Apple size={20} className="text-green-600" />
                       </div>
-                      
-                      {/* Acciones */}
-                      <div className="flex items-center space-x-1">
-                        <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                          <Eye size={18} />
-                        </button>
-                        <button className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
-                          <Edit size={18} />
-                        </button>
-                        <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+                      <h3 className="text-2xl font-bold text-slate-900">
+                        {plan.goal === 'bulk' ? 'Volumen' : 
+                         plan.goal === 'cut' ? 'Definición' : 
+                         plan.goal === 'maintain' ? 'Mantenimiento' : 
+                         plan.goal === 'performance' ? 'Rendimiento' : plan.goal}
+                      </h3>
                     </div>
 
-                    {/* Badges */}
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getGoalColor(plan.goal)}`}>
+                    {/* Badges con indicador de tipo */}
+                    <div className="flex gap-2 mb-6">
+                      {/* Indicador de tipo de plan */}
+                      <PlanTypeIndicator 
+                        plan={{
+                          ...plan,
+                          plan_type: plan.plan_type || PlanType.TEMPLATE,
+                          is_live_active: plan.is_live_active || false,
+                          live_participants_count: plan.live_participants_count || 0
+                        }} 
+                        size="sm" 
+                      />
+                      
+                      <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm font-medium">
                         {plan.goal === 'bulk' ? 'Volumen' : 
                          plan.goal === 'cut' ? 'Definición' : 
                          plan.goal === 'maintain' ? 'Mantenimiento' : 
                          plan.goal === 'performance' ? 'Rendimiento' : plan.goal}
                       </span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getDifficultyColor(plan.difficulty_level)}`}>
+                      <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm font-medium">
                         {plan.difficulty_level === 'beginner' ? 'Principiante' : 
                          plan.difficulty_level === 'intermediate' ? 'Intermedio' : 
                          plan.difficulty_level === 'advanced' ? 'Avanzado' : plan.difficulty_level}
                       </span>
-                      {!plan.is_active && (
-                        <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold">
-                          Inactivo
-                        </span>
-                      )}
                     </div>
-                  </div>
 
-                  {/* Contenido de la tarjeta */}
-                  <div className="p-6 space-y-6">
-                    {/* Información del creador */}
-                    {plan.creator && (
-                      <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                        {plan.creator.picture ? (
-                          <img 
-                            src={plan.creator.picture} 
-                            alt={`${plan.creator.first_name} ${plan.creator.last_name}`}
-                            className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-sm">
-                            <User size={16} className="text-white" />
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-slate-900">
-                            {`${plan.creator.first_name} ${plan.creator.last_name}`.trim() || plan.creator.email}
-                          </p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <span className="text-xs text-slate-500">Creador</span>
-                            {plan.creator.gym_role && (
-                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                plan.creator.gym_role === 'admin' ? 'bg-red-100 text-red-700' :
-                                plan.creator.gym_role === 'trainer' ? 'bg-green-100 text-green-700' :
-                                'bg-blue-100 text-blue-700'
-                              }`}>
-                                {plan.creator.gym_role === 'admin' ? 'Administrador' :
-                                 plan.creator.gym_role === 'trainer' ? 'Entrenador' :
-                                 plan.creator.gym_role}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                    {/* Creador */}
+                    <div className="flex items-center space-x-2 mb-6">
+                      <User size={16} className="text-slate-400" />
+                      <span 
+                        className="text-slate-600 text-sm"
+                        title={plan.creator ? `Creado por ${getCreatorDisplayName(plan.creator)}` : 'Información del creador no disponible'}
+                      >
+                        {getCreatorDisplayName(plan.creator)}
+                      </span>
+                    </div>
+
+                    {/* Estado de plan live */}
+                    {plan.plan_type === 'live' && (
+                      <div className="mb-6">
+                        <LivePlanStatus 
+                          plan={{
+                            ...plan,
+                            plan_type: plan.plan_type,
+                            is_live_active: plan.is_live_active || false,
+                            live_participants_count: plan.live_participants_count || 0
+                          }}
+                          showParticipants={true}
+                          showCountdown={true}
+                        />
                       </div>
                     )}
 
-                    {/* Estadísticas principales */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Target size={16} className="text-blue-600" />
-                          <span className="text-xs font-medium text-blue-700 uppercase tracking-wide">Calorías</span>
-                        </div>
-                        <p className="text-2xl font-bold text-blue-900">{plan.target_calories}</p>
-                        <p className="text-xs text-blue-600">kcal diarias</p>
+                    {/* Calorías y Duración */}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1">CALORÍAS</p>
+                        <p className="text-4xl font-bold text-slate-900 mb-1">{plan.target_calories}</p>
+                        <p className="text-sm text-slate-500">kcal diarias</p>
                       </div>
-                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-100">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Clock size={16} className="text-purple-600" />
-                          <span className="text-xs font-medium text-purple-700 uppercase tracking-wide">Duración</span>
-                        </div>
-                        <p className="text-2xl font-bold text-purple-900">{plan.duration_days}</p>
-                        <p className="text-xs text-purple-600">días</p>
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1">DURACIÓN</p>
+                        <p className="text-4xl font-bold text-slate-900 mb-1">{plan.duration_days}</p>
+                        <p className="text-sm text-slate-500">días</p>
                       </div>
                     </div>
 
                     {/* Macronutrientes */}
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-semibold text-slate-900 uppercase tracking-wide">Macronutrientes</h4>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="text-center p-3 bg-red-50 rounded-lg border border-red-100">
-                          <p className="text-lg font-bold text-red-900">{plan.target_protein_g}g</p>
-                          <p className="text-xs text-red-600 font-medium">Proteína</p>
-                        </div>
-                        <div className="text-center p-3 bg-yellow-50 rounded-lg border border-yellow-100">
-                          <p className="text-lg font-bold text-yellow-900">{plan.target_carbs_g}g</p>
-                          <p className="text-xs text-yellow-600 font-medium">Carbohidratos</p>
-                        </div>
-                        <div className="text-center p-3 bg-orange-50 rounded-lg border border-orange-100">
-                          <p className="text-lg font-bold text-orange-900">{plan.target_fat_g}g</p>
-                          <p className="text-xs text-orange-600 font-medium">Grasas</p>
-                        </div>
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-slate-900">{plan.target_protein_g}g</p>
+                        <p className="text-sm text-slate-500">Proteína</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-slate-900">{plan.target_carbs_g}g</p>
+                        <p className="text-sm text-slate-500">Carbohidratos</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-slate-900">{plan.target_fat_g}g</p>
+                        <p className="text-sm text-slate-500">Grasas</p>
                       </div>
                     </div>
 
-                    {/* Información adicional */}
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                      <div className="flex items-center space-x-4 text-sm text-slate-600">
-                        <div className="flex items-center space-x-1">
-                          <Users size={14} />
-                          <span>{plan.total_followers || 0}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Calendar size={14} />
-                          <span>{formatDate(plan.created_at)}</span>
-                        </div>
+                    {/* Progreso de días */}
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">PROGRESO</span>
+                        <span className="text-sm font-semibold text-slate-700">
+                          {plan.daysCount || 0}/{plan.duration_days} días
+                        </span>
                       </div>
-                      {plan.avg_satisfaction && (
-                        <div className="flex items-center space-x-1">
-                          <Star size={14} className="text-yellow-500 fill-current" />
-                          <span className="text-sm font-medium text-slate-900">{plan.avg_satisfaction.toFixed(1)}</span>
-                        </div>
-                      )}
+                      <div className="w-full bg-slate-200 rounded-full h-2.5 cursor-pointer" onClick={() => handleEditDays(plan.id)}>
+                        <div 
+                          className="bg-blue-500 h-2.5 rounded-full transition-all duration-500 hover:bg-blue-600"
+                          style={{ 
+                            width: `${plan.duration_days > 0 ? Math.min(((plan.daysCount || 0) / plan.duration_days) * 100, 100) : 0}%` 
+                          }}
+                          title={`${plan.daysCount || 0} de ${plan.duration_days} días completados (${plan.duration_days > 0 ? Math.round(((plan.daysCount || 0) / plan.duration_days) * 100) : 0}%)`}
+                        />
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-xs text-slate-400">
+                          {plan.duration_days > 0 ? Math.round(((plan.daysCount || 0) / plan.duration_days) * 100) : 0}% completado
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {Math.max(0, plan.duration_days - (plan.daysCount || 0))} restantes
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Tags */}
-                    {plan.tags.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Tags</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {plan.tags.map((tag, index) => (
-                            <span key={index} className="px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-medium hover:bg-slate-200 transition-colors">
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    {/* Botón minimalista */}
+                    <button
+                      onClick={() => handleEditDays(plan.id)}
+                      className="w-full border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <Edit size={16} />
+                      <span>Editar días</span>
+                    </button>
                   </div>
                 </div>
               ))}

@@ -43,9 +43,42 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Si no tenemos accessToken, necesitamos forzar un re-login con el audience correcto
-    console.log('No se encontró accessToken en la sesión, intentando flujo alternativo...');
+    // Si no tenemos accessToken, intentar obtenerlo directamente
+    console.log('No se encontró accessToken en la sesión, intentando obtenerlo directamente...');
     
+    try {
+      // Intentar obtener el token desde la API de Auth0
+      const tokenResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/oauth/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: process.env.AUTH0_CLIENT_ID,
+          client_secret: process.env.AUTH0_CLIENT_SECRET,
+          audience: process.env.AUTH0_API_AUDIENCE,
+          grant_type: 'client_credentials'
+        })
+      });
+
+      if (tokenResponse.ok) {
+        const tokenData = await tokenResponse.json();
+        console.log('Token obtenido via client_credentials:', {
+          hasAccessToken: !!tokenData.access_token,
+          tokenType: tokenData.token_type
+        });
+        
+        return NextResponse.json({
+          accessToken: tokenData.access_token,
+          expiresIn: tokenData.expires_in,
+          tokenType: tokenData.token_type
+        });
+      }
+    } catch (clientCredentialsError) {
+      console.error('Error con client_credentials:', clientCredentialsError);
+    }
+
+    // Si no pudimos obtener el token, devolver error con detalles
     return NextResponse.json(
       { 
         error: 'No se pudo obtener access token',
