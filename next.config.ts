@@ -3,9 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Optimización para Vercel
   experimental: {
-    // Habilitar Server Components
-    serverComponentsExternalPackages: ['@auth0/nextjs-auth0'],
+    // Configuración actualizada para Next.js 15
   },
+  
+  // Configuración de paquetes externos (actualizada para Next.js 15)
+  serverExternalPackages: ['@auth0/nextjs-auth0'],
   
   // Configuración de imágenes
   images: {
@@ -25,12 +27,13 @@ const nextConfig: NextConfig = {
     ],
   },
   
-  // Configuración de API routes
+  // Configuración de API routes con verificación de variable de entorno
   async rewrites() {
+    const backendUrl = process.env.BACKEND_URL || 'https://gymapi-eh6m.onrender.com';
     return [
       {
         source: '/api/v1/:path*',
-        destination: `${process.env.BACKEND_URL}/api/v1/:path*`,
+        destination: `${backendUrl}/api/v1/:path*`,
       },
     ];
   },
