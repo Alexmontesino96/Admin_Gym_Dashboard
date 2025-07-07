@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { 
   ArrowLeftIcon, 
@@ -189,9 +190,11 @@ export default function Header({
                     className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     {user.picture ? (
-                      <img 
+                      <Image 
                         src={user.picture} 
                         alt="Profile" 
+                        width={32}
+                        height={32}
                         className="w-8 h-8 rounded-full ring-2 ring-blue-500/20 hover:ring-blue-500/40 transition-all"
                       />
                     ) : (

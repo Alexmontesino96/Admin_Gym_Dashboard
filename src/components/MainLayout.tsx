@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { 
   Users,
@@ -180,9 +181,11 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                   className="flex items-center space-x-2 p-1 rounded-full hover:bg-indigo-100 transition-colors"
                 >
                   {user.picture ? (
-                    <img 
+                    <Image 
                       src={user.picture} 
                       alt="Profile" 
+                      width={32}
+                      height={32}
                       className="w-8 h-8 rounded-full ring-2 ring-indigo-500/20 hover:ring-indigo-500/40 transition-all"
                     />
                   ) : (
