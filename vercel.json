@@ -1,8 +1,40 @@
 {
   "version": 2,
   "functions": {
-    "src/app/api/**/*.ts": {
+    "src/app/api/**/*": {
       "maxDuration": 30
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "destination": "https://admin-gym-dashboard.vercel.app/$1",
+      "permanent": true,
+      "has": [
+        {
+          "type": "host",
+          "value": "www.admin-gym-dashboard.vercel.app"
+        }
+      ]
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ]
 } 
