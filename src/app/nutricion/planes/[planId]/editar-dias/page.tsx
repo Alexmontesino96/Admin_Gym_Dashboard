@@ -1,5 +1,10 @@
 import EditPlanDaysClient from './EditPlanDaysClient';
 
-export default function EditPlanDaysPage({ params }: { params: { planId: string } }) {
-  return <EditPlanDaysClient planId={parseInt(params.planId)} />;
+export default async function EditPlanDaysPage({ 
+  params 
+}: { 
+  params: Promise<{ planId: string }> 
+}) {
+  const { planId } = await params;
+  return <EditPlanDaysClient planId={parseInt(planId)} />;
 } 
