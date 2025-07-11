@@ -1,23 +1,24 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  AreaChart, 
-  Area, 
-  BarChart, 
-  Bar, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  LineChart,
-  Line
-} from 'recharts'
+import dynamic from 'next/dynamic'
 import { eventsAPI, getUsersAPI, membershipsAPI } from '@/lib/api'
+
+// Dynamic imports para Recharts - solo se cargan cuando se necesitan
+const AreaChart = dynamic(() => import('recharts').then(mod => ({ default: mod.AreaChart })), { ssr: false })
+const Area = dynamic(() => import('recharts').then(mod => ({ default: mod.Area })), { ssr: false })
+const BarChart = dynamic(() => import('recharts').then(mod => ({ default: mod.BarChart })), { ssr: false })
+const Bar = dynamic(() => import('recharts').then(mod => ({ default: mod.Bar })), { ssr: false })
+const PieChart = dynamic(() => import('recharts').then(mod => ({ default: mod.PieChart })), { ssr: false })
+const Pie = dynamic(() => import('recharts').then(mod => ({ default: mod.Pie })), { ssr: false })
+const Cell = dynamic(() => import('recharts').then(mod => ({ default: mod.Cell })), { ssr: false })
+const XAxis = dynamic(() => import('recharts').then(mod => ({ default: mod.XAxis })), { ssr: false })
+const YAxis = dynamic(() => import('recharts').then(mod => ({ default: mod.YAxis })), { ssr: false })
+const CartesianGrid = dynamic(() => import('recharts').then(mod => ({ default: mod.CartesianGrid })), { ssr: false })
+const Tooltip = dynamic(() => import('recharts').then(mod => ({ default: mod.Tooltip })), { ssr: false })
+const ResponsiveContainer = dynamic(() => import('recharts').then(mod => ({ default: mod.ResponsiveContainer })), { ssr: false })
+const LineChart = dynamic(() => import('recharts').then(mod => ({ default: mod.LineChart })), { ssr: false })
+const Line = dynamic(() => import('recharts').then(mod => ({ default: mod.Line })), { ssr: false })
 
 interface ChartData {
   weeklyActivity: Array<{
@@ -50,6 +51,7 @@ export default function DashboardCharts() {
     monthlyTrend: []
   })
   const [loading, setLoading] = useState(true)
+  const [chartsLoaded, setChartsLoaded] = useState(false)
 
   const loadChartData = async () => {
     try {
@@ -132,9 +134,12 @@ export default function DashboardCharts() {
 
   useEffect(() => {
     loadChartData()
+    // Marcar charts como cargados después de un breve delay
+    const timer = setTimeout(() => setChartsLoaded(true), 100)
+    return () => clearTimeout(timer)
   }, [])
 
-  if (loading) {
+  if (loading || !chartsLoaded) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {[1, 2, 3, 4].map((i) => (
@@ -143,6 +148,11 @@ export default function DashboardCharts() {
               <div className="h-6 bg-gray-200 rounded w-40 mb-4"></div>
               <div className="h-64 bg-gray-200 rounded"></div>
             </div>
+            {!chartsLoaded && (
+              <div className="text-center text-sm text-gray-500 mt-4">
+                Cargando gráficas...
+              </div>
+            )}
           </div>
         ))}
       </div>

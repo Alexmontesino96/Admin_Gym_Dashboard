@@ -246,7 +246,22 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}, custo
         errorData = { detail: errorText };
       }
       
-      throw createAPIError(errorData.detail || errorText, response.status, errorData);
+      // Asegurar que el mensaje sea siempre un string
+      let errorMessage: string;
+      if (typeof errorData.detail === 'string') {
+        errorMessage = errorData.detail;
+      } else if (typeof errorData.detail === 'object' && errorData.detail !== null) {
+        // Si detail es un objeto, intentar extraer un mensaje
+        errorMessage = errorData.detail.message || errorData.detail.error || JSON.stringify(errorData.detail);
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      } else if (errorData.error) {
+        errorMessage = errorData.error;
+      } else {
+        errorMessage = errorText || `Error ${response.status}`;
+      }
+      
+      throw createAPIError(errorMessage, response.status, errorData);
     }
 
     // Si la respuesta es 204 No Content, devolver objeto vacío
@@ -483,6 +498,44 @@ export interface DailyPlan {
   published_at?: string;
   created_at?: string;
   updated_at?: string;
+  meals?: Meal[];
+}
+
+export interface Meal {
+  id?: number;
+  meal_type: MealType;
+  name: string; // Backend usa name, no meal_name
+  description: string;
+  preparation_time_minutes: number;
+  cooking_instructions: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number | null;
+  image_url: string | null;
+  video_url: string | null;
+  order_in_day: number;
+  daily_plan_id: number;
+  ingredients?: MealIngredient[];
+  user_completion?: any; // Información de completitud del usuario
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MealIngredient {
+  id?: number;
+  name: string; // Backend usa name, no ingredient_name
+  quantity: number;
+  unit: string;
+  alternatives?: string[];
+  is_optional: boolean;
+  calories_per_serving: number;
+  protein_per_serving: number;
+  carbs_per_serving: number;
+  fat_per_serving: number;
+  meal_id?: number;
+  created_at?: string;
 }
 
 export interface NutritionPlanCreateData {
@@ -511,6 +564,39 @@ export interface DailyPlanCreateData {
   total_fat_g: number;
   notes: string;
   nutrition_plan_id: number;
+}
+
+export interface MealCreateData {
+  meal_type: MealType;
+  name: string;
+  description: string;
+  preparation_time_minutes: number;
+  cooking_instructions: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number | null;
+  image_url: string | null;
+  video_url: string | null;
+  order_in_day: number;
+  daily_plan_id: number;
+}
+
+export interface MealUpdateData {
+  meal_type?: MealType;
+  name?: string;
+  description?: string;
+  preparation_time_minutes?: number;
+  cooking_instructions?: string;
+  calories?: number;
+  protein_g?: number;
+  carbs_g?: number;
+  fat_g?: number;
+  fiber_g?: number | null;
+  image_url?: string | null;
+  video_url?: string | null;
+  order_in_day?: number;
 }
 
 // ===== NUEVAS INTERFACES HÍBRIDAS =====
@@ -575,6 +661,144 @@ export interface LivePlanStatusUpdate {
 export interface ArchivePlanRequest {
   create_template_version: boolean;
   template_title?: string;
+}
+
+// ===== INTERFACES DE MEMBRESÍA =====
+export interface MembershipPlan {
+  id: number;
+  gym_id: number;
+  name: string;
+  description: string;
+  price_cents: number;
+  currency: string;
+  billing_interval: string;
+  duration_days: number;
+  is_active: boolean;
+  features: string;
+  max_bookings_per_month: number;
+  stripe_price_id: string;
+  stripe_product_id: string;
+  created_at: string;
+  updated_at: string;
+  price_amount: number;
+  is_recurring: boolean;
+}
+
+export interface MembershipPlanList {
+  plans: MembershipPlan[];
+  total: number;
+  gym_id: number;
+  gym_name: string;
+}
+
+export interface MembershipPlanFilters {
+  active_only?: boolean;
+  skip?: number;
+  limit?: number;
+}
+
+export interface MembershipPlanCreateData {
+  name: string;
+  description: string;
+  price_cents: number;
+  currency: string;
+  billing_interval: string;
+  duration_days: number;
+  is_active: boolean;
+  features: string;
+  max_bookings_per_month: number;
+}
+
+export interface MembershipPlanUpdateData {
+  name?: string;
+  description?: string;
+  price_cents?: number;
+  currency?: string;
+  billing_interval?: string;
+  duration_days?: number;
+  is_active?: boolean;
+  features?: string;
+  max_bookings_per_month?: number;
+}
+
+// Interfaces para estadísticas de planes
+export interface PlanUserDetail {
+  user_id: number;
+  user_gym_id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  membership_type: string;
+  expires_at: string;
+  stripe_subscription_id?: string;
+  stripe_customer_id?: string;
+  association_method: string;
+}
+
+export interface MembershipPlanStats {
+  plan: {
+    id: number;
+    name: string;
+    description: string;
+    price_amount: number;
+    currency: string;
+    billing_interval: string;
+    duration_days: number;
+    is_active: boolean;
+    created_at: string;
+  };
+  users_count: number;
+  user_ids: number[];
+  users_details: PlanUserDetail[];
+  estimated_monthly_revenue: number;
+}
+
+export interface MembershipStatsResponse {
+  summary: {
+    total_users: number;
+    active_users: number;
+    expired_users: number;
+    recent_users_30_days: number;
+    expiring_soon_7_days: number;
+    estimated_monthly_revenue: number;
+    currency: string;
+  };
+  membership_types: {
+    free: number;
+    paid: number;
+    trial: number;
+  };
+  plans_statistics: MembershipPlanStats[];
+  analysis: {
+    most_popular_plan: MembershipPlanStats;
+    highest_revenue_plan: MembershipPlanStats;
+    total_active_plans: number;
+    total_inactive_plans: number;
+  };
+  generated_at: string;
+}
+
+// Interfaces para enlaces de pago administrativos
+export interface AdminPaymentLinkRequest {
+  user_id: number;
+  plan_id: number;
+  success_url?: string;
+  cancel_url?: string;
+  notes?: string;
+  expires_in_hours?: number;
+}
+
+export interface AdminPaymentLinkResponse {
+  checkout_url: string;
+  session_id: string;
+  plan_name: string;
+  price_amount: number;
+  currency: string;
+  user_email: string;
+  user_name: string;
+  expires_at: string;
+  notes?: string;
+  created_by_admin: string;
 }
 
 export interface CreateNutritionPlanRequestHybrid {
@@ -1266,6 +1490,56 @@ export const nutritionAPI = {
     });
   },
 
+  // ===== ENDPOINTS DE COMIDAS (CORREGIDOS SEGÚN BACKEND) =====
+  
+  // Obtener un día específico con sus comidas incluidas
+  getDailyPlan: async (dailyPlanId: number): Promise<DailyPlan> => {
+    return apiCall(`/nutrition/daily-plans/${dailyPlanId}`);
+  },
+
+  // Crear una comida en un día específico (usando endpoint correcto del backend)
+  createMeal: async (dailyPlanId: number, mealData: MealCreateData): Promise<Meal> => {
+    return apiCall(`/nutrition/daily-plans/${dailyPlanId}/meals`, {
+      method: 'POST',
+      body: JSON.stringify(mealData),
+    });
+  },
+
+  // Obtener una comida específica
+  getMeal: async (mealId: number): Promise<Meal> => {
+    return apiCall(`/nutrition/meals/${mealId}`);
+  },
+
+  // Actualizar una comida específica
+  updateMeal: async (mealId: number, mealData: MealUpdateData): Promise<Meal> => {
+    return apiCall(`/nutrition/meals/${mealId}`, {
+      method: 'PUT',
+      body: JSON.stringify(mealData),
+    });
+  },
+
+  // Eliminar una comida específica
+  deleteMeal: async (mealId: number): Promise<{ message: string }> => {
+    return apiCall(`/nutrition/meals/${mealId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Marcar comida como completada
+  completeMeal: async (mealId: number, notes?: string): Promise<{ message: string }> => {
+    return apiCall(`/nutrition/meals/${mealId}/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ notes }),
+    });
+  },
+
+  // Desmarcar comida como completada
+  incompleteMeal: async (mealId: number): Promise<{ message: string }> => {
+    return apiCall(`/nutrition/meals/${mealId}/complete`, {
+      method: 'DELETE',
+    });
+  },
+
   // ===== ENDPOINTS DE ENUMS =====
   
   // Obtener tipos de planes disponibles
@@ -1294,6 +1568,64 @@ export const nutritionAPI = {
   },
 };
 
+// Funciones específicas para endpoints de membresía
+export const membershipAPI = {
+  // Obtener planes de membresía
+  getPlans: async (params: Partial<MembershipPlanFilters> = {}): Promise<MembershipPlanList> => {
+    const searchParams = new URLSearchParams();
+    
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        searchParams.append(key, value.toString());
+      }
+    });
+    
+    const endpoint = `/memberships/plans${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    return apiCall(endpoint);
+  },
+
+  // Obtener un plan específico
+  getPlan: async (planId: number): Promise<MembershipPlan> => {
+    return apiCall(`/memberships/plans/${planId}`);
+  },
+
+  // Crear un nuevo plan de membresía
+  createPlan: async (planData: MembershipPlanCreateData): Promise<MembershipPlan> => {
+    return apiCall('/memberships/plans', {
+      method: 'POST',
+      body: JSON.stringify(planData),
+    });
+  },
+
+  // Actualizar un plan existente
+  updatePlan: async (planId: number, planData: MembershipPlanUpdateData): Promise<MembershipPlan> => {
+    return apiCall(`/memberships/plans/${planId}`, {
+      method: 'PUT',
+      body: JSON.stringify(planData),
+    });
+  },
+
+  // Eliminar un plan
+  deletePlan: async (planId: number): Promise<void> => {
+    return apiCall(`/memberships/plans/${planId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Obtener estadísticas de planes
+  getPlansStats: async (): Promise<MembershipStatsResponse> => {
+    return apiCall('/memberships/plans-stats');
+  },
+
+  // Crear enlace de pago administrativo
+  createPaymentLink: async (paymentData: AdminPaymentLinkRequest): Promise<AdminPaymentLinkResponse> => {
+    return apiCall('/memberships/admin/create-payment-link', {
+      method: 'POST',
+      body: JSON.stringify(paymentData),
+    });
+  }
+};
+
 // ===== CONSTANTES API ENDPOINTS =====
 export const NUTRITION_ENDPOINTS = {
   // Endpoints existentes (ahora con soporte híbrido)
@@ -1306,6 +1638,11 @@ export const NUTRITION_ENDPOINTS = {
   PLAN_STATUS: (id: number) => `/nutrition/plans/${id}/status`,
   LIVE_STATUS: (id: number) => `/nutrition/plans/${id}/live-status`,
   ARCHIVE: (id: number) => `/nutrition/plans/${id}/archive`,
+  
+  // Endpoints de comidas
+  DAILY_PLAN: (dayId: number) => `/nutrition/daily-plans/${dayId}`,
+  MEAL_DETAIL: (mealId: number) => `/nutrition/meals/${mealId}`,
+  MEAL_COMPLETE: (mealId: number) => `/nutrition/meals/${mealId}/complete`,
   
   // Enums
   PLAN_TYPES: '/nutrition/enums/plan-types',
@@ -1356,9 +1693,18 @@ export enum DifficultyLevel {
 }
 
 export enum Budget {
-  LOW = 'low',
+  ECONOMIC = 'economic',
   MEDIUM = 'medium',
-  HIGH = 'high'
+  PREMIUM = 'premium'
+}
+
+export enum MealType {
+  BREAKFAST = 'breakfast',
+  LUNCH = 'lunch',
+  DINNER = 'dinner',
+  SNACK = 'snack',
+  PRE_WORKOUT = 'pre_workout',
+  POST_WORKOUT = 'post_workout'
 }
 
 // ===== INTERFACES BASE =====
@@ -1477,4 +1823,32 @@ export const getPlanTypeConfig = (planType: PlanType): PlanTypeConfig => {
 
 export const getPlanStatusConfig = (status: PlanStatus): PlanStatusConfig => {
   return PLAN_STATUS_CONFIG[status];
+};
+
+// ===== HELPERS PARA COMIDAS =====
+
+export const getMealTypeOptions = (): EnumOption[] => [
+  { value: MealType.BREAKFAST, label: 'Desayuno' },
+  { value: MealType.LUNCH, label: 'Almuerzo' },
+  { value: MealType.DINNER, label: 'Cena' },
+  { value: MealType.SNACK, label: 'Merienda' },
+  { value: MealType.PRE_WORKOUT, label: 'Pre-entreno' },
+  { value: MealType.POST_WORKOUT, label: 'Post-entreno' },
+];
+
+export const getMealTypeLabel = (mealType: MealType): string => {
+  const option = getMealTypeOptions().find(opt => opt.value === mealType);
+  return option?.label || mealType;
+};
+
+export const getMealTypeIcon = (mealType: MealType): string => {
+  const icons = {
+    [MealType.BREAKFAST]: '🌅',
+    [MealType.LUNCH]: '☀️',
+    [MealType.DINNER]: '🌙',
+    [MealType.SNACK]: '🍎',
+    [MealType.PRE_WORKOUT]: '⚡',
+    [MealType.POST_WORKOUT]: '💪',
+  };
+  return icons[mealType] || '🍽️';
 };

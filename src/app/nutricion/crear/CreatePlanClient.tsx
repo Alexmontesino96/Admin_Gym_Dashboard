@@ -657,9 +657,9 @@ export default function CreatePlanClient() {
                 onChange={(e) => handleInputChange('budget_level', e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
               >
-                <option value="low">Bajo</option>
+                <option value="economic">Económico</option>
                 <option value="medium">Medio</option>
-                <option value="high">Alto</option>
+                <option value="premium">Premium</option>
               </select>
             </div>
             

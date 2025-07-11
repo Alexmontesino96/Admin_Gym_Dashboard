@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getUsersAPI, nutritionAPI, NutritionPlan, DailyPlan, GymParticipant, PlanType } from '@/lib/api';
+import { getUsersAPI, nutritionAPI, NutritionPlan, DailyPlan, GymParticipant, PlanType, ArchivePlanRequest, PlanStatus } from '@/lib/api';
 import PlanTypeIndicator from '@/components/ui/plan-type-indicator';
 import LivePlanStatus from '@/components/ui/live-plan-status';
+
+// Importaciones optimizadas de iconos - solo los que necesitamos
 import { 
   FileText, 
   Search, 
@@ -25,7 +27,10 @@ import {
   Heart,
   TrendingUp,
   Plus,
-  Check
+  Check,
+  X,
+  Archive,
+  AlertCircle
 } from 'lucide-react';
 
 interface EnrichedNutritionPlan extends NutritionPlan {
@@ -64,7 +69,40 @@ export default function NutritionPlansClient() {
   });
   const [userCache, setUserCache] = useState<{[key: number]: GymParticipant}>({});
 
+  // Estados para controlar qué dropdown está abierto
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
+  // Estados para el modal de archivado
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [archivingPlanId, setArchivingPlanId] = useState<number | null>(null);
+  const [createTemplate, setCreateTemplate] = useState(false);
+  const [templateTitle, setTemplateTitle] = useState('');
+  const [archiving, setArchiving] = useState(false);
+
+  // Cerrar dropdown cuando se hace click fuera o se presiona ESC
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (openDropdown && !target.closest(`[data-dropdown="${openDropdown}"]`)) {
+        setOpenDropdown(null);
+      }
+    };
+
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && openDropdown) {
+        setOpenDropdown(null);
+      }
+    };
+
+    if (openDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscKey);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('keydown', handleEscKey);
+      };
+    }
+  }, [openDropdown]);
 
   // Función para obtener información de usuarios con cache
   const fetchUserInfo = async (userId: number): Promise<GymParticipant | undefined> => {
@@ -101,8 +139,6 @@ export default function NutritionPlansClient() {
       return undefined;
     }
   };
-
-
 
   // Función para cargar planes
   const fetchPlans = async (page = 1) => {
@@ -191,7 +227,16 @@ export default function NutritionPlansClient() {
     fetchPlans();
   }, []);
 
-  // Función para aplicar filtros
+  // Aplicar filtros automáticamente cuando cambien los filtros o búsqueda
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchPlans(1); // Resetear a la primera página
+    }, 300); // Debounce de 300ms
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, filters]);
+
+  // Función para aplicar filtros (mantenida para compatibilidad)
   const applyFilters = () => {
     fetchPlans(1); // Resetear a la primera página
   };
@@ -205,8 +250,7 @@ export default function NutritionPlansClient() {
       budget_level: '',
       dietary_restrictions: ''
     });
-    // Recargar sin filtros
-    setTimeout(() => fetchPlans(1), 100);
+    // El useEffect se encargará de recargar automáticamente
   };
 
   // Función para formatear fecha
@@ -248,40 +292,87 @@ export default function NutritionPlansClient() {
   const getCreatorDisplayName = (creator: GymParticipant | undefined) => {
     if (!creator) return 'Información no disponible';
     
-    // Construir nombre completo, manejando strings vacíos y null/undefined
-    const firstName = creator.first_name?.trim() || '';
-    const lastName = creator.last_name?.trim() || '';
-    const fullName = `${firstName} ${lastName}`.trim();
+    const parts = [];
+    if (creator.first_name) parts.push(creator.first_name);
+    if (creator.last_name) parts.push(creator.last_name);
     
-    // Usar email como fallback si no hay nombre
-    const email = creator.email?.trim() || '';
-    
-    // Determinar qué mostrar como nombre principal
-    let displayName = '';
-    if (fullName) {
-      displayName = fullName;
-    } else if (email) {
-      displayName = email;
-    } else {
-      displayName = `Usuario ${creator.id}`;
+    if (parts.length === 0) {
+      return creator.email || 'Usuario sin nombre';
     }
     
-    // Añadir información del rol si es relevante (no mostrar MEMBER por ser el rol por defecto)
-    if (creator.gym_role && creator.gym_role !== 'MEMBER') {
-      const roleTranslation = {
-        'OWNER': '👑 Propietario',
-        'ADMIN': '⚙️ Administrador', 
-        'TRAINER': '💪 Entrenador'
+    return parts.join(' ').trim();
+  };
+
+  // Función para detectar si un plan es archivable
+  const isPlanArchivable = (plan: NutritionPlan): boolean => {
+    // Solo planes live pueden ser archivados
+    if (plan.plan_type !== 'live') return false;
+    
+    // Verificar si el plan está terminado
+    if (plan.status === 'finished') return true;
+    
+    // Si no está activo y tiene fecha de finalización, verificar si ya pasó
+    if (!plan.is_live_active && plan.live_end_date) {
+      const endDate = new Date(plan.live_end_date);
+      return endDate < new Date();
+    }
+    
+    return false;
+  };
+
+  // Función para abrir el modal de archivado
+  const handleArchivePlan = (planId: number) => {
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return;
+    
+    setArchivingPlanId(planId);
+    setTemplateTitle(plan.title + ' - Template');
+    setCreateTemplate(false);
+    setShowArchiveModal(true);
+  };
+
+  // Función para confirmar el archivado
+  const confirmArchivePlan = async () => {
+    if (!archivingPlanId) return;
+    
+    setArchiving(true);
+    try {
+      const archiveRequest: ArchivePlanRequest = {
+        create_template_version: createTemplate,
+        template_title: createTemplate ? templateTitle : undefined
       };
-      const roleText = roleTranslation[creator.gym_role as keyof typeof roleTranslation] || creator.gym_role;
-      return `${displayName} (${roleText})`;
+      
+      await nutritionAPI.archivePlan(archivingPlanId, archiveRequest);
+      
+      // Recargar los planes para reflejar el cambio
+      await fetchPlans(pagination.page);
+      
+      // Cerrar modal
+      setShowArchiveModal(false);
+      setArchivingPlanId(null);
+      setCreateTemplate(false);
+      setTemplateTitle('');
+      
+    } catch (error) {
+      console.error('Error al archivar plan:', error);
+      setError('Error al archivar el plan. Por favor, inténtalo de nuevo.');
+    } finally {
+      setArchiving(false);
     }
-    
-    return displayName;
+  };
+
+  // Función para cancelar el archivado
+  const cancelArchivePlan = () => {
+    setShowArchiveModal(false);
+    setArchivingPlanId(null);
+    setCreateTemplate(false);
+    setTemplateTitle('');
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -303,82 +394,314 @@ export default function NutritionPlansClient() {
         </a>
       </div>
 
-      {/* Filtros y búsqueda */}
-      <div className="bg-white rounded-xl p-6 border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-          {/* Búsqueda */}
-          <div className="lg:col-span-2">
+            {/* Filtros y búsqueda compactos */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        {/* Header de filtros */}
+        <div className="bg-gradient-to-r from-slate-50 to-white p-6 border-b border-slate-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Filter size={20} className="text-green-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Filtros de Búsqueda</h2>
+                <p className="text-sm text-slate-600">Encuentra el plan perfecto para tus necesidades</p>
+              </div>
+            </div>
+            
+            {/* Contador de filtros activos */}
+            {(searchQuery || Object.values(filters).some(f => f)) && (
+              <div className="flex items-center space-x-2">
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                  {[searchQuery, ...Object.values(filters)].filter(Boolean).length} filtro{[searchQuery, ...Object.values(filters)].filter(Boolean).length !== 1 ? 's' : ''} activo{[searchQuery, ...Object.values(filters)].filter(Boolean).length !== 1 ? 's' : ''}
+                </span>
+                <button
+                  onClick={clearFilters}
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                  title="Limpiar todos los filtros"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Contenido de filtros */}
+        <div className="p-6">
+          {/* Barra de búsqueda */}
+          <div className="mb-6">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
               <input
                 type="text"
-                placeholder="Buscar planes..."
+                placeholder="Buscar por nombre, descripción, tags..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                }}
+                className="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all text-sm bg-slate-50 hover:bg-white"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setSearchQuery('');
+                  }}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Filtro por objetivo */}
-          <div>
-            <select
-              value={filters.goal}
-              onChange={(e) => setFilters({...filters, goal: e.target.value})}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="">Todos los objetivos</option>
-              <option value="bulk">Volumen</option>
-              <option value="cut">Definición</option>
-              <option value="maintain">Mantenimiento</option>
-              <option value="performance">Rendimiento</option>
-            </select>
+          {/* Filtros como botones desplegables */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 relative z-10">
+            {/* Filtro de Objetivo */}
+            <div className="relative" data-dropdown="goal">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setOpenDropdown(openDropdown === 'goal' ? null : 'goal');
+                }}
+                className={`w-full p-3 border rounded-xl text-left flex items-center justify-between transition-all ${
+                  filters.goal 
+                    ? 'border-blue-300 bg-blue-50 text-blue-700' 
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Target size={16} />
+                  <span className="font-medium">
+                    {filters.goal 
+                      ? (filters.goal === 'bulk' ? 'Volumen' : 
+                         filters.goal === 'cut' ? 'Definición' : 
+                         filters.goal === 'maintain' ? 'Mantenimiento' : 'Rendimiento')
+                      : 'Objetivo'
+                    }
+                  </span>
+                </div>
+                <ChevronRight size={16} className={`transform transition-transform ${openDropdown === 'goal' ? 'rotate-90' : ''}`} />
+              </button>
+              
+              {openDropdown === 'goal' && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg z-[60] max-h-64 overflow-y-auto">
+                  {[
+                    { value: '', label: 'Todos los objetivos', icon: '🎯' },
+                    { value: 'bulk', label: 'Volumen', icon: '💪' },
+                    { value: 'cut', label: 'Definición', icon: '🔥' },
+                    { value: 'maintain', label: 'Mantenimiento', icon: '⚖️' },
+                    { value: 'performance', label: 'Rendimiento', icon: '⚡' }
+                  ].map((goal) => (
+                    <button
+                      key={goal.value}
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setFilters({...filters, goal: goal.value});
+                        setOpenDropdown(null);
+                      }}
+                      className={`w-full p-3 text-left hover:bg-slate-50 first:rounded-t-xl last:rounded-b-xl flex items-center space-x-3 transition-colors ${
+                        filters.goal === goal.value ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
+                      }`}
+                    >
+                      <span className="text-lg">{goal.icon}</span>
+                      <span className="font-medium">{goal.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Filtro de Dificultad */}
+            <div className="relative" data-dropdown="difficulty">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setOpenDropdown(openDropdown === 'difficulty' ? null : 'difficulty');
+                }}
+                className={`w-full p-3 border rounded-xl text-left flex items-center justify-between transition-all ${
+                  filters.difficulty_level 
+                    ? 'border-yellow-300 bg-yellow-50 text-yellow-700' 
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <TrendingUp size={16} />
+                  <span className="font-medium">
+                    {filters.difficulty_level 
+                      ? (filters.difficulty_level === 'beginner' ? 'Principiante' : 
+                         filters.difficulty_level === 'intermediate' ? 'Intermedio' : 'Avanzado')
+                      : 'Dificultad'
+                    }
+                  </span>
+                </div>
+                <ChevronRight size={16} className={`transform transition-transform ${openDropdown === 'difficulty' ? 'rotate-90' : ''}`} />
+              </button>
+              
+              {openDropdown === 'difficulty' && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg z-[60] max-h-64 overflow-y-auto">
+                  {[
+                    { value: '', label: 'Todas las dificultades', icon: '📊' },
+                    { value: 'beginner', label: 'Principiante', icon: '🌱' },
+                    { value: 'intermediate', label: 'Intermedio', icon: '🔶' },
+                    { value: 'advanced', label: 'Avanzado', icon: '🔥' }
+                  ].map((difficulty) => (
+                    <button
+                      key={difficulty.value}
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setFilters({...filters, difficulty_level: difficulty.value});
+                        setOpenDropdown(null);
+                      }}
+                      className={`w-full p-3 text-left hover:bg-slate-50 first:rounded-t-xl last:rounded-b-xl flex items-center space-x-3 transition-colors ${
+                        filters.difficulty_level === difficulty.value ? 'bg-yellow-50 text-yellow-700' : 'text-slate-700'
+                      }`}
+                    >
+                      <span className="text-lg">{difficulty.icon}</span>
+                      <span className="font-medium">{difficulty.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Filtro de Presupuesto */}
+            <div className="relative" data-dropdown="budget">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setOpenDropdown(openDropdown === 'budget' ? null : 'budget');
+                }}
+                className={`w-full p-3 border rounded-xl text-left flex items-center justify-between transition-all ${
+                  filters.budget_level 
+                    ? 'border-purple-300 bg-purple-50 text-purple-700' 
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <DollarSign size={16} />
+                  <span className="font-medium">
+                    {filters.budget_level 
+                      ? (filters.budget_level === 'economic' ? 'Económico' : 
+                         filters.budget_level === 'medium' ? 'Medio' : 'Premium')
+                      : 'Presupuesto'
+                    }
+                  </span>
+                </div>
+                <ChevronRight size={16} className={`transform transition-transform ${openDropdown === 'budget' ? 'rotate-90' : ''}`} />
+              </button>
+              
+              {openDropdown === 'budget' && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg z-[60] max-h-64 overflow-y-auto">
+                  {[
+                    { value: '', label: 'Todos los presupuestos', icon: '💰' },
+                    { value: 'economic', label: 'Económico', icon: '💚' },
+                    { value: 'medium', label: 'Medio', icon: '💛' },
+                    { value: 'premium', label: 'Premium', icon: '💜' }
+                  ].map((budget) => (
+                    <button
+                      key={budget.value}
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setFilters({...filters, budget_level: budget.value});
+                        setOpenDropdown(null);
+                      }}
+                      className={`w-full p-3 text-left hover:bg-slate-50 first:rounded-t-xl last:rounded-b-xl flex items-center space-x-3 transition-colors ${
+                        filters.budget_level === budget.value ? 'bg-purple-50 text-purple-700' : 'text-slate-700'
+                      }`}
+                    >
+                      <span className="text-lg">{budget.icon}</span>
+                      <span className="font-medium">{budget.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Filtro por dificultad */}
-          <div>
-            <select
-              value={filters.difficulty_level}
-              onChange={(e) => setFilters({...filters, difficulty_level: e.target.value})}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="">Todas las dificultades</option>
-              <option value="beginner">Principiante</option>
-              <option value="intermediate">Intermedio</option>
-              <option value="advanced">Avanzado</option>
-            </select>
-          </div>
-
-          {/* Filtro por presupuesto */}
-          <div>
-            <select
-              value={filters.budget_level}
-              onChange={(e) => setFilters({...filters, budget_level: e.target.value})}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="">Todos los presupuestos</option>
-              <option value="low">Bajo</option>
-              <option value="medium">Medio</option>
-              <option value="high">Alto</option>
-            </select>
-          </div>
-
-          {/* Botones de acción */}
-          <div className="flex space-x-2">
-            <button
-              onClick={applyFilters}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors"
-            >
-              <Filter size={16} />
-              <span>Filtrar</span>
-            </button>
-            <button
-              onClick={clearFilters}
-              className="px-4 py-2 border border-slate-300 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
-            >
-              Limpiar
-            </button>
-          </div>
+          {/* Chips de filtros activos */}
+          {(searchQuery || Object.values(filters).some(f => f)) && (
+            <div className="pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-slate-700">Filtros activos</h3>
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-slate-500 hover:text-slate-700 underline"
+                >
+                  Limpiar todos
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {searchQuery && (
+                  <div className="flex items-center space-x-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                    <Search size={14} />
+                    <span>"{searchQuery}"</span>
+                    <button
+                      onClick={() => {
+                        setSearchQuery('');
+                      }}
+                      className="text-green-600 hover:text-green-800"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                {filters.goal && (
+                  <div className="flex items-center space-x-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                    <Target size={14} />
+                    <span>{filters.goal === 'bulk' ? 'Volumen' : filters.goal === 'cut' ? 'Definición' : filters.goal === 'maintain' ? 'Mantenimiento' : 'Rendimiento'}</span>
+                    <button
+                      onClick={() => {
+                        setFilters({...filters, goal: ''});
+                      }}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                {filters.difficulty_level && (
+                  <div className="flex items-center space-x-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
+                    <TrendingUp size={14} />
+                    <span>{filters.difficulty_level === 'beginner' ? 'Principiante' : filters.difficulty_level === 'intermediate' ? 'Intermedio' : 'Avanzado'}</span>
+                    <button
+                      onClick={() => {
+                        setFilters({...filters, difficulty_level: ''});
+                      }}
+                      className="text-yellow-600 hover:text-yellow-800"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+                {filters.budget_level && (
+                  <div className="flex items-center space-x-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
+                    <DollarSign size={14} />
+                    <span>{filters.budget_level === 'economic' ? 'Económico' : filters.budget_level === 'medium' ? 'Medio' : 'Premium'}</span>
+                    <button
+                      onClick={() => {
+                        setFilters({...filters, budget_level: ''});
+                      }}
+                      className="text-purple-600 hover:text-purple-800"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -567,6 +890,17 @@ export default function NutritionPlansClient() {
                       <Edit size={16} />
                       <span>Editar días</span>
                     </button>
+
+                    {/* Botón de archivar para planes live terminados */}
+                    {isPlanArchivable(plan) && (
+                      <button
+                        onClick={() => handleArchivePlan(plan.id)}
+                        className="w-full mt-2 border border-amber-200 hover:border-amber-300 hover:bg-amber-50 text-amber-700 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <Archive size={16} />
+                        <span>Archivar plan</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -607,6 +941,93 @@ export default function NutritionPlansClient() {
           )}
         </>
       )}
+
+      {/* Modal de confirmación para archivar */}
+      {showArchiveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <Archive size={20} className="text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Archivar Plan Live</h3>
+                <p className="text-sm text-slate-600">Este plan live ha terminado y puede ser archivado</p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <AlertCircle size={16} className="text-amber-600" />
+                  <span className="text-sm font-medium text-amber-800">¿Qué significa archivar?</span>
+                </div>
+                <p className="text-sm text-amber-700">
+                  Al archivar este plan, se marcará como terminado y no estará disponible para nuevos participantes.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="createTemplate"
+                    checked={createTemplate}
+                    onChange={(e) => setCreateTemplate(e.target.checked)}
+                    className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                  />
+                  <label htmlFor="createTemplate" className="text-sm font-medium text-slate-900">
+                    Crear plantilla para reutilizar
+                  </label>
+                </div>
+
+                {createTemplate && (
+                  <div className="ml-7">
+                    <label htmlFor="templateTitle" className="block text-sm font-medium text-slate-700 mb-2">
+                      Título de la plantilla
+                    </label>
+                    <input
+                      type="text"
+                      id="templateTitle"
+                      value={templateTitle}
+                      onChange={(e) => setTemplateTitle(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Nombre para la nueva plantilla"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={cancelArchivePlan}
+                disabled={archiving}
+                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmArchivePlan}
+                disabled={archiving || (createTemplate && !templateTitle.trim())}
+                className="flex-1 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
+              >
+                {archiving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Archivando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Archive size={16} />
+                    <span>Archivar</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-} 
+}

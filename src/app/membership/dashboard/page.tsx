@@ -1,19 +1,18 @@
-import { auth0 } from "@/lib/auth0";
 import { redirect } from 'next/navigation';
+import { auth0 } from '@/lib/auth0';
 import MainLayout from '@/components/MainLayout';
-import DashboardClient from './DashboardClient';
+import MembershipDashboardClient from './MembershipDashboardClient';
 
-export default async function Home() {
+export default async function MembershipDashboard() {
   const session = await auth0.getSession();
-
-  // Si no hay sesión, redirigir a login
+  
   if (!session) {
-    redirect('/login');
+    redirect('/auth/login');
   }
 
   return (
     <MainLayout user={session.user}>
-      <DashboardClient />
+      <MembershipDashboardClient />
     </MainLayout>
   );
-}
+} 

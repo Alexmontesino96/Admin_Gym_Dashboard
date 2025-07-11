@@ -31,7 +31,9 @@ import {
   Plus,
   Apple,
   FileText,
-  PlusCircle
+  PlusCircle,
+  CreditCard,
+  BarChart3
 } from 'lucide-react';
 import GymSelector from './GymSelector';
 
@@ -50,6 +52,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isScheduleExpanded, setIsScheduleExpanded] = useState(false);
   const [isNutritionExpanded, setIsNutritionExpanded] = useState(false);
+  const [isMembershipExpanded, setIsMembershipExpanded] = useState(false);
   const pathname = usePathname();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const gymSelectorRef = useRef<HTMLDivElement>(null);
@@ -84,6 +87,17 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
         { key: "create-plan", label: "Crear Plan", href: "/nutricion/crear", icon: PlusCircle },
       ]
     },
+    { 
+      key: "membership", 
+      label: "Membresías", 
+      href: "/membership", 
+      icon: CreditCard,
+      hasSubmenu: true,
+      submenu: [
+        { key: "membership-dashboard", label: "Dashboard", href: "/membership/dashboard", icon: BarChart3 },
+        { key: "membership-plans", label: "Planes", href: "/membership/planes", icon: FileText },
+      ]
+    },
     { key: "gimnasio", label: "Gimnasio", href: "/gimnasio", icon: Building },
     { key: "chat", label: "Chat", href: "/chat", icon: MessageCircle },
     { key: "settings", label: "Configuración", href: "/settings", icon: Settings },
@@ -114,12 +128,15 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
     if (pathname?.startsWith('/nutricion')) {
       setIsNutritionExpanded(true);
     }
+    if (pathname?.startsWith('/membership')) {
+      setIsMembershipExpanded(true);
+    }
   }, [pathname]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-slate-100 text-slate-900 flex flex-col font-inter">
       {/* Top Bar */}
-      <header className="sticky top-0 z-30 backdrop-blur-md bg-white/60 border-b border-slate-200 h-16 flex items-center px-6">
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/60 border-b border-slate-200 h-16 flex items-center px-6">
         {/* Botón de menú móvil */}
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -243,8 +260,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
         {/* Sidebar - Siempre visible en desktop */}
         <aside className={`${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0 fixed md:static inset-y-0 left-0 z-40 w-64 bg-white/90 border-r border-slate-200 backdrop-blur-md transition-transform duration-300 ease-in-out flex flex-col shadow-sm`}>
-                    <nav className="flex-1 py-8 px-6">
+        } md:translate-x-0 fixed md:fixed md:top-16 md:h-[calc(100vh-4rem)] inset-y-0 left-0 z-20 w-64 bg-white/90 border-r border-slate-200 backdrop-blur-md transition-transform duration-300 ease-in-out flex flex-col shadow-sm`}>
+                    <nav className="flex-1 py-8 px-6 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
             <ul className="space-y-1 font-medium">
               {menuItems.map((item) => {
                 const { key, label, href, icon: Icon, hasSubmenu, submenu } = item;
@@ -283,6 +300,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                               setIsScheduleExpanded(!isScheduleExpanded);
                             } else if (key === 'nutrition') {
                               setIsNutritionExpanded(!isNutritionExpanded);
+                            } else if (key === 'membership') {
+                              setIsMembershipExpanded(!isMembershipExpanded);
                             }
                           }}
                           className={`p-1 rounded-md transition-colors ${
@@ -293,14 +312,14 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                         >
                           <ChevronRight 
                             className={`h-4 w-4 transition-transform duration-200 ${
-                              (key === 'schedule' && isScheduleExpanded) || (key === 'nutrition' && isNutritionExpanded) ? 'rotate-90' : ''
+                              (key === 'schedule' && isScheduleExpanded) || (key === 'nutrition' && isNutritionExpanded) || (key === 'membership' && isMembershipExpanded) ? 'rotate-90' : ''
                             }`}
                           />
                         </button>
                       </div>
                       
                       {/* Submenú */}
-                      {((key === 'schedule' && isScheduleExpanded) || (key === 'nutrition' && isNutritionExpanded)) && submenu && (
+                      {((key === 'schedule' && isScheduleExpanded) || (key === 'nutrition' && isNutritionExpanded) || (key === 'membership' && isMembershipExpanded)) && submenu && (
                         <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4">
                           {submenu.map(({ key: subKey, label: subLabel, href: subHref, icon: SubIcon }) => {
                             const isSubActive = pathname === subHref;
@@ -368,13 +387,13 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
         {/* Overlay para móvil */}
         {isSidebarOpen && (
           <div 
-            className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-10 bg-black/20 backdrop-blur-sm md:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
 
         {/* Contenido principal */}
-        <main className="flex-1 overflow-y-auto p-8 md:p-12 md:ml-0">
+        <main className="flex-1 overflow-y-auto p-8 md:p-12 md:ml-64">
           {children}
         </main>
       </div>
@@ -382,7 +401,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
       {/* Overlay para cerrar menús */}
       {(showGymSelector || showUserMenu) && (
         <div 
-          className="fixed inset-0 z-20 bg-black/20 backdrop-blur-sm"
+          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
           onClick={() => {
             setShowGymSelector(false);
             setShowUserMenu(false);

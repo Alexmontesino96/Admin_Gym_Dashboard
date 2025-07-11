@@ -98,6 +98,22 @@ const nextConfig: NextConfig = {
   
   // Configuración de trailing slash
   trailingSlash: false,
+
+  // Optimizaciones ligeras y seguras
+  swcMinify: true, // Usar SWC para minificación más rápida
+  poweredByHeader: false, // Quitar header X-Powered-By
+  
+  // Optimización para desarrollo
+  ...(process.env.NODE_ENV === 'development' && {
+    webpack: (config) => {
+      // Solo optimizaciones para desarrollo
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      };
+      return config;
+    },
+  }),
 };
 
 export default nextConfig;

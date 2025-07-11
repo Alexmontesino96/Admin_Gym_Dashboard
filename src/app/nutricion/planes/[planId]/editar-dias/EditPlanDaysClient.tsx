@@ -18,7 +18,8 @@ import {
   TrendingUp,
   CheckCircle,
   AlertCircle,
-  X
+  X,
+  Utensils
 } from 'lucide-react';
 
 interface EditPlanDaysClientProps {
@@ -572,6 +573,17 @@ export default function EditPlanDaysClient({ planId }: EditPlanDaysClientProps) 
                     <p className="text-sm text-slate-600">{day.notes}</p>
                   </div>
                 )}
+                
+                {/* Botón para gestionar comidas */}
+                <div className="mt-4 pt-4 border-t border-slate-200">
+                  <button
+                    onClick={() => router.push(`/nutricion/planes/${planId}/dias/${day.id}/comidas`)}
+                    className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <Utensils size={16} />
+                    <span>Gestionar Comidas</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
