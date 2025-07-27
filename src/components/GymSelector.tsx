@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Listbox, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import {
@@ -51,7 +51,7 @@ export default function GymSelector({ onGymChange, compact = false }: GymSelecto
     }
   };
 
-  const fetchGyms = async () => {
+  const fetchGyms = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -101,11 +101,11 @@ export default function GymSelector({ onGymChange, compact = false }: GymSelecto
     } finally {
       setLoading(false);
     }
-  };
+  }, [onGymChange]);
 
   useEffect(() => {
     fetchGyms();
-  }, []);
+  }, [fetchGyms]);
 
   const handleGymChange = (gym: Gym) => {
     setSelectedGym(gym);

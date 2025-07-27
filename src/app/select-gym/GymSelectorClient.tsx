@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { gymsAPI, UserGymMembership, setSelectedGymId, clearSelectedGymId } from '@/lib/api'
 import { Building, Users, Calendar, ChevronRight, Loader2 } from 'lucide-react'
+import Image from 'next/image'
 
 interface GymSelectorClientProps {
   user: {
@@ -13,22 +14,15 @@ interface GymSelectorClientProps {
   }
 }
 
-export default function GymSelectorClient({ user }: GymSelectorClientProps) {
+export default function GymSelectorClient({ user: _ }: GymSelectorClientProps) {
   const [gyms, setGyms] = useState<UserGymMembership[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedGym, setSelectedGym] = useState<number | null>(null)
   const [selecting, setSelecting] = useState(false)
-  const router = useRouter()
   const searchParams = useSearchParams()
 
-  useEffect(() => {
-    // Limpiar cualquier selección previa para forzar la selección
-    clearSelectedGymId()
-    fetchUserGyms()
-  }, [])
-
-  const fetchUserGyms = async () => {
+  const fetchUserGyms = useCallback(async () => {
     try {
       setLoading(true)
       const userGyms = await gymsAPI.getMyGyms()
@@ -51,7 +45,14 @@ export default function GymSelectorClient({ user }: GymSelectorClientProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    // Limpiar cualquier selección previa para forzar la selección
+    clearSelectedGymId()
+    fetchUserGyms()
+  }, [fetchUserGyms])
+
 
   const handleGymSelect = async (gymId: number) => {
     try {
@@ -187,10 +188,11 @@ export default function GymSelectorClient({ user }: GymSelectorClientProps) {
             {/* Header con logo o placeholder */}
             <div className="h-32 bg-gradient-to-br from-blue-500 to-blue-600 relative overflow-hidden">
               {gym.logo_url ? (
-                <img
+                <Image
                   src={gym.logo_url}
                   alt={`Logo de ${gym.name}`}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               ) : (
                 <div className="flex items-center justify-center h-full">

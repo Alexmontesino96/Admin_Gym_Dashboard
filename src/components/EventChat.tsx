@@ -282,7 +282,7 @@ export default function EventChat({ eventId, eventTitle, className = '' }: Event
         chatClient.disconnectUser()
       }
     }
-  }, [eventId, eventTitle])
+  }, [eventId, eventTitle, chatClient])
 
   if (loading) {
     return (

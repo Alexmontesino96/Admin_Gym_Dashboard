@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { gymsAPI, GymWithStats, GymUpdateData } from '@/lib/api';
+import Image from 'next/image';
 import { 
   BuildingOfficeIcon,
   PencilIcon,
@@ -313,9 +314,11 @@ export default function GymInfoClient() {
                       <GlobeAltIcon className="h-4 w-4 text-gray-400" />
                       <span className="text-gray-900 text-sm break-all">{gymInfo.logo_url || 'No especificada'}</span>
                       {gymInfo.logo_url && (
-                        <img 
+                        <Image 
                           src={gymInfo.logo_url} 
                           alt="Logo del gimnasio" 
+                          width={32}
+                          height={32}
                           className="w-8 h-8 rounded object-cover border border-gray-200"
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';

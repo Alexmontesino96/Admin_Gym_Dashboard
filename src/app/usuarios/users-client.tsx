@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getUsersAPI, GymParticipant, membershipsAPI, MembershipStatus, getSelectedGymId } from '@/lib/api';
 import { Listbox, Transition, Dialog } from '@headlessui/react';
 import { Fragment } from 'react';
+import Image from 'next/image';
 import {
   ChevronUpDownIcon,
   CheckIcon,
@@ -1014,9 +1015,11 @@ export default function UsersClient() {
                               </button>
                               {showQRCode && (
                                 <div className="mt-3 text-center">
-                                  <img
+                                  <Image
                                     src={generateQRCodeURL(selectedUser.qr_code)}
                                     alt={`Código QR: ${selectedUser.qr_code}`}
+                                    width={200}
+                                    height={200}
                                     className="mx-auto border border-gray-200 rounded-lg"
                                     onError={(e) => {
                                       e.currentTarget.style.display = 'none';
@@ -1091,9 +1094,11 @@ export default function UsersClient() {
                           <div className="space-y-3">
                             <h6 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-1">Imagen de Perfil</h6>
                             <div className="flex items-center space-x-4">
-                              <img 
+                              <Image 
                                 src={selectedUser.picture} 
                                 alt="Foto de perfil" 
+                                width={64}
+                                height={64}
                                 className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';

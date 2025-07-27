@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { getUsersAPI, GymParticipant, membershipsAPI, MembershipStatus } from '@/lib/api'
 import { eventsAPI } from '@/lib/api'
 import { CreditCardIcon, ClockIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
+import Image from 'next/image'
 
 interface UserProfileClientProps {
   userId: number
@@ -160,9 +161,11 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
       {/* Header */}
       <div className="h-36 bg-gradient-to-r from-blue-600 to-teal-500 relative rounded-t-2xl">
         {profile.picture ? (
-          <img
+          <Image
             src={profile.picture}
             alt="avatar"
+            width={96}
+            height={96}
             className="w-24 h-24 rounded-full ring-4 ring-white absolute -bottom-12 left-6 object-cover"
           />
         ) : (

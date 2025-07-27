@@ -2,6 +2,7 @@ import { auth0 } from '@/lib/auth0'
 import { redirect } from 'next/navigation'
 import GymSelectorClient from './GymSelectorClient'
 import { LogOut } from 'lucide-react'
+import Image from 'next/image'
 
 export default async function SelectGymPage() {
   const session = await auth0.getSession()
@@ -27,9 +28,11 @@ export default async function SelectGymPage() {
       <div className="absolute top-4 left-4">
         <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-lg shadow-md border border-gray-200">
           {session.user.picture && (
-            <img
+            <Image
               src={session.user.picture}
               alt="Avatar"
+              width={32}
+              height={32}
               className="w-8 h-8 rounded-full"
             />
           )}

@@ -1,7 +1,7 @@
 import { auth0 } from '@/lib/auth0'
 import { redirect } from 'next/navigation'
 import MainLayout from '@/components/MainLayout'
-import { Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { Calendar, Users, Clock, MapPin, Plus, Activity, TrendingUp, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 
@@ -31,11 +31,11 @@ const EventsSkeleton = () => (
   </div>
 )
 
-// Lazy loaded component
-const EventsClientLazy = () => {
-  const EventsClient = require('./events-client').default
-  return <EventsClient />
-}
+// Lazy loaded component con dynamic import
+const EventsClientLazy = dynamic(() => import('./events-client'), {
+  loading: () => <EventsSkeleton />,
+  ssr: false
+})
 
 export default async function EventosPage() {
   const session = await auth0.getSession()
@@ -220,9 +220,7 @@ export default async function EventosPage() {
         </div>
 
         {/* Contenido con lazy loading */}
-        <Suspense fallback={<EventsSkeleton />}>
-          <EventsClientLazy />
-        </Suspense>
+        <EventsClientLazy />
       </div>
     </MainLayout>
   )
