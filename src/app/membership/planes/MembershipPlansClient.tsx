@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { membershipAPI, getUsersAPI, MembershipPlan, MembershipPlanList, MembershipPlanCreateData, MembershipPlanUpdateData, GymParticipant, MembershipStatsResponse, PlanUserDetail } from '@/lib/api';
 import AdminPaymentLinkModal from '@/components/AdminPaymentLinkModal';
 import PlanUsersModal from '@/components/PlanUsersModal';
@@ -22,6 +22,74 @@ import {
   Link as LinkIcon,
   Eye
 } from 'lucide-react';
+
+// Componente de skeleton para loading
+const PlansGridSkeleton = () => (
+  <div className="space-y-6">
+    {/* Controls skeleton */}
+    <div className="flex flex-col sm:flex-row gap-4">
+      <div className="h-10 bg-slate-200 rounded flex-1 animate-pulse"></div>
+      <div className="h-10 bg-slate-200 rounded w-32 animate-pulse"></div>
+      <div className="h-10 bg-slate-200 rounded w-32 animate-pulse"></div>
+      <div className="h-10 bg-slate-200 rounded w-32 animate-pulse"></div>
+    </div>
+    
+    {/* Grid skeleton */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 animate-pulse">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-slate-200 rounded-full"></div>
+              <div className="h-6 bg-slate-200 rounded w-32"></div>
+            </div>
+            <div className="h-6 bg-slate-200 rounded w-16"></div>
+          </div>
+          
+          {/* Description */}
+          <div className="h-4 bg-slate-200 rounded w-full mb-4"></div>
+          
+          {/* Price */}
+          <div className="mb-4">
+            <div className="h-8 bg-slate-200 rounded w-24 mb-2"></div>
+            <div className="h-4 bg-slate-200 rounded w-20"></div>
+          </div>
+          
+          {/* Details */}
+          <div className="space-y-3 mb-4">
+            <div className="h-4 bg-slate-200 rounded w-full"></div>
+            <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+            <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+          </div>
+          
+          {/* Features */}
+          <div className="h-16 bg-slate-200 rounded mb-4"></div>
+          
+          {/* Actions */}
+          <div className="flex justify-between space-x-2">
+            <div className="h-8 bg-slate-200 rounded flex-1"></div>
+            <div className="h-8 bg-slate-200 rounded w-8"></div>
+            <div className="h-8 bg-slate-200 rounded w-8"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+    
+    {/* Summary skeleton */}
+    <div className="bg-white rounded-xl border border-slate-200 p-6">
+      <div className="h-6 bg-slate-200 rounded w-24 mb-4 animate-pulse"></div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="text-center p-4 bg-slate-50 rounded-lg animate-pulse">
+            <div className="h-8 bg-slate-200 rounded w-12 mx-auto mb-2"></div>
+            <div className="h-4 bg-slate-200 rounded w-16 mx-auto"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 export default function MembershipPlansClient() {
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
@@ -76,18 +144,17 @@ export default function MembershipPlansClient() {
   const [planStats, setPlanStats] = useState<MembershipStatsResponse | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
-  useEffect(() => {
-    fetchPlans();
-    fetchPlanStats(); // Cargar estadísticas para mostrar el conteo de usuarios
-  }, [showActiveOnly]);
+  // Memoizar el filtro para evitar re-renders
+  const showActiveOnlyMemo = useMemo(() => showActiveOnly, [showActiveOnly]);
 
-  const fetchPlans = async () => {
+  // Funciones optimizadas con useCallback
+  const fetchPlans = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
       const data: MembershipPlanList = await membershipAPI.getPlans({
-        active_only: showActiveOnly,
+        active_only: showActiveOnlyMemo,
         limit: 100
       });
       
@@ -99,31 +166,58 @@ export default function MembershipPlansClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showActiveOnlyMemo]);
 
-  const filteredPlans = plans.filter(plan => 
-    plan.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    plan.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const fetchPlanStats = useCallback(async () => {
+    if (planStats) return; // Solo cargar una vez para evitar requests repetitivos
+    
+    setLoadingStats(true);
+    try {
+      const stats = await membershipAPI.getPlansStats();
+      setPlanStats(stats);
+    } catch (err) {
+      console.error('Error fetching plan stats:', err);
+    } finally {
+      setLoadingStats(false);
+    }
+  }, [planStats]);
 
-  const formatPrice = (priceCents: number, currency: string) => {
+  // Solo ejecutar cuando cambie realmente el filtro
+  useEffect(() => {
+    fetchPlans();
+  }, [fetchPlans]);
+
+  // Cargar stats solo una vez al montar
+  useEffect(() => {
+    fetchPlanStats();
+  }, []);
+
+  // Filtrar planes de manera optimizada
+  const filteredPlans = useMemo(() => 
+    plans.filter(plan => 
+      plan.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      plan.description.toLowerCase().includes(searchQuery.toLowerCase())
+    ), [plans, searchQuery]);
+
+  // Funciones de formateo memoizadas
+  const formatPrice = useCallback((priceCents: number, currency: string) => {
     const amount = priceCents / 100;
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
       currency: currency
     }).format(amount);
-  };
+  }, []);
 
-  const formatBillingInterval = (interval: string) => {
+  const formatBillingInterval = useCallback((interval: string) => {
     const intervals = {
       'month': 'Mensual',
       'year': 'Anual',
       'one_time': 'Pago único'
     };
     return intervals[interval as keyof typeof intervals] || interval;
-  };
+  }, []);
 
-  const formatDuration = (days: number) => {
+  const formatDuration = useCallback((days: number) => {
     if (days === 0) return 'Sin límite';
     if (days === 1) return '1 día';
     if (days < 30) return `${days} días`;
@@ -134,9 +228,9 @@ export default function MembershipPlansClient() {
     }
     const years = Math.floor(days / 365);
     return `${years} ${years === 1 ? 'año' : 'años'}`;
-  };
+  }, []);
 
-  const handleCreatePlan = async (e: React.FormEvent) => {
+  const handleCreatePlan = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
     setCreateError(null);
@@ -163,9 +257,9 @@ export default function MembershipPlansClient() {
     } finally {
       setCreating(false);
     }
-  };
+  }, [formData]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -173,9 +267,9 @@ export default function MembershipPlansClient() {
               type === 'checkbox' ? (e.target as HTMLInputElement).checked : 
               value
     }));
-  };
+  }, []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData({
       name: '',
       description: '',
@@ -188,12 +282,14 @@ export default function MembershipPlansClient() {
       max_bookings_per_month: 0
     });
     setCreateError(null);
-  };
+  }, []);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setShowCreateModal(false);
     resetForm();
-  };
+  }, [resetForm]);
+
+
 
   const handleEditPlan = (plan: MembershipPlan) => {
     setEditingPlan(plan);
@@ -302,20 +398,6 @@ export default function MembershipPlansClient() {
     setShowPaymentLinkModal(false);
   };
 
-  const fetchPlanStats = async () => {
-    if (planStats) return; // Solo cargar una vez
-    
-    setLoadingStats(true);
-    try {
-      const stats = await membershipAPI.getPlansStats();
-      setPlanStats(stats);
-    } catch (err) {
-      console.error('Error fetching plan stats:', err);
-    } finally {
-      setLoadingStats(false);
-    }
-  };
-
   const handleViewPlanUsers = async (plan: MembershipPlan) => {
     let currentStats = planStats;
     
@@ -358,8 +440,8 @@ export default function MembershipPlansClient() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="max-w-7xl mx-auto">
+        <PlansGridSkeleton />
       </div>
     );
   }

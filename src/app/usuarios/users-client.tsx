@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getUsersAPI, GymParticipant } from '@/lib/api';
+import { useState, useEffect, useCallback } from 'react';
+import { getUsersAPI, GymParticipant, membershipsAPI, MembershipStatus, getSelectedGymId } from '@/lib/api';
 import { Listbox, Transition, Dialog } from '@headlessui/react';
 import { Fragment } from 'react';
 import {
@@ -19,9 +19,12 @@ import {
   ExclamationTriangleIcon,
   UserPlusIcon,
   UsersIcon,
-  SparklesIcon
+  SparklesIcon,
+  CreditCardIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const roleOptions = [
   { id: 'all', name: 'Todos los roles', color: 'text-gray-600', bgColor: 'bg-gray-100' },
@@ -38,9 +41,84 @@ const roleChangeOptions = [
   { value: 'ADMIN', name: 'Administrador', description: 'Gestión completa del gimnasio', color: 'text-purple-600', bgColor: 'bg-purple-50' }
 ];
 
+// Extend the GymParticipant interface to include membership status
+interface GymParticipantWithMembership extends GymParticipant {
+  membershipStatus?: MembershipStatus;
+}
+
+// Skeleton component para loading
+const UsersLoadingSkeleton = () => (
+  <div className="space-y-8">
+    {/* Header skeleton */}
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 animate-pulse">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <div className="h-8 bg-gray-200 rounded w-64 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-96"></div>
+        </div>
+        <div className="flex space-x-4">
+          <div className="h-12 bg-gray-200 rounded-xl w-32"></div>
+          <div className="h-12 bg-gray-200 rounded-xl w-32"></div>
+          <div className="h-12 bg-gray-200 rounded-xl w-32"></div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <div className="h-12 bg-gray-200 rounded w-full"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Controls skeleton */}
+    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-6 animate-pulse">
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-wrap gap-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-8 bg-gray-200 rounded-lg w-24"></div>
+          ))}
+        </div>
+        <div className="flex-1">
+          <div className="h-12 bg-gray-200 rounded-xl w-full"></div>
+        </div>
+      </div>
+    </div>
+
+    {/* Grid skeleton */}
+    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 animate-pulse">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+          <div key={i} className="bg-white border border-blue-200 rounded-2xl p-6 min-h-[240px]">
+            <div className="space-y-4">
+              <div className="flex items-start space-x-3">
+                <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                  <div className="flex gap-2">
+                    <div className="h-6 bg-gray-200 rounded w-16"></div>
+                    <div className="h-6 bg-gray-200 rounded w-16"></div>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="h-4 bg-gray-200 rounded w-full"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+              <div className="h-10 bg-gray-200 rounded-lg w-full"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 export default function UsersClient() {
-  const [users, setUsers] = useState<GymParticipant[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<GymParticipant[]>([]);
+  const router = useRouter();
+  const [users, setUsers] = useState<GymParticipantWithMembership[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<GymParticipantWithMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -53,7 +131,7 @@ export default function UsersClient() {
   const [usersPerPage] = useState(12);
   
   // Modal
-  const [selectedUser, setSelectedUser] = useState<GymParticipant | null>(null);
+  const [selectedUser, setSelectedUser] = useState<GymParticipantWithMembership | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Cambio de rol
@@ -68,7 +146,7 @@ export default function UsersClient() {
 
   // Eliminar usuario
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<GymParticipant | null>(null);
+  const [userToDelete, setUserToDelete] = useState<GymParticipantWithMembership | null>(null);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
 
@@ -76,7 +154,22 @@ export default function UsersClient() {
   const [showUserExistsNotification, setShowUserExistsNotification] = useState(false);
   const [userExistsMessage, setUserExistsMessage] = useState('');
 
-  const getAuthToken = async () => {
+  // Verificar si hay gimnasio seleccionado
+  const checkGymSelected = useCallback(() => {
+    const selectedGymId = getSelectedGymId();
+    
+    if (!selectedGymId || selectedGymId === 'null' || selectedGymId === 'undefined') {
+      console.log('🚨 No gym selected in users page, redirecting...');
+      const currentPath = encodeURIComponent(window.location.pathname);
+      router.push(`/select-gym?returnTo=${currentPath}`);
+      return false;
+    }
+    
+    console.log('✅ Gym selected:', selectedGymId);
+    return true;
+  }, [router]);
+
+  const getAuthToken = useCallback(async () => {
     try {
       const response = await fetch('/api/token');
       if (!response.ok) {
@@ -93,20 +186,22 @@ export default function UsersClient() {
       console.error('Error obteniendo token:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const token = await getAuthToken();
-      if (!token) {
-        return // El usuario será redirigido
+      // VERIFICACIÓN CRÍTICA: Verificar que hay gimnasio seleccionado
+      if (!checkGymSelected()) {
+        return; // La función ya redirige al usuario
       }
 
-      // Guardar el token en localStorage para la función getUsersAPI
-      localStorage.setItem('auth_token', token);
+      const token = await getAuthToken();
+      if (!token) {
+        return; // El usuario será redirigido
+      }
 
       // Participantes básicos (miembros y entrenadores)
       const participants = await getUsersAPI.getGymParticipants();
@@ -133,18 +228,48 @@ export default function UsersClient() {
         }
       });
 
-      setUsers(merged);
-      setFilteredUsers(merged);
-    } catch (err) {
+      // Obtener información de membresías para cada usuario (con límite de concurrencia)
+      const usersWithMemberships = await Promise.all(
+        merged.map(async (user) => {
+          try {
+            const membershipStatus = await membershipsAPI.getUserMembershipStatus(user.id);
+            return {
+              ...user,
+              membershipStatus
+            };
+          } catch (error) {
+            console.warn(`No se pudo obtener estado de membresía para usuario ${user.id}:`, error);
+            return {
+              ...user,
+              membershipStatus: null
+            };
+          }
+        })
+      );
+
+      setUsers(usersWithMemberships);
+      setFilteredUsers(usersWithMemberships);
+    } catch (err: any) {
+      console.error('Error fetching users:', err);
+      
+      // Manejar errores específicos del header X-Gym-ID
+      if (err.message && err.message.includes('X-Gym-ID')) {
+        console.log('🚨 X-Gym-ID error detected, checking gym selection...');
+        if (!checkGymSelected()) {
+          return; // Ya redirige al usuario
+        }
+      }
+      
       setError(err instanceof Error ? err.message : 'Error al cargar usuarios');
     } finally {
       setLoading(false);
     }
-  };
+  }, [checkGymSelected, getAuthToken]);
 
+  // Cargar usuarios al montar el componente
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   // Aplicar filtros
   useEffect(() => {
@@ -196,7 +321,7 @@ export default function UsersClient() {
     return roleOption?.name || role;
   };
 
-  const getDisplayName = (user: GymParticipant) => {
+  const getDisplayName = (user: GymParticipantWithMembership) => {
     if (user.first_name || user.last_name) {
       return `${user.first_name || ''} ${user.last_name || ''}`.trim();
     }
@@ -210,7 +335,7 @@ export default function UsersClient() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=${size}&data=${encodedData}`;
   };
 
-  const openModal = (user: GymParticipant) => {
+  const openModal = (user: GymParticipantWithMembership) => {
     setSelectedUser(user);
     setIsModalOpen(true);
   };
@@ -223,14 +348,16 @@ export default function UsersClient() {
     setShowQRCode(false);
   };
 
-  const handleRoleEdit = (user: GymParticipant) => {
+  const handleRoleEdit = (user: GymParticipantWithMembership) => {
     // Solo permitir cambiar a roles permitidos, si es OWNER mantener como ADMIN por defecto
     const allowedRole = user.gym_role === 'OWNER' ? 'ADMIN' : user.gym_role as 'MEMBER' | 'TRAINER' | 'ADMIN';
     setSelectedNewRole(allowedRole);
     setIsEditingRole(true);
   };
 
-  const handleRoleUpdate = async () => {
+
+
+  const handleRoleUpdate = useCallback(async () => {
     if (!selectedUser) return;
 
     try {
@@ -262,7 +389,7 @@ export default function UsersClient() {
     } finally {
       setIsUpdatingRole(false);
     }
-  };
+  }, [selectedUser, selectedNewRole, users, selectedRole.id, searchTerm]);
 
   const handleAddUser = async () => {
     if (!userIdToAdd.trim()) return;
@@ -304,7 +431,7 @@ export default function UsersClient() {
     }
   };
 
-  const handleDeleteUser = (user: GymParticipant) => {
+  const handleDeleteUser = (user: GymParticipantWithMembership) => {
     setUserToDelete(user);
     setIsDeleteModalOpen(true);
   };
@@ -332,7 +459,7 @@ export default function UsersClient() {
     }
   };
 
-  const clearCache = () => {
+  const clearCache = useCallback(() => {
     // Limpiar localStorage si hay algún cache
     if (typeof window !== 'undefined') {
       const keys = Object.keys(localStorage);
@@ -343,20 +470,30 @@ export default function UsersClient() {
       });
     }
     fetchUsers();
+  }, [fetchUsers]);
+
+  const getMembershipStatusColor = (status?: MembershipStatus) => {
+    if (!status) return 'bg-gray-100 text-gray-600';
+    
+    if (!status.is_active) return 'bg-red-100 text-red-600';
+    if (status.days_remaining !== undefined && status.days_remaining !== null && status.days_remaining <= 7) {
+      return 'bg-yellow-100 text-yellow-600';
+    }
+    return 'bg-green-100 text-green-600';
+  };
+
+  const getMembershipStatusText = (status?: MembershipStatus) => {
+    if (!status) return 'Sin membresía';
+    
+    if (!status.is_active) return 'Membresía expirada';
+    if (status.days_remaining !== undefined && status.days_remaining !== null && status.days_remaining <= 7) {
+      return `Expira en ${status.days_remaining} días`;
+    }
+    return status.plan_name || status.membership_type || 'Membresía activa';
   };
 
   if (loading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <UsersIcon className="h-8 w-8 text-white" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Cargando usuarios...</h3>
-          <p className="text-gray-600">Obteniendo información de miembros y entrenadores</p>
-        </div>
-      </div>
-    );
+    return <UsersLoadingSkeleton />;
   }
 
   if (error) {
@@ -496,28 +633,53 @@ export default function UsersClient() {
             {currentUsers.map((user) => (
               <div
                 key={user.id}
-                className="bg-white border border-blue-200 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:shadow-blue-100 transition-all duration-300 hover:scale-105 cursor-pointer group hover:border-blue-300 min-h-[200px] flex flex-col"
+                className="bg-white border border-blue-200 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:shadow-blue-100 transition-all duration-300 hover:scale-105 cursor-pointer group hover:border-blue-300 min-h-[240px] flex flex-col"
                 onClick={() => openModal(user)}
               >
                 {/* Header con más espacio para el nombre */}
                 <div className="flex items-start space-x-3 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
-                      <UserIcon className="h-6 w-6 text-white" />
-                    </div>
+                    <UserIcon className="h-6 w-6 text-white" />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 text-sm leading-5 mb-2 break-words">
-                        {getDisplayName(user)}
-                      </h3>
+                      {getDisplayName(user)}
+                    </h3>
                     <div className="flex flex-wrap gap-2">
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getRoleColor(user.gym_role)}`}>
                         {getRoleName(user.gym_role)}
                       </span>
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(user.is_active)}`}>
-                    {user.is_active ? 'Activo' : 'Inactivo'}
-                  </span>
+                        {user.is_active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                    </div>
-                    </div>
+
+                {/* Información de membresía */}
+                <div className="mb-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <CreditCardIcon className="h-4 w-4 text-blue-500" />
+                    <span className="text-xs font-medium text-gray-600">Plan de Membresía</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getMembershipStatusColor(user.membershipStatus)}`}>
+                      {getMembershipStatusText(user.membershipStatus)}
+                    </span>
+                    {user.membershipStatus && user.membershipStatus.expires_at && (
+                      <div className="flex items-center space-x-1 text-xs text-gray-500">
+                        <ClockIcon className="h-3 w-3" />
+                        <span>
+                          {new Date(user.membershipStatus.expires_at).toLocaleDateString('es-ES', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* Información de contacto */}
                 <div className="space-y-2 mb-4">
@@ -526,7 +688,7 @@ export default function UsersClient() {
                     <span className="truncate">
                       {user.email || 'Sin email'}
                     </span>
-                    </div>
+                  </div>
                   <div className="flex items-center text-xs text-gray-500">
                     <PhoneIcon className="h-3 w-3 mr-2 flex-shrink-0" />
                     <span className="truncate">
@@ -545,7 +707,7 @@ export default function UsersClient() {
                       }}
                       className="flex-1 text-center text-sm bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 hover:shadow-md"
                     >
-                      Ver detalles
+                      Ver perfil
                     </button>
                     <button
                       onClick={(e) => {
@@ -759,6 +921,59 @@ export default function UsersClient() {
                                   <p className="text-gray-900">{selectedUser.weight} lbs</p>
                                 </div>
                               )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Información de suscripción */}
+                        {selectedUser.membershipStatus && (
+                          <div className="space-y-3">
+                            <h6 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-1 flex items-center">
+                              <CreditCardIcon className="h-4 w-4 mr-2 text-blue-500" />
+                              Información de Suscripción
+                            </h6>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-medium text-gray-500">Plan de Membresía</label>
+                                <p className="text-gray-900 font-medium">{selectedUser.membershipStatus.plan_name || selectedUser.membershipStatus.membership_type}</p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-gray-500">Estado</label>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMembershipStatusColor(selectedUser.membershipStatus)}`}>
+                                    {selectedUser.membershipStatus.is_active ? 'Activa' : 'Inactiva'}
+                                  </span>
+                                  {selectedUser.membershipStatus.can_access && (
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      Puede acceder
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {selectedUser.membershipStatus.expires_at && (
+                                <div>
+                                  <label className="text-sm font-medium text-gray-500">Fecha de Expiración</label>
+                                  <p className="text-gray-900">
+                                    {new Date(selectedUser.membershipStatus.expires_at).toLocaleDateString('es-ES', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })}
+                                  </p>
+                                </div>
+                              )}
+                              {selectedUser.membershipStatus.days_remaining !== undefined && selectedUser.membershipStatus.days_remaining !== null && (
+                                <div>
+                                  <label className="text-sm font-medium text-gray-500">Días Restantes</label>
+                                  <p className={`text-gray-900 font-medium ${selectedUser.membershipStatus.days_remaining <= 7 ? 'text-yellow-600' : ''}`}>
+                                    {selectedUser.membershipStatus.days_remaining} días
+                                  </p>
+                                </div>
+                              )}
+                              <div>
+                                <label className="text-sm font-medium text-gray-500">Gimnasio</label>
+                                <p className="text-gray-900">{selectedUser.membershipStatus.gym_name}</p>
+                              </div>
                             </div>
                           </div>
                         )}

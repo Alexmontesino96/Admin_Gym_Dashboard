@@ -1,9 +1,80 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Event, eventsAPI, EventUpdateData, EventCreateData, getUsersAPI, GymParticipant } from '@/lib/api'
 import EventChatModal from '@/components/EventChatModal'
 import EventChatButton from '@/components/EventChatButton'
+
+// Skeleton UI detallado para eventos
+const EventsSkeleton = () => (
+  <div className="space-y-6">
+    {/* Header skeleton */}
+    <div className="mb-8">
+      <div className="h-9 bg-gray-200 rounded w-32 mb-2 animate-pulse"></div>
+      <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
+    </div>
+
+    {/* Controls skeleton */}
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <div className="h-4 bg-gray-200 rounded w-24 mb-2 animate-pulse"></div>
+          <div className="h-10 bg-gray-200 rounded w-full animate-pulse"></div>
+        </div>
+        <div className="sm:w-48">
+          <div className="h-4 bg-gray-200 rounded w-16 mb-2 animate-pulse"></div>
+          <div className="h-10 bg-gray-200 rounded w-full animate-pulse"></div>
+        </div>
+      </div>
+    </div>
+
+    {/* Stats skeleton */}
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="ml-4 flex-1">
+              <div className="h-4 bg-gray-200 rounded w-20 mb-1 animate-pulse"></div>
+              <div className="h-8 bg-gray-200 rounded w-12 animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Events list skeleton */}
+    <div className="bg-white rounded-lg shadow">
+      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <div className="h-6 bg-gray-200 rounded w-32 animate-pulse"></div>
+        <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+      </div>
+      <div className="divide-y divide-gray-200">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="h-6 bg-gray-200 rounded w-48 animate-pulse"></div>
+                  <div className="h-6 bg-gray-200 rounded w-20 animate-pulse"></div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="h-8 bg-gray-200 rounded w-16 animate-pulse"></div>
+                <div className="h-8 bg-gray-200 rounded w-16 animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 export default function EventsClient() {
   const [events, setEvents] = useState<Event[]>([])
@@ -56,18 +127,18 @@ export default function EventsClient() {
   const [showChatModal, setShowChatModal] = useState(false)
   const [chatEvent, setChatEvent] = useState<Event | null>(null)
 
-  useEffect(() => {
-    loadEvents()
-  }, [statusFilter])
+  // Memoizar el filtro para evitar re-renders innecesarios
+  const statusFilterMemo = useMemo(() => statusFilter, [statusFilter])
 
-  const loadEvents = async () => {
+  // Funciones optimizadas con useCallback
+  const loadEvents = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
       
       const params: any = {}
-      if (statusFilter !== 'all') {
-        params.status = statusFilter
+      if (statusFilterMemo !== 'all') {
+        params.status = statusFilterMemo
       }
       
       const data = await eventsAPI.getEvents(params)
@@ -89,18 +160,26 @@ export default function EventsClient() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilterMemo])
 
-  const filteredEvents = events.filter(event => {
-    const matchesSearch = searchTerm === '' || 
-      event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.location.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    return matchesSearch
-  })
+  // Solo cargar cuando cambie realmente el filtro
+  useEffect(() => {
+    loadEvents()
+  }, [loadEvents])
 
-  const formatDate = (dateString: string) => {
+  // Filtrar eventos de manera optimizada
+  const filteredEvents = useMemo(() => 
+    events.filter(event => {
+      const matchesSearch = searchTerm === '' || 
+        event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        event.location.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      return matchesSearch
+    }), [events, searchTerm])
+
+  // Funciones de formateo memoizadas
+  const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'long',
@@ -108,42 +187,42 @@ export default function EventsClient() {
       hour: '2-digit',
       minute: '2-digit'
     })
-  }
+  }, [])
 
-  const formatTime = (dateString: string) => {
+  const formatTime = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleTimeString('es-ES', {
       hour: '2-digit',
       minute: '2-digit'
     })
-  }
+  }, [])
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'SCHEDULED': return 'bg-yellow-100 text-yellow-800'
       case 'CANCELLED': return 'bg-red-100 text-red-800'
       case 'COMPLETED': return 'bg-blue-100 text-blue-800'
       default: return 'bg-gray-100 text-gray-800'
     }
-  }
+  }, [])
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = useCallback((status: string) => {
     switch (status) {
       case 'SCHEDULED': return 'Programado'
       case 'CANCELLED': return 'Cancelado'
       case 'COMPLETED': return 'Completado'
       default: return status
     }
-  }
+  }, [])
 
-  const openModal = (event: Event) => {
+  const openModal = useCallback((event: Event) => {
     setSelectedEvent(event)
     setShowModal(true)
-  }
+  }, [])
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setSelectedEvent(null)
     setShowModal(false)
-  }
+  }, [])
 
   const openEditModal = (event: Event) => {
     // Debug: Log del evento y su estado
@@ -491,12 +570,9 @@ export default function EventsClient() {
     setShowChatModal(false)
   }
 
+  // Mostrar skeleton mientras carga
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
+    return <EventsSkeleton />
   }
 
   if (error) {

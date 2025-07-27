@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { membershipAPI, getUsersAPI, MembershipStatsResponse, MembershipPlanStats, MembershipPlan, GymParticipant, PlanUserDetail } from '@/lib/api';
 import AdminPaymentLinkModal from '@/components/AdminPaymentLinkModal';
 import PlanUsersModal from '@/components/PlanUsersModal';
@@ -25,6 +25,59 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+// Componente de skeleton para loading
+const DashboardSkeleton = () => (
+  <div className="p-6 space-y-6 animate-pulse">
+    {/* Header skeleton */}
+    <div className="flex items-center justify-between">
+      <div className="space-y-2">
+        <div className="h-8 bg-slate-200 rounded w-80"></div>
+        <div className="h-4 bg-slate-200 rounded w-64"></div>
+      </div>
+      <div className="space-y-2">
+        <div className="h-4 bg-slate-200 rounded w-32"></div>
+        <div className="h-10 bg-slate-200 rounded w-24"></div>
+      </div>
+    </div>
+
+    {/* Stats grid skeleton */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="bg-white rounded-xl border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="space-y-2">
+              <div className="h-4 bg-slate-200 rounded w-24"></div>
+              <div className="h-8 bg-slate-200 rounded w-16"></div>
+            </div>
+            <div className="w-12 h-12 bg-slate-200 rounded-full"></div>
+          </div>
+          <div className="h-4 bg-slate-200 rounded w-20"></div>
+        </div>
+      ))}
+    </div>
+
+    {/* Content skeleton */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="h-6 bg-slate-200 rounded w-48 mb-4"></div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 bg-slate-200 rounded"></div>
+          ))}
+        </div>
+      </div>
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="h-6 bg-slate-200 rounded w-48 mb-4"></div>
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-24 bg-slate-200 rounded"></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 export default function MembershipDashboardClient() {
   const [stats, setStats] = useState<MembershipStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,11 +98,8 @@ export default function MembershipDashboardClient() {
     users: PlanUserDetail[];
   } | null>(null);
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
+  // Memoizar funciones para evitar re-renders
+  const fetchStats = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -62,25 +112,30 @@ export default function MembershipDashboardClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
+  // Solo cargar una vez al montar
+  useEffect(() => {
+    fetchStats();
+  }, []); // No dependencias para evitar loops
+
+  const formatCurrency = useCallback((amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
       currency: currency
     }).format(amount);
-  };
+  }, []);
 
-  const formatBillingInterval = (interval: string) => {
+  const formatBillingInterval = useCallback((interval: string) => {
     const intervals = {
       'month': 'Mensual',
       'year': 'Anual',
       'one_time': 'Pago único'
     };
     return intervals[interval as keyof typeof intervals] || interval;
-  };
+  }, []);
 
-  const fetchPlansAndUsers = async () => {
+  const fetchPlansAndUsers = useCallback(async () => {
     setLoadingPlansAndUsers(true);
     try {
       const [plansData, usersData] = await Promise.all([
@@ -94,20 +149,20 @@ export default function MembershipDashboardClient() {
     } finally {
       setLoadingPlansAndUsers(false);
     }
-  };
+  }, []);
 
-  const handleOpenPaymentLinkModal = () => {
+  const handleOpenPaymentLinkModal = useCallback(() => {
     setShowPaymentLinkModal(true);
     if (plans.length === 0 || users.length === 0) {
       fetchPlansAndUsers();
     }
-  };
+  }, [plans.length, users.length, fetchPlansAndUsers]);
 
-  const handleClosePaymentLinkModal = () => {
+  const handleClosePaymentLinkModal = useCallback(() => {
     setShowPaymentLinkModal(false);
-  };
+  }, []);
 
-  const handleViewPlanUsers = (planStat: MembershipPlanStats) => {
+  const handleViewPlanUsers = useCallback((planStat: MembershipPlanStats) => {
     setSelectedPlanUsers({
       planName: planStat.plan.name,
       planPrice: planStat.plan.price_amount,
@@ -115,21 +170,16 @@ export default function MembershipDashboardClient() {
       users: planStat.users_details
     });
     setShowPlanUsersModal(true);
-  };
+  }, []);
 
-  const handleClosePlanUsersModal = () => {
+  const handleClosePlanUsersModal = useCallback(() => {
     setShowPlanUsersModal(false);
     setSelectedPlanUsers(null);
-  };
+  }, []);
 
+  // Mostrar skeleton mientras carga
   if (loading) {
-    return (
-      <div className="p-6">
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {
@@ -140,7 +190,7 @@ export default function MembershipDashboardClient() {
           <h3 className="text-lg font-medium text-red-900 mb-2">Error al cargar estadísticas</h3>
           <p className="text-red-700 mb-4">{error}</p>
           <button
-            onClick={() => fetchStats()}
+            onClick={fetchStats}
             className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 mx-auto"
           >
             <RefreshCw size={16} />

@@ -408,6 +408,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
           }}
         />
       )}
+      
+
     </div>
   );
 } 

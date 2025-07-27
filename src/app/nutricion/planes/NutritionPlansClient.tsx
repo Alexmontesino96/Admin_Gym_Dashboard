@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { getUsersAPI, nutritionAPI, NutritionPlan, DailyPlan, GymParticipant, PlanType, ArchivePlanRequest, PlanStatus } from '@/lib/api';
 import PlanTypeIndicator from '@/components/ui/plan-type-indicator';
@@ -36,7 +36,7 @@ import {
 interface EnrichedNutritionPlan extends NutritionPlan {
   creator?: GymParticipant;
   days?: DailyPlan[];
-  daysCount?: number;
+  daysCount?: number | undefined;
 }
 
 interface PlansResponse {
@@ -78,6 +78,15 @@ export default function NutritionPlansClient() {
   const [createTemplate, setCreateTemplate] = useState(false);
   const [templateTitle, setTemplateTitle] = useState('');
   const [archiving, setArchiving] = useState(false);
+  const [loadingDaysInfo, setLoadingDaysInfo] = useState<Set<number>>(new Set());
+
+  // Memoizar los valores de filtros para evitar re-renders innecesarios
+  const filterValues = useMemo(() => [
+    filters.goal,
+    filters.difficulty_level, 
+    filters.budget_level,
+    filters.dietary_restrictions
+  ], [filters.goal, filters.difficulty_level, filters.budget_level, filters.dietary_restrictions]);
 
   // Cerrar dropdown cuando se hace click fuera o se presiona ESC
   useEffect(() => {
@@ -104,12 +113,13 @@ export default function NutritionPlansClient() {
     }
   }, [openDropdown]);
 
-  // Función para obtener información de usuarios con cache
-  const fetchUserInfo = async (userId: number): Promise<GymParticipant | undefined> => {
-    // Verificar cache primero
-    if (userCache[userId]) {
-      console.log(`Cache hit para usuario ${userId}:`, userCache[userId]);
-      return userCache[userId];
+  // Función optimizada para obtener información de usuarios con cache
+  const fetchUserInfo = useCallback(async (userId: number): Promise<GymParticipant | undefined> => {
+    // Verificar cache primero usando ref para evitar dependencias circulares
+    const currentCache = userCache;
+    if (currentCache[userId]) {
+      console.log(`Cache hit para usuario ${userId}:`, currentCache[userId]);
+      return currentCache[userId];
     }
     
     console.log('Fetching gym participant info for userId:', userId);
@@ -134,14 +144,42 @@ export default function NutritionPlansClient() {
       return userData;
     } catch (error) {
       console.error(`Error fetching gym participant info para usuario ${userId}:`, error);
-      
-      // No guardar datos fallback en cache para este endpoint ya que requiere permisos de admin
       return undefined;
     }
-  };
+  }, []); // Sin dependencias para evitar ciclos
 
-  // Función para cargar planes
-  const fetchPlans = async (page = 1) => {
+  // Función para obtener información real de días de un plan (lazy loading)
+  const fetchPlanDaysInfo = useCallback(async (planId: number): Promise<number> => {
+    // Marcar como cargando
+    setLoadingDaysInfo(prev => new Set([...prev, planId]));
+    
+    try {
+      const planDetails = await nutritionAPI.getPlan(planId);
+      const realDaysCount = planDetails.daily_plans?.length || 0;
+      
+      // Actualizar el plan en el estado con la información real
+      setPlans(prev => prev.map(plan => 
+        plan.id === planId 
+          ? { ...plan, daysCount: realDaysCount, days: planDetails.daily_plans || [] }
+          : plan
+      ));
+      
+      return realDaysCount;
+    } catch (error) {
+      console.warn(`Error obteniendo días del plan ${planId}:`, error);
+      return 0;
+    } finally {
+      // Remover del estado de cargando
+      setLoadingDaysInfo(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(planId);
+        return newSet;
+      });
+    }
+  }, []);
+
+  // Función para cargar planes optimizada con useCallback
+  const fetchPlans = useCallback(async (page = 1) => {
     setLoading(true);
     setError(null);
     
@@ -157,36 +195,46 @@ export default function NutritionPlansClient() {
         dietary_restrictions: filters.dietary_restrictions || undefined,
       });
       
-      // Enriquecer planes con información del creador y obtener días individuales
+      // Obtener IDs únicos de creadores para optimizar requests
+      const creatorIds = Array.from(new Set(data.plans.map(plan => plan.creator_id)));
+      
+      // Cargar información de usuarios en lotes (máximo 5 concurrentes)
+      const BATCH_SIZE = 5;
+      const userInfoPromises: Promise<void>[] = [];
+      
+      for (let i = 0; i < creatorIds.length; i += BATCH_SIZE) {
+        const batch = creatorIds.slice(i, i + BATCH_SIZE);
+        const batchPromise = Promise.all(
+          batch.map(creatorId => fetchUserInfo(creatorId))
+        ).then(() => {}); // Convertir a void
+        userInfoPromises.push(batchPromise);
+      }
+      
+      // Esperar a que se carguen todos los usuarios en lotes
+      await Promise.all(userInfoPromises);
+      
+      // Enriquecer planes con información del creador
       const enrichedPlans: EnrichedNutritionPlan[] = await Promise.all(
         data.plans.map(async (plan) => {
-          // Obtener información completa del creador desde el endpoint de participantes del gimnasio
-          // Este endpoint requiere permisos de admin pero devuelve información más completa
-          // incluyendo first_name, last_name, email, gym_role, etc.
+          // Obtener información del creador (fetchUserInfo maneja el cache internamente)
           const creatorInfo = await fetchUserInfo(plan.creator_id);
           
           if (!creatorInfo) {
             console.warn(`No se pudo obtener información del creador para el plan ${plan.id} (creator_id: ${plan.creator_id})`);
           }
           
-          // Si no vienen los daily_plans en la lista, obtenerlos individualmente
+          // Si no vienen los daily_plans en la lista, obtenerlos individualmente SOLO si es crítico
           let planDays: DailyPlan[] = [];
-          let daysCount = 0;
+          let daysCount: number | undefined = undefined;
           
           if (plan.daily_plans) {
             planDays = plan.daily_plans;
             daysCount = plan.daily_plans.length;
           } else {
-            // Obtener el plan individual que sí incluye los días
-            try {
-              const fullPlan = await nutritionAPI.getPlan(plan.id);
-              planDays = fullPlan.daily_plans || [];
-              daysCount = planDays.length;
-            } catch (error) {
-              console.error(`Error obteniendo días del plan ${plan.id}:`, error);
-              planDays = [];
-              daysCount = 0;
-            }
+            // Para la carga inicial, NO asumir que todos los días están completados
+            // Usar undefined para indicar que no sabemos cuántos días realmente hay
+            daysCount = undefined; // Días realmente creados (desconocido)
+            planDays = []; // Dejar vacío para carga lazy
           }
           
           console.log(`Plan ${plan.id}: ${daysCount} días de ${plan.duration_days} - Creador: ${creatorInfo ? getCreatorDisplayName(creatorInfo) : 'No disponible'}`, {
@@ -220,29 +268,69 @@ export default function NutritionPlansClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, filterValues, pagination.per_page]);
 
   // Cargar planes al montar el componente
   useEffect(() => {
     fetchPlans();
-  }, []);
+  }, []); // Solo ejecutar una vez al montar
 
-  // Aplicar filtros automáticamente cuando cambien los filtros o búsqueda
+  // Cargar automáticamente información de días para planes que no la tienen
   useEffect(() => {
+    if (loading || plans.length === 0) return;
+    
+    // Encontrar planes sin información de días
+    const plansWithoutDays = plans.filter(plan => plan.daysCount === undefined);
+    
+    if (plansWithoutDays.length === 0) return;
+    
+    // Cargar información en lotes pequeños para no sobrecargar el servidor
+    const loadDaysInfo = async () => {
+      const BATCH_SIZE = 3; // Máximo 3 planes a la vez
+      
+      for (let i = 0; i < plansWithoutDays.length; i += BATCH_SIZE) {
+        const batch = plansWithoutDays.slice(i, i + BATCH_SIZE);
+        
+        // Cargar batch en paralelo
+        await Promise.all(
+          batch.map(async (plan) => {
+            try {
+              await fetchPlanDaysInfo(plan.id);
+            } catch (error) {
+              console.warn(`Error cargando días para plan ${plan.id}:`, error);
+            }
+          })
+        );
+        
+        // Pequeña pausa entre lotes para no sobrecargar
+        if (i + BATCH_SIZE < plansWithoutDays.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+    };
+    
+    loadDaysInfo();
+  }, [plans, loading, fetchPlanDaysInfo]); // Ejecutar cuando cambien los planes
+
+  // Aplicar filtros automáticamente cuando cambien los filtros o búsqueda (CORREGIDO)
+  useEffect(() => {
+    // Solo ejecutar si no es la carga inicial
+    if (loading) return;
+    
     const timeoutId = setTimeout(() => {
       fetchPlans(1); // Resetear a la primera página
     }, 300); // Debounce de 300ms
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, filters]);
+  }, [searchQuery, ...filterValues]); // Usar valores individuales en lugar del objeto
 
-  // Función para aplicar filtros (mantenida para compatibilidad)
-  const applyFilters = () => {
+  // Función para aplicar filtros (optimizada con useCallback)
+  const applyFilters = useCallback(() => {
     fetchPlans(1); // Resetear a la primera página
-  };
+  }, [fetchPlans]);
 
-  // Función para limpiar filtros
-  const clearFilters = () => {
+  // Función para limpiar filtros (optimizada con useCallback)
+  const clearFilters = useCallback(() => {
     setSearchQuery('');
     setFilters({
       goal: '',
@@ -251,7 +339,7 @@ export default function NutritionPlansClient() {
       dietary_restrictions: ''
     });
     // El useEffect se encargará de recargar automáticamente
-  };
+  }, []);
 
   // Función para formatear fecha
   const formatDate = (dateString: string) => {
@@ -707,8 +795,58 @@ export default function NutritionPlansClient() {
 
       {/* Contenido principal */}
       {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+        <div className="space-y-6">
+          {/* Skeleton header */}
+          <div className="flex items-center justify-between">
+            <div className="h-8 bg-slate-200 rounded w-64 animate-pulse"></div>
+            <div className="h-6 bg-slate-200 rounded w-32 animate-pulse"></div>
+          </div>
+          
+          {/* Skeleton grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 animate-pulse">
+                {/* Header skeleton */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-slate-200 rounded-xl"></div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-slate-200 rounded w-20"></div>
+                      <div className="h-3 bg-slate-200 rounded w-16"></div>
+                    </div>
+                  </div>
+                  <div className="w-8 h-8 bg-slate-200 rounded"></div>
+                </div>
+                
+                {/* Title skeleton */}
+                <div className="h-6 bg-slate-200 rounded w-3/4 mb-2"></div>
+                <div className="h-4 bg-slate-200 rounded w-full mb-4"></div>
+                
+                {/* Stats skeleton */}
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="text-center">
+                    <div className="h-4 bg-slate-200 rounded w-full mb-1"></div>
+                    <div className="h-3 bg-slate-200 rounded w-2/3 mx-auto"></div>
+                  </div>
+                  <div className="text-center">
+                    <div className="h-4 bg-slate-200 rounded w-full mb-1"></div>
+                    <div className="h-3 bg-slate-200 rounded w-2/3 mx-auto"></div>
+                  </div>
+                  <div className="text-center">
+                    <div className="h-4 bg-slate-200 rounded w-full mb-1"></div>
+                    <div className="h-3 bg-slate-200 rounded w-2/3 mx-auto"></div>
+                  </div>
+                </div>
+                
+                {/* Actions skeleton */}
+                <div className="flex justify-between space-x-2">
+                  <div className="h-8 bg-slate-200 rounded flex-1"></div>
+                  <div className="h-8 bg-slate-200 rounded w-8"></div>
+                  <div className="h-8 bg-slate-200 rounded w-8"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : error ? (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
@@ -860,24 +998,61 @@ export default function NutritionPlansClient() {
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">PROGRESO</span>
                         <span className="text-sm font-semibold text-slate-700">
-                          {plan.daysCount || 0}/{plan.duration_days} días
+                          {plan.daysCount !== undefined ? `${plan.daysCount}/${plan.duration_days}` : '?/?'} días
                         </span>
                       </div>
-                      <div className="w-full bg-slate-200 rounded-full h-2.5 cursor-pointer" onClick={() => handleEditDays(plan.id)}>
+                      <div 
+                        className="w-full bg-slate-200 rounded-full h-2.5 cursor-pointer hover:bg-slate-300 transition-colors" 
+                        onClick={() => {
+                          // Si no sabemos cuántos días hay, cargar la información primero
+                          if (plan.daysCount === undefined) {
+                            fetchPlanDaysInfo(plan.id);
+                          }
+                          handleEditDays(plan.id);
+                        }}
+                      >
                         <div 
-                          className="bg-blue-500 h-2.5 rounded-full transition-all duration-500 hover:bg-blue-600"
+                          className={`h-2.5 rounded-full transition-all duration-500 ${
+                            plan.daysCount === undefined 
+                              ? loadingDaysInfo.has(plan.id)
+                                ? 'bg-blue-400 animate-pulse' 
+                                : 'bg-gray-400' 
+                              : 'bg-blue-500 hover:bg-blue-600'
+                          }`}
                           style={{ 
-                            width: `${plan.duration_days > 0 ? Math.min(((plan.daysCount || 0) / plan.duration_days) * 100, 100) : 0}%` 
+                            width: `${
+                              plan.daysCount === undefined 
+                                ? loadingDaysInfo.has(plan.id) ? '30' : '0'
+                                : plan.duration_days > 0 
+                                  ? Math.min(((plan.daysCount || 0) / plan.duration_days) * 100, 100) 
+                                  : 0
+                            }%` 
                           }}
-                          title={`${plan.daysCount || 0} de ${plan.duration_days} días completados (${plan.duration_days > 0 ? Math.round(((plan.daysCount || 0) / plan.duration_days) * 100) : 0}%)`}
+                          title={
+                            plan.daysCount === undefined 
+                              ? loadingDaysInfo.has(plan.id) 
+                                ? 'Cargando información de días...' 
+                                : 'Haz clic para cargar información de días' 
+                              : `${plan.daysCount || 0} de ${plan.duration_days} días completados (${plan.duration_days > 0 ? Math.round(((plan.daysCount || 0) / plan.duration_days) * 100) : 0}%)`
+                          }
                         />
                       </div>
                       <div className="flex justify-between items-center mt-1">
                         <span className="text-xs text-slate-400">
-                          {plan.duration_days > 0 ? Math.round(((plan.daysCount || 0) / plan.duration_days) * 100) : 0}% completado
+                          {plan.daysCount !== undefined 
+                            ? `${plan.duration_days > 0 ? Math.round(((plan.daysCount || 0) / plan.duration_days) * 100) : 0}% completado`
+                            : loadingDaysInfo.has(plan.id) 
+                              ? 'Cargando información...'
+                              : 'Haz clic para cargar'
+                          }
                         </span>
                         <span className="text-xs text-slate-400">
-                          {Math.max(0, plan.duration_days - (plan.daysCount || 0))} restantes
+                          {plan.daysCount !== undefined 
+                            ? `${Math.max(0, plan.duration_days - (plan.daysCount || 0))} restantes`
+                            : loadingDaysInfo.has(plan.id) 
+                              ? 'Calculando...'
+                              : 'Información pendiente'
+                          }
                         </span>
                       </div>
                     </div>

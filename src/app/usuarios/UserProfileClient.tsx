@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { getUsersAPI, eventsAPI, GymParticipant } from '@/lib/api'
+import { useState, useEffect } from 'react'
+import { getUsersAPI, GymParticipant, membershipsAPI, MembershipStatus } from '@/lib/api'
+import { eventsAPI } from '@/lib/api'
+import { CreditCardIcon, ClockIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 
 interface UserProfileClientProps {
   userId: number
@@ -11,6 +13,9 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
   const [profile, setProfile] = useState<GymParticipant | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [membershipStatus, setMembershipStatus] = useState<MembershipStatus | null>(null)
+  const [loadingMembership, setLoadingMembership] = useState(false)
+  const [membershipError, setMembershipError] = useState<string | null>(null)
 
   // Sesiones del entrenador
   const [sessions, setSessions] = useState<any[]>([])
@@ -35,13 +40,31 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
           } as any)
         } catch (err2) {
           console.error('Error fetching public profile', err2)
-        setError('No se pudo cargar el perfil')
+          setError('No se pudo cargar el perfil')
         }
       } finally {
         setLoading(false)
       }
     }
     fetchProfile()
+  }, [userId])
+
+  // Cargar información de membresía
+  useEffect(() => {
+    const fetchMembershipStatus = async () => {
+      try {
+        setLoadingMembership(true)
+        setMembershipError(null)
+        const membershipData = await membershipsAPI.getUserMembershipStatus(userId)
+        setMembershipStatus(membershipData)
+      } catch (err: any) {
+        console.warn('Error obteniendo estado de membresía:', err)
+        setMembershipError(err?.message || 'Error obteniendo información de membresía')
+      } finally {
+        setLoadingMembership(false)
+      }
+    }
+    fetchMembershipStatus()
   }, [userId])
 
   // Cargar sesiones si es entrenador
@@ -63,11 +86,34 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
   }, [profile])
 
   if (loading) {
-    return <div className="py-8 text-center">Cargando perfil...</div>
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando perfil del usuario...</p>
+        </div>
+      </div>
+    )
   }
 
   if (error || !profile) {
-    return <div className="text-center text-gray-500 py-8">Perfil no encontrado</div>
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-red-600 text-2xl">⚠️</span>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Perfil no encontrado</h3>
+          <p className="text-gray-500 mb-4">No se pudo cargar la información del usuario.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    )
   }
 
   const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email
@@ -89,10 +135,30 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
     return `${fmt(s)}${e ? ' - ' + fmt(e) : ''}`
   }
 
+  const getMembershipStatusColor = (status?: MembershipStatus) => {
+    if (!status) return 'bg-gray-100 text-gray-600'
+    
+    if (!status.is_active) return 'bg-red-100 text-red-600'
+    if (status.days_remaining !== undefined && status.days_remaining !== null && status.days_remaining <= 7) {
+      return 'bg-yellow-100 text-yellow-600'
+    }
+    return 'bg-green-100 text-green-600'
+  }
+
+  const getMembershipStatusText = (status?: MembershipStatus) => {
+    if (!status) return 'Sin membresía'
+    
+    if (!status.is_active) return 'Membresía expirada'
+    if (status.days_remaining !== undefined && status.days_remaining !== null && status.days_remaining <= 7) {
+      return `Expira en ${status.days_remaining} días`
+    }
+    return 'Membresía activa'
+  }
+
   return (
-    <div className="bg-white shadow-lg rounded-lg overflow-visible">
+    <div className="overflow-visible">
       {/* Header */}
-      <div className="h-36 bg-gradient-to-r from-blue-600 to-teal-500 relative">
+      <div className="h-36 bg-gradient-to-r from-blue-600 to-teal-500 relative rounded-t-2xl">
         {profile.picture ? (
           <img
             src={profile.picture}
@@ -106,12 +172,79 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
         )}
       </div>
 
-      <div className="pt-20 px-6 pb-10">
+      <div className="pt-20 px-6 pb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
           <h2 className="text-2xl font-semibold text-gray-900">{fullName}</h2>
-          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${profile.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{profile.is_active ? 'Activo' : 'Inactivo'}</span>
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${profile.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+            {profile.is_active ? 'Activo' : 'Inactivo'}
+          </span>
         </div>
 
+        {/* Información de suscripción */}
+        {membershipStatus && (
+          <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <CreditCardIcon className="h-5 w-5 mr-2 text-blue-600" />
+              Información de Suscripción
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <p className="text-sm font-medium text-gray-500 mb-1">Plan de Membresía</p>
+                <p className="text-lg font-semibold text-gray-900">{membershipStatus.plan_name || membershipStatus.membership_type}</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <p className="text-sm font-medium text-gray-500 mb-1">Estado</p>
+                <div className="flex items-center space-x-2">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMembershipStatusColor(membershipStatus)}`}>
+                    {getMembershipStatusText(membershipStatus)}
+                  </span>
+                  {membershipStatus.can_access ? (
+                    <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <XCircleIcon className="h-4 w-4 text-red-500" />
+                  )}
+                </div>
+              </div>
+              {membershipStatus.expires_at && (
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <p className="text-sm font-medium text-gray-500 mb-1">Fecha de Expiración</p>
+                  <div className="flex items-center space-x-2">
+                    <ClockIcon className="h-4 w-4 text-gray-400" />
+                    <p className="text-gray-900 font-medium">
+                      {new Date(membershipStatus.expires_at).toLocaleDateString('es-ES', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {membershipStatus.days_remaining !== undefined && membershipStatus.days_remaining !== null && (
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <p className="text-sm font-medium text-gray-500 mb-1">Días Restantes</p>
+                  <p className={`text-lg font-semibold ${membershipStatus.days_remaining <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                    {membershipStatus.days_remaining} días
+                  </p>
+                </div>
+              )}
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <p className="text-sm font-medium text-gray-500 mb-1">Gimnasio</p>
+                <p className="text-gray-900 font-medium">{membershipStatus.gym_name}</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <p className="text-sm font-medium text-gray-500 mb-1">Acceso</p>
+                <div className="flex items-center space-x-2">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${membershipStatus.can_access ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {membershipStatus.can_access ? 'Puede acceder' : 'Sin acceso'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Información básica del perfil */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-700">
           <div>
             <p className="font-medium text-gray-500 mb-1">Email</p>

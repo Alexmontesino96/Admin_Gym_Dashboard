@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { gymsAPI, UserGymMembership, setSelectedGymId, clearSelectedGymId } from '@/lib/api'
 import { Building, Users, Calendar, ChevronRight, Loader2 } from 'lucide-react'
 
@@ -20,6 +20,7 @@ export default function GymSelectorClient({ user }: GymSelectorClientProps) {
   const [selectedGym, setSelectedGym] = useState<number | null>(null)
   const [selecting, setSelecting] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     // Limpiar cualquier selección previa para forzar la selección
@@ -67,8 +68,14 @@ export default function GymSelectorClient({ user }: GymSelectorClientProps) {
       // Pequeña pausa para asegurar que se guarde
       await new Promise(resolve => setTimeout(resolve, 100))
       
+      // Determinar la URL de destino
+      const returnTo = searchParams?.get('returnTo')
+      const destinationUrl = returnTo && returnTo !== '/select-gym' ? returnTo : '/'
+      
+      console.log('Redirigiendo a:', destinationUrl)
+      
       // Forzar recarga de la página para que el middleware tome efecto
-      window.location.href = '/'
+      window.location.href = destinationUrl
       
     } catch (error) {
       console.error('Error al seleccionar gimnasio:', error)
@@ -142,12 +149,29 @@ export default function GymSelectorClient({ user }: GymSelectorClientProps) {
     )
   }
 
+  const returnTo = searchParams?.get('returnTo')
+  const isReturnRedirect = returnTo && returnTo !== '/'
+
   return (
     <div className="space-y-4">
+      {isReturnRedirect && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
+          <p className="text-orange-800 text-sm">
+            <strong>Acción requerida:</strong> Necesitas seleccionar un gimnasio para continuar
+          </p>
+          <p className="text-orange-600 text-xs mt-1">
+            Serás redirigido a <code className="bg-orange-100 px-1 rounded">{returnTo}</code> después de la selección
+          </p>
+        </div>
+      )}
+      
       {selecting && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
           <Loader2 className="h-5 w-5 animate-spin text-blue-600 mx-auto mb-2" />
           <p className="text-blue-800">Configurando gimnasio seleccionado...</p>
+          {isReturnRedirect && (
+            <p className="text-blue-600 text-xs mt-1">Te llevaremos de vuelta donde estabas...</p>
+          )}
         </div>
       )}
       
