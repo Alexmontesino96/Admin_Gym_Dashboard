@@ -15,8 +15,7 @@ import {
   PencilIcon, 
   TrashIcon, 
   ExclamationTriangleIcon,
-  PlusIcon,
-  XMarkIcon
+  PlusIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
@@ -440,10 +439,9 @@ export default function SessionsClient() {
                     : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
                 }`}
               >
-                {d}
-                {isPast && (
-                  <XMarkIcon className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-red-500 bg-white rounded-full p-0.5 border border-red-200" />
-                )}
+                <span className={isPast ? 'line-through decoration-red-500 decoration-2' : ''}>
+                  {d}
+                </span>
               </button>
             )
           })}
