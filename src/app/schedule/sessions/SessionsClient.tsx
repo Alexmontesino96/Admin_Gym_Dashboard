@@ -442,7 +442,7 @@ export default function SessionsClient() {
               >
                 {d}
                 {isPast && (
-                  <XMarkIcon className="absolute -top-1 -right-1 w-3 h-3 text-red-500 bg-white rounded-full p-0.5" />
+                  <XMarkIcon className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-red-500 bg-white rounded-full p-0.5 border border-red-200" />
                 )}
               </button>
             )
