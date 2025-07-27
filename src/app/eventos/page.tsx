@@ -1,41 +1,9 @@
 import { auth0 } from '@/lib/auth0'
 import { redirect } from 'next/navigation'
 import MainLayout from '@/components/MainLayout'
-import dynamic from 'next/dynamic'
+import EventsWrapper from './EventsWrapper'
 import { Calendar, Users, Clock, MapPin, Plus, Activity, TrendingUp, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
-
-// Skeleton para el contenido lazy
-const EventsSkeleton = () => (
-  <div className="space-y-6 animate-pulse">
-    {/* Stats skeleton */}
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200">
-          <div className="h-4 bg-slate-200 rounded w-1/2 mb-2"></div>
-          <div className="h-8 bg-slate-200 rounded w-1/3 mb-2"></div>
-          <div className="h-3 bg-slate-200 rounded w-2/3"></div>
-        </div>
-      ))}
-    </div>
-    
-    {/* Content skeleton */}
-    <div className="bg-white rounded-2xl p-6 border border-slate-200">
-      <div className="h-6 bg-slate-200 rounded w-1/4 mb-4"></div>
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-16 bg-slate-200 rounded"></div>
-        ))}
-      </div>
-    </div>
-  </div>
-)
-
-// Lazy loaded component con dynamic import
-const EventsClientLazy = dynamic(() => import('./events-client'), {
-  loading: () => <EventsSkeleton />,
-  ssr: false
-})
 
 export default async function EventosPage() {
   const session = await auth0.getSession()
@@ -220,7 +188,7 @@ export default async function EventosPage() {
         </div>
 
         {/* Contenido con lazy loading */}
-        <EventsClientLazy />
+        <EventsWrapper />
       </div>
     </MainLayout>
   )
