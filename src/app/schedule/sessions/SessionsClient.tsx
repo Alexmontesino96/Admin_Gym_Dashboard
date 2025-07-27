@@ -15,7 +15,8 @@ import {
   PencilIcon, 
   TrashIcon, 
   ExclamationTriangleIcon,
-  PlusIcon
+  PlusIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
@@ -58,6 +59,19 @@ export default function SessionsClient() {
   const [loadingTrainers, setLoadingTrainers] = useState(false)
 
   const daysShort = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+  // Función para verificar si un día ya pasó
+  const isDayPast = (dayIndex: number) => {
+    if (weeks.length === 0) return false
+    
+    const weekStart = weeks[selectedWeekIdx]
+    const dayDate = new Date(weekStart)
+    dayDate.setDate(weekStart.getDate() + dayIndex)
+    dayDate.setHours(23, 59, 59, 999) // Fin del día
+    
+    const now = new Date()
+    return dayDate < now
+  }
 
   const generateWeeks = (baseDate: Date, count: number = 8) => {
     const monday = new Date(baseDate)
@@ -413,17 +427,23 @@ export default function SessionsClient() {
           </button>
           {daysShort.map((d, idx) => {
             const isActive = idx === selectedDayIdx
+            const isPast = isDayPast(idx)
             return (
               <button 
                 key={d} 
                 onClick={() => setSelectedDayIdx(idx)} 
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                className={`relative px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                   isActive 
                     ? 'bg-blue-600 text-white' 
+                    : isPast
+                    ? 'text-gray-400 hover:text-gray-500 hover:bg-gray-50'
                     : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
                 }`}
               >
                 {d}
+                {isPast && (
+                  <XMarkIcon className="absolute -top-1 -right-1 w-3 h-3 text-red-500 bg-white rounded-full p-0.5" />
+                )}
               </button>
             )
           })}
