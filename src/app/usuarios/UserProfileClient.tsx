@@ -28,17 +28,37 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
       try {
         // Intentar endpoint privado (requiere permisos de admin/propio)
         const data = await getUsersAPI.getGymParticipantById(userId)
+        console.log('🔍 Profile data from getGymParticipantById:', {
+          id: data.id,
+          picture: data.picture,
+          pictureExists: !!data.picture,
+          firstName: data.first_name,
+          lastName: data.last_name
+        })
         setProfile(data)
       } catch (err: any) {
         console.warn('Fallo getGymParticipantById, intentando perfil público', err?.message||err)
         try {
           const pub = await getUsersAPI.getPublicProfile(userId)
+          console.log('🔍 Profile data from getPublicProfile:', {
+            id: pub.id,
+            picture: pub.picture,
+            pictureExists: !!pub.picture,
+            firstName: pub.first_name,
+            lastName: pub.last_name
+          })
           // Adaptar estructura mínima
-          setProfile({
+          const adaptedProfile = {
             ...pub,
             gym_role: pub.role,
             is_active: pub.is_active ?? true,
-          } as any)
+          } as any
+          console.log('🔍 Adapted profile:', {
+            id: adaptedProfile.id,
+            picture: adaptedProfile.picture,
+            pictureExists: !!adaptedProfile.picture
+          })
+          setProfile(adaptedProfile)
         } catch (err2) {
           console.error('Error fetching public profile', err2)
           setError('No se pudo cargar el perfil')
@@ -156,6 +176,14 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
     return 'Membresía activa'
   }
 
+  // Debug log para verificar el estado del profile antes del render
+  console.log('🖼️ Render check:', {
+    profileExists: !!profile,
+    pictureValue: profile?.picture,
+    pictureExists: !!profile?.picture,
+    fullName: fullName
+  })
+
   return (
     <div className="overflow-visible">
       {/* Header */}
@@ -167,6 +195,8 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
             width={96}
             height={96}
             className="w-24 h-24 rounded-full ring-4 ring-white absolute -bottom-12 left-6 object-cover"
+            onLoad={() => console.log('✅ Image loaded successfully:', profile.picture)}
+            onError={(e) => console.error('❌ Image failed to load:', profile.picture, e)}
           />
         ) : (
           <div className="w-24 h-24 rounded-full ring-4 ring-white absolute -bottom-12 left-6 bg-white flex items-center justify-center text-2xl font-semibold text-blue-600 uppercase">
