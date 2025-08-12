@@ -386,8 +386,8 @@ export default function EventsClient() {
       // Preparar payload; convertir fechas a ISO con zona horaria
       const payload: any = {
         ...createFormData,
-        start_time: new Date(createFormData.start_time).toISOString(),
-        end_time: new Date(createFormData.end_time).toISOString(),
+        start_time: new Date(createFormData.start_time).toISOString().slice(0, -1),
+        end_time: new Date(createFormData.end_time).toISOString().slice(0, -1),
       }
       if (includeChat) {
         payload.first_message_chat = firstMessageChat.trim()
@@ -1113,7 +1113,7 @@ export default function EventsClient() {
                             type="datetime-local"
                             id="edit-start-time"
                             value={editFormData.start_time ? formatDateTimeForInput(editFormData.start_time) : ''}
-                            onChange={(e) => handleEditFormChange('start_time', new Date(e.target.value).toISOString())}
+                            onChange={(e) => handleEditFormChange('start_time', new Date(e.target.value).toISOString().slice(0, -1))}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                           />
@@ -1127,7 +1127,7 @@ export default function EventsClient() {
                             type="datetime-local"
                             id="edit-end-time"
                             value={editFormData.end_time ? formatDateTimeForInput(editFormData.end_time) : ''}
-                            onChange={(e) => handleEditFormChange('end_time', new Date(e.target.value).toISOString())}
+                            onChange={(e) => handleEditFormChange('end_time', new Date(e.target.value).toISOString().slice(0, -1))}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                           />

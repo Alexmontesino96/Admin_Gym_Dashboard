@@ -282,9 +282,9 @@ export default function SessionsClient() {
       setError(null)
 
       const toApiDate = (val: string) => {
-        if (val.endsWith('Z')) return val
-        if (val.length === 16) return `${val}:00Z`
-        if (val.length === 19) return `${val}Z`
+        if (val.endsWith('Z')) return val.slice(0, -1)
+        if (val.length === 16) return `${val}:00`
+        if (val.length === 19) return val
         return val
       }
 
