@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { eventsAPI, getUsersAPI } from '@/lib/api'
+import { eventsAPI, getUsersAPI, gymsAPI } from '@/lib/api'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -9,6 +9,7 @@ export default function CreateSessionClient() {
   const router = useRouter()
   const [classesList, setClassesList] = useState<any[]>([])
   const [trainers, setTrainers] = useState<any[]>([])
+  const [gymInfo, setGymInfo] = useState<any>(null)
   const [loadingClasses, setLoadingClasses] = useState(false)
   const [loadingTrainers, setLoadingTrainers] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -58,6 +59,15 @@ export default function CreateSessionClient() {
     }
   }
 
+  const loadGymInfo = async () => {
+    try {
+      const data = await gymsAPI.getGymInfo()
+      setGymInfo(data)
+    } catch (err) {
+      console.error('Error cargando información del gimnasio:', err)
+    }
+  }
+
   const handleCreateSession = async () => {
     if (!sessionFormData.class_id || !sessionFormData.trainer_id || !sessionFormData.start_time) {
       setError('Clase, entrenador y hora de inicio son obligatorios')
@@ -69,6 +79,8 @@ export default function CreateSessionClient() {
       setError(null)
 
       const toApiDate = (val: string) => {
+        // Asumimos que el input datetime-local del usuario representa la hora local del gimnasio
+        // Enviamos sin timezone para que el backend lo interprete como hora local del gym
         if (val.endsWith('Z')) return val.slice(0, -1)
         if (val.length === 16) return `${val}:00`
         if (val.length === 19) return val
@@ -117,6 +129,7 @@ export default function CreateSessionClient() {
     // Cargar datos
     loadClasses()
     loadTrainers()
+    loadGymInfo()
   }, [])
 
   const selectedClass = classesList.find(c => c.id === sessionFormData.class_id)
@@ -199,6 +212,11 @@ export default function CreateSessionClient() {
             onChange={e => setSessionFormData({ ...sessionFormData, start_time: e.target.value })}
             className="w-full border border-gray-300 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          {gymInfo?.timezone && (
+            <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded-lg">
+              🌍 Zona horaria del gimnasio: {gymInfo.timezone}
+            </p>
+          )}
         </div>
 
         {/* Hora de fin personalizada */}

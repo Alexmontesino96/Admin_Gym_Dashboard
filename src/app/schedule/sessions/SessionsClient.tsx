@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { eventsAPI, getUsersAPI } from '@/lib/api'
+import { eventsAPI, getUsersAPI, gymsAPI } from '@/lib/api'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { 
   ChevronLeftIcon, 
@@ -31,6 +31,7 @@ export default function SessionsClient() {
   // Modal de creación de sesión
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [classesList, setClassesList] = useState<any[]>([])
+  const [gymInfo, setGymInfo] = useState<any>(null)
   const [loadingClasses, setLoadingClasses] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -282,6 +283,8 @@ export default function SessionsClient() {
       setError(null)
 
       const toApiDate = (val: string) => {
+        // Asumimos que el input datetime-local del usuario representa la hora local del gimnasio
+        // Enviamos sin timezone para que el backend lo interprete como hora local del gym
         if (val.endsWith('Z')) return val.slice(0, -1)
         if (val.length === 16) return `${val}:00`
         if (val.length === 19) return val
@@ -327,6 +330,15 @@ export default function SessionsClient() {
     }
   }
 
+  const loadGymInfo = async () => {
+    try {
+      const data = await gymsAPI.getGymInfo()
+      setGymInfo(data)
+    } catch (err) {
+      console.error('Error cargando información del gimnasio:', err)
+    }
+  }
+
   useEffect(() => {
     // Inicializar con la semana actual
     const today = new Date()
@@ -334,6 +346,9 @@ export default function SessionsClient() {
     setWeeks([thisWeek])
     setSelectedWeekIdx(0)
     fetchSessionsInRange(thisWeek, new Date(thisWeek.getTime() + 6 * 24 * 60 * 60 * 1000))
+    
+    // Cargar información del gimnasio
+    loadGymInfo()
   }, [])
 
   useEffect(() => {
@@ -694,6 +709,11 @@ export default function SessionsClient() {
                   onChange={e => setSessionFormData({ ...sessionFormData, start_time: e.target.value })}
                   className="w-full border border-gray-300 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {gymInfo?.timezone && (
+                  <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded-lg mt-2">
+                    🌍 Zona horaria del gimnasio: {gymInfo.timezone}
+                  </p>
+                )}
               </div>
 
               {/* Hora de fin personalizada */}
