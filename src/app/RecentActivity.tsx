@@ -35,7 +35,7 @@ export default function RecentActivity() {
       if (sessionsData.status === 'fulfilled') {
         sessionsData.value.slice(0, 3).forEach((session: any) => {
           const s = session.session ?? session
-          const sessionDate = new Date(s.time_info?.local_time || s.start_time_local || s.start_time)
+          const sessionDate = new Date(s.start_time_local || s.start_time)
           const isToday = sessionDate.toDateString() === new Date().toDateString()
           
           activities.push({
