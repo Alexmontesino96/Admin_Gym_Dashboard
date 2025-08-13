@@ -1242,6 +1242,19 @@ export const eventsAPI = {
     return apiCall(`/schedule/sessions/date-range${query}`);
   },
 
+  // Obtener sesiones por rango de fechas con información de timezone
+  getSessionsByDateRangeWithTimezone: async (
+    startDate: string, // YYYY-MM-DD
+    endDate: string,
+    params: { skip?: number; limit?: number } = {}
+  ): Promise<any[]> => {
+    const searchParams = new URLSearchParams({ start_date: startDate, end_date: endDate });
+    if (params.skip !== undefined) searchParams.append('skip', params.skip.toString());
+    if (params.limit !== undefined) searchParams.append('limit', params.limit.toString());
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return apiCall(`/schedule/sessions/date-range-with-timezone${query}`);
+  },
+
   // Obtener sesiones por entrenador
   getSessionsByTrainer: async (
     trainerId: number,
