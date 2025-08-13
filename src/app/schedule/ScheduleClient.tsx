@@ -649,8 +649,8 @@ export default function ScheduleClient() {
     const percent = capacity ? Math.min(100, Math.round((registered / capacity) * 100)) : 0
     const statusBadge = ses.status === 'scheduled' ? 'bg-blue-100 text-blue-800' : ses.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
 
-    const start = new Date(ses.start_time)
-    const end = ses.end_time ? new Date(ses.end_time) : null
+    const start = new Date(ses.start_time_local || ses.start_time)
+    const end = (ses.end_time_local || ses.end_time) ? new Date(ses.end_time_local || ses.end_time) : null
     const timeRange = `${start.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true})}${end ? ' - '+end.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true}) : ''}`
 
     return (
@@ -1091,8 +1091,8 @@ export default function ScheduleClient() {
                 // Compatibilidad con nuevo formato { session, class_info }
                 const s = item.session ?? item
                 const c = item.class_info ?? undefined
-                const start = new Date(s.start_time)
-                const end = s.end_time ? new Date(s.end_time) : null
+                const start = new Date(s.start_time_local || s.start_time)
+                const end = (s.end_time_local || s.end_time) ? new Date(s.end_time_local || s.end_time) : null
                 const timeRange = `${start.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true})}${end ? ' - '+end.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true}) : ''}`
                 const statusCls = s.status==='scheduled'? 'bg-blue-100 text-blue-800' : s.status==='completed'? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                 return (
@@ -1605,7 +1605,7 @@ export default function ScheduleClient() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
             <h3 className="text-lg font-semibold mb-4 text-red-600">Eliminar sesión</h3>
-            <p className="text-sm text-gray-700 mb-6">¿Seguro que deseas eliminar la sesión del <span className="font-semibold">{new Date(deleteSessionTarget.start_time).toLocaleString('es-ES',{weekday:'long', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'})}</span>?</p>
+            <p className="text-sm text-gray-700 mb-6">¿Seguro que deseas eliminar la sesión del <span className="font-semibold">{new Date(deleteSessionTarget.start_time_local || deleteSessionTarget.start_time).toLocaleString('es-ES',{weekday:'long', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'})}</span>?</p>
             <div className="flex justify-end space-x-3 text-sm">
               <button onClick={()=>{setShowDeleteSessionModal(false);setDeleteSessionTarget(null)}} className="px-4 py-2 rounded border">Cancelar</button>
               <button onClick={async()=>{
@@ -1634,7 +1634,7 @@ export default function ScheduleClient() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
             <h3 className="text-lg font-semibold mb-4 text-yellow-600">Cancelar sesión</h3>
-            <p className="text-sm text-gray-700 mb-6">¿Seguro que deseas cancelar la sesión del <span className='font-semibold'>{new Date(cancelSessionTarget.start_time).toLocaleString('es-ES',{weekday:'long',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>?</p>
+            <p className="text-sm text-gray-700 mb-6">¿Seguro que deseas cancelar la sesión del <span className='font-semibold'>{new Date(cancelSessionTarget.start_time_local || cancelSessionTarget.start_time).toLocaleString('es-ES',{weekday:'long',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>?</p>
             <div className="flex justify-end space-x-3 text-sm">
               <button onClick={()=>{setShowCancelSessionModal(false);setCancelSessionTarget(null)}} className="px-4 py-2 rounded border">Cerrar</button>
               <button onClick={async()=>{

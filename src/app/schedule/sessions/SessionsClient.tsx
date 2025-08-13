@@ -137,9 +137,9 @@ export default function SessionsClient() {
   }
 
   const calcDurationMinutes = (ses: any, clsFallback?: any): number => {
-    if (ses.end_time) {
-      const start = new Date(ses.start_time)
-      const end = new Date(ses.end_time)
+    if (ses.end_time_local || ses.end_time) {
+      const start = new Date(ses.start_time_local || ses.start_time)
+      const end = new Date(ses.end_time_local || ses.end_time)
       return Math.round((end.getTime() - start.getTime()) / (1000 * 60))
     }
     return clsFallback?.duration || 60
@@ -161,7 +161,7 @@ export default function SessionsClient() {
   // Filtrar sesiones según selección
   const filteredSessions = sessionsList.filter(item => {
     const s = item.session ?? item
-    const sessionDate = new Date(s.start_time)
+    const sessionDate = new Date(s.start_time_local || s.start_time)
     
     // Si no hay semanas configuradas, mostrar todas
     if (weeks.length === 0) return true
@@ -507,8 +507,8 @@ export default function SessionsClient() {
             // Compatibilidad con nuevo formato { session, class_info }
             const s = item.session ?? item
             const c = item.class_info ?? undefined
-            const start = new Date(s.start_time)
-            const end = s.end_time ? new Date(s.end_time) : null
+            const start = new Date(s.start_time_local || s.start_time)
+            const end = (s.end_time_local || s.end_time) ? new Date(s.end_time_local || s.end_time) : null
             const timeRange = `${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}${end ? ' - ' + end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''}`
             const statusCls = s.status === 'scheduled' ? 'bg-blue-100 text-blue-800' : s.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
             
