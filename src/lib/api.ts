@@ -873,7 +873,7 @@ export const getUsersAPI = {
     const searchParams = new URLSearchParams();
     searchParams.append('email', email);
     
-    return apiCall(`/api/v1/users/search-by-email?${searchParams.toString()}`);
+    return apiCall(`/users/search-by-email?${searchParams.toString()}`);
   },
 
   // Eliminar usuario del gimnasio actual
