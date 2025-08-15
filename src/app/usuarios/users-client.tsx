@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { getUsersAPI, GymParticipant, membershipsAPI, MembershipStatus, getSelectedGymId } from '@/lib/api';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { getUsersAPI, GymParticipant, membershipsAPI, MembershipStatus, getSelectedGymId, UserBasicInfo } from '@/lib/api';
 import { Listbox, Transition, Dialog } from '@headlessui/react';
 import { Fragment } from 'react';
 import Image from 'next/image';
@@ -144,6 +144,13 @@ export default function UsersClient() {
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [userIdToAdd, setUserIdToAdd] = useState('');
   const [isAddingUser, setIsAddingUser] = useState(false);
+
+  // Búsqueda por email
+  const [searchEmail, setSearchEmail] = useState('');
+  const [searchResults, setSearchResults] = useState<UserBasicInfo[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedUserForAdd, setSelectedUserForAdd] = useState<UserBasicInfo | null>(null);
+  const [showConfirmAddUser, setShowConfirmAddUser] = useState(false);
 
   // Eliminar usuario
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -391,6 +398,96 @@ export default function UsersClient() {
       setIsUpdatingRole(false);
     }
   }, [selectedUser, selectedNewRole, users, selectedRole.id, searchTerm]);
+
+  // Función para buscar usuarios por email
+  const searchUsersByEmail = useCallback(async (email: string) => {
+    if (!email.trim() || email.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const result = await getUsersAPI.searchUserByEmail(email);
+      // La API devuelve un solo usuario, lo convertimos en array para consistencia
+      setSearchResults([result]);
+    } catch (error) {
+      console.warn('No se encontraron usuarios:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  // Debounce para la búsqueda
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchEmail && searchEmail.length >= 3) {
+        searchUsersByEmail(searchEmail);
+      } else {
+        setSearchResults([]);
+      }
+    }, 500); // 500ms de delay
+
+    return () => clearTimeout(timeoutId);
+  }, [searchEmail, searchUsersByEmail]);
+
+  // Funciones para manejar la selección de usuario
+  const handleSelectUserForAdd = (user: UserBasicInfo) => {
+    setSelectedUserForAdd(user);
+    setShowConfirmAddUser(true);
+  };
+
+  const handleConfirmAddUser = async () => {
+    if (!selectedUserForAdd) return;
+
+    try {
+      setIsAddingUser(true);
+      const result = await getUsersAPI.addUserToCurrentGym(selectedUserForAdd.id);
+      
+      // Verificar si es el caso de usuario ya existente
+      if (result.message && result.message.includes('ya pertenece')) {
+        setUserExistsMessage(result.message);
+        setShowUserExistsNotification(true);
+        
+        setTimeout(() => {
+          setShowUserExistsNotification(false);
+        }, 5000);
+      } else {
+        // Usuario añadido exitosamente
+        await fetchUsers();
+      }
+      
+      // Limpiar estados
+      setSearchEmail('');
+      setSearchResults([]);
+      setSelectedUserForAdd(null);
+      setShowConfirmAddUser(false);
+      setIsAddUserModalOpen(false);
+      setError(null);
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al añadir usuario');
+    } finally {
+      setIsAddingUser(false);
+    }
+  };
+
+  const handleCancelAddUser = () => {
+    setSelectedUserForAdd(null);
+    setShowConfirmAddUser(false);
+  };
+
+  // Función para limpiar todos los estados del modal
+  const clearAddUserModal = () => {
+    setIsAddUserModalOpen(false);
+    setError(null);
+    setUserIdToAdd('');
+    setSearchEmail('');
+    setSearchResults([]);
+    setSelectedUserForAdd(null);
+    setShowConfirmAddUser(false);
+  };
 
   const handleAddUser = async () => {
     if (!userIdToAdd.trim()) return;
@@ -1149,11 +1246,7 @@ export default function UsersClient() {
 
       {/* Modal para añadir usuario */}
       <Transition appear show={isAddUserModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => {
-          setIsAddUserModalOpen(false);
-          setError(null);
-          setUserIdToAdd('');
-        }}>
+        <Dialog as="div" className="relative z-50" onClose={clearAddUserModal}>
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"
@@ -1183,11 +1276,7 @@ export default function UsersClient() {
                       Añadir Usuario al Gimnasio
                     </Dialog.Title>
                     <button
-                      onClick={() => {
-                        setIsAddUserModalOpen(false);
-                        setError(null);
-                        setUserIdToAdd('');
-                      }}
+                      onClick={clearAddUserModal}
                       className="text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       <XMarkIcon className="h-6 w-6" />
@@ -1200,23 +1289,72 @@ export default function UsersClient() {
                         <UserIcon className="h-8 w-8 text-white" />
                       </div>
                       <p className="text-gray-600 text-sm">
-                        Ingresa el ID del usuario que deseas añadir al gimnasio. El usuario será asignado como MEMBER por defecto.
+                        Busca usuarios por email para añadirlos al gimnasio. El usuario será asignado como MEMBER por defecto.
                       </p>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        ID del Usuario
+                        Email del Usuario
                       </label>
-                      <input
-                        type="number"
-                        value={userIdToAdd}
-                        onChange={(e) => setUserIdToAdd(e.target.value)}
-                        placeholder="Ej: 12345"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        disabled={isAddingUser}
-                      />
+                      <div className="relative">
+                        <input
+                          type="email"
+                          value={searchEmail}
+                          onChange={(e) => setSearchEmail(e.target.value)}
+                          placeholder="Ej: usuario@ejemplo.com"
+                          className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          disabled={isAddingUser}
+                        />
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                        {isSearching && (
+                          <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                            <ArrowPathIcon className="h-5 w-5 text-gray-400 animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                      {searchEmail.length > 0 && searchEmail.length < 3 && (
+                        <p className="text-xs text-gray-500 mt-1">Escribe al menos 3 caracteres para buscar</p>
+                      )}
                     </div>
+
+                    {/* Resultados de búsqueda */}
+                    {searchResults.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium text-gray-700">Usuarios encontrados:</h4>
+                        <div className="max-h-32 overflow-y-auto space-y-2">
+                          {searchResults.map((user) => (
+                            <button
+                              key={user.id}
+                              onClick={() => handleSelectUserForAdd(user)}
+                              className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+                              disabled={isAddingUser}
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                  <UserIcon className="h-4 w-4 text-green-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {user.first_name} {user.last_name}
+                                  </p>
+                                  <p className="text-xs text-gray-500">{user.email}</p>
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Mensaje cuando no hay resultados */}
+                    {searchEmail.length >= 3 && !isSearching && searchResults.length === 0 && (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-gray-500">No se encontraron usuarios con ese email</p>
+                      </div>
+                    )}
 
                     {error && (
                       <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -1225,26 +1363,14 @@ export default function UsersClient() {
                     )}
                   </div>
 
-                  <div className="mt-6 flex space-x-3">
+                  <div className="mt-6">
                     <button
                       type="button"
-                      className="flex-1 inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
-                      onClick={() => {
-                        setIsAddUserModalOpen(false);
-                        setError(null);
-                        setUserIdToAdd('');
-                      }}
+                      className="w-full inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+                      onClick={clearAddUserModal}
                       disabled={isAddingUser}
                     >
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      className="flex-1 inline-flex justify-center rounded-md border border-transparent bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                      onClick={handleAddUser}
-                      disabled={isAddingUser || !userIdToAdd.trim()}
-                    >
-                      {isAddingUser ? 'Añadiendo...' : 'Añadir Usuario'}
+                      Cerrar
                     </button>
                   </div>
                 </Dialog.Panel>
@@ -1428,6 +1554,110 @@ export default function UsersClient() {
                       onClick={() => setShowUserExistsNotification(false)}
                     >
                       Entendido
+                    </button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
+
+      {/* Modal de confirmación para añadir usuario seleccionado */}
+      <Transition appear show={showConfirmAddUser} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={handleCancelAddUser}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                  <div className="flex items-center justify-between mb-6">
+                    <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
+                      Confirmar Añadir Usuario
+                    </Dialog.Title>
+                    <button
+                      onClick={handleCancelAddUser}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                      disabled={isAddingUser}
+                    >
+                      <XMarkIcon className="h-6 w-6" />
+                    </button>
+                  </div>
+
+                  {selectedUserForAdd && (
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <UserIcon className="h-8 w-8 text-white" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                          {selectedUserForAdd.first_name} {selectedUserForAdd.last_name}
+                        </h4>
+                        <p className="text-gray-600 text-sm mb-4">
+                          {selectedUserForAdd.email}
+                        </p>
+                        <p className="text-gray-600 text-sm">
+                          ¿Estás seguro que deseas añadir este usuario al gimnasio?
+                        </p>
+                      </div>
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-start space-x-3">
+                          <UserPlusIcon className="h-5 w-5 text-blue-600 mt-0.5" />
+                          <div>
+                            <h5 className="text-sm font-medium text-blue-800">Información del proceso</h5>
+                            <ul className="text-xs text-blue-700 mt-1 space-y-1">
+                              <li>• El usuario será añadido como MEMBER</li>
+                              <li>• Tendrá acceso básico al gimnasio</li>
+                              <li>• Podrás cambiar su rol después si es necesario</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+
+                      {error && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                          <p className="text-red-700 text-sm">{error}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex space-x-3">
+                    <button
+                      type="button"
+                      className="flex-1 inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+                      onClick={handleCancelAddUser}
+                      disabled={isAddingUser}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 inline-flex justify-center rounded-md border border-transparent bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      onClick={handleConfirmAddUser}
+                      disabled={isAddingUser}
+                    >
+                      {isAddingUser ? 'Añadiendo...' : 'Confirmar y Añadir'}
                     </button>
                   </div>
                 </Dialog.Panel>

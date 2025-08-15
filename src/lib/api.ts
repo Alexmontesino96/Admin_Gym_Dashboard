@@ -286,6 +286,13 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}, custo
 };
 
 // Tipos de datos de la API
+export interface UserBasicInfo {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+}
+
 export interface UserPublicProfile {
   id: number;
   first_name?: string;
@@ -859,6 +866,14 @@ export const getUsersAPI = {
     
     const endpoint = `/users/gym-users${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
     return apiCall(endpoint);
+  },
+
+  // Buscar usuario por email que NO pertenezca al gimnasio actual
+  searchUserByEmail: async (email: string): Promise<UserBasicInfo> => {
+    const searchParams = new URLSearchParams();
+    searchParams.append('email', email);
+    
+    return apiCall(`/api/v1/users/search-by-email?${searchParams.toString()}`);
   },
 
   // Eliminar usuario del gimnasio actual
