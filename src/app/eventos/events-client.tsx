@@ -1113,7 +1113,7 @@ export default function EventsClient() {
                             type="datetime-local"
                             id="edit-start-time"
                             value={editFormData.start_time ? formatDateTimeForInput(editFormData.start_time) : ''}
-                            onChange={(e) => handleEditFormChange('start_time', e.target.value)}
+                            onChange={(e) => handleEditFormChange('start_time', e.target.value ? new Date(e.target.value).toISOString().slice(0, -1) + 'Z' : '')}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                           />
@@ -1127,7 +1127,7 @@ export default function EventsClient() {
                             type="datetime-local"
                             id="edit-end-time"
                             value={editFormData.end_time ? formatDateTimeForInput(editFormData.end_time) : ''}
-                            onChange={(e) => handleEditFormChange('end_time', e.target.value)}
+                            onChange={(e) => handleEditFormChange('end_time', e.target.value ? new Date(e.target.value).toISOString().slice(0, -1) + 'Z' : '')}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                           />
@@ -1279,7 +1279,7 @@ export default function EventsClient() {
                             type="datetime-local"
                             id="create-start-time"
                             value={createFormData.start_time}
-                            onChange={(e) => handleCreateFormChange('start_time', e.target.value)}
+                            onChange={(e) => handleCreateFormChange('start_time', e.target.value ? new Date(e.target.value).toISOString().slice(0, -1) + 'Z' : '')}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                           />
@@ -1293,7 +1293,7 @@ export default function EventsClient() {
                             type="datetime-local"
                             id="create-end-time"
                             value={createFormData.end_time}
-                            onChange={(e) => handleCreateFormChange('end_time', e.target.value)}
+                            onChange={(e) => handleCreateFormChange('end_time', e.target.value ? new Date(e.target.value).toISOString().slice(0, -1) + 'Z' : '')}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                           />
