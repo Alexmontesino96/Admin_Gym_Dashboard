@@ -28,10 +28,13 @@ export default async function EventosPage() {
               <p className="text-lg text-slate-600">Sistema completo de eventos y actividades</p>
             </div>
             <div className="flex space-x-4">
-              <button className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-xl transition-all duration-200 hover:shadow-lg hover:scale-105">
+              <Link
+                href="/eventos?create=1"
+                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-xl transition-all duration-200 hover:shadow-lg hover:scale-105"
+              >
                 <Plus size={20} />
                 <span className="font-semibold">Crear Evento</span>
-              </button>
+              </Link>
               <Link
                 href="/eventos/calendario"
                 className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 text-white rounded-xl transition-all duration-200 hover:shadow-lg hover:scale-105"

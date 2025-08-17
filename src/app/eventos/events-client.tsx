@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Event, eventsAPI, EventUpdateData, EventCreateData, getUsersAPI, GymParticipant, gymsAPI } from '@/lib/api'
 import { toGymZonedISO, ensureEndAfterStart } from '@/lib/time'
 import EventChatModal from '@/components/EventChatModal'
@@ -78,6 +79,8 @@ const EventsSkeleton = () => (
 );
 
 export default function EventsClient() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -172,6 +175,14 @@ export default function EventsClient() {
   useEffect(() => {
     loadEvents()
   }, [loadEvents])
+
+  // Abrir modal de creación si viene ?create=1 en la URL
+  useEffect(() => {
+    const shouldOpen = searchParams?.get('create') === '1'
+    if (shouldOpen && !showCreateModal) {
+      openCreateModal()
+    }
+  }, [searchParams, showCreateModal])
 
   // Filtrar eventos de manera optimizada
   const filteredEvents = useMemo(() => 
@@ -383,6 +394,14 @@ export default function EventsClient() {
       max_participants: 0,
     })
     setShowCreateModal(false)
+    // Limpiar el query param 'create' si viene de /eventos?create=1
+    try {
+      const sp = new URLSearchParams(searchParams?.toString())
+      if (sp.has('create')) {
+        sp.delete('create')
+        router.replace(`/eventos${sp.toString() ? `?${sp.toString()}` : ''}`)
+      }
+    } catch {}
   }
 
   const handleCreateFormChange = (field: keyof EventCreateData, value: any) => {
