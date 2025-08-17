@@ -2,13 +2,14 @@
 
 type Mode = 'utc' | 'offset'
 
-// Parse 'YYYY-MM-DDTHH:MM' or 'YYYY-MM-DDTHH:MM:SS'
+// Robust parse for 'YYYY-MM-DDTHH:MM[:SS[.sss]]' or with space separator
 const parseLocalDateTime = (val: string) => {
-  const [datePart, timePart] = val.split('T')
-  if (!datePart || !timePart) throw new Error('Invalid datetime-local value')
-  const [y, m, d] = datePart.split('-').map(Number)
-  const [hh, mm, ss] = (timePart.split(':').map(Number) as [number, number, number | undefined])
-  return { y, m, d, hh, mm, ss: ss ?? 0 }
+  const trimmed = val.trim()
+  const m = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?/)
+  if (!m) throw new Error('Invalid datetime-local value')
+  const y = Number(m[1]); const mo = Number(m[2]); const d = Number(m[3])
+  const hh = Number(m[4]); const mm = Number(m[5]); const ss = m[6] ? Number(m[6]) : 0
+  return { y, m: mo, d, hh, mm, ss }
 }
 
 // Compute timezone offset (in minutes) for a given UTC timestamp and IANA zone
@@ -49,9 +50,27 @@ const pad2 = (n: number) => String(n).padStart(2, '0')
 
 export const toGymZonedISO = (val: string, gymTimeZone: string, mode: Mode = 'utc'): string => {
   if (!val) throw new Error('Empty datetime value')
-  // Normalize input like 'YYYY-MM-DDTHH:MM' -> add seconds
+  const aware = /[zZ]$/.test(val) || /[+-]\d{2}:?\d{2}$/.test(val)
+  if (aware) {
+    // Already timezone-aware
+    const date = new Date(val)
+    if (isNaN(date.getTime())) throw new RangeError('Invalid time value')
+    if (mode === 'utc') return date.toISOString()
+    const utcMs = date.getTime()
+    const offMin = getTzOffsetMinutes(utcMs, gymTimeZone)
+    const sign = offMin >= 0 ? '+' : '-'
+    const abs = Math.abs(offMin)
+    const offHH = pad2(Math.floor(abs / 60))
+    const offMM = pad2(abs % 60)
+    const zDate = new Date(utcMs + offMin * 60000)
+    const y = zDate.getUTCFullYear(); const m = zDate.getUTCMonth() + 1; const d = zDate.getUTCDate()
+    const hh = zDate.getUTCHours(); const mm = zDate.getUTCMinutes(); const ss = zDate.getUTCSeconds()
+    return `${y}-${pad2(m)}-${pad2(d)}T${pad2(hh)}:${pad2(mm)}:${pad2(ss)}${sign}${offHH}:${offMM}`
+  }
+  // Normalize input like 'YYYY-MM-DDTHH:MM' -> add seconds if missing
   const normalized = val.length === 16 ? `${val}:00` : val
   const utcMs = gymLocalToUtcMs(normalized, gymTimeZone)
+  if (!isFinite(utcMs)) throw new RangeError('Invalid time value')
   if (mode === 'utc') {
     return new Date(utcMs).toISOString()
   }
@@ -67,4 +86,3 @@ export const toGymZonedISO = (val: string, gymTimeZone: string, mode: Mode = 'ut
 export const ensureEndAfterStart = (startISO: string, endISO: string): boolean => {
   return new Date(endISO).getTime() > new Date(startISO).getTime()
 }
-

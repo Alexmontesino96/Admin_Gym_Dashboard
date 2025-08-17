@@ -402,8 +402,14 @@ export default function EventsClient() {
 
       // Convertir fechas a ISO con zona horaria del gym
       const tz = gymInfo?.timezone || 'UTC'
-      const startISO = toGymZonedISO(createFormData.start_time, tz, 'utc')
-      const endISO = toGymZonedISO(createFormData.end_time, tz, 'utc')
+      let startISO: string, endISO: string
+      try {
+        startISO = toGymZonedISO(createFormData.start_time, tz, 'utc')
+        endISO = toGymZonedISO(createFormData.end_time, tz, 'utc')
+      } catch (e: any) {
+        setError('Fecha u hora inválida. Revisa el formato seleccionado.')
+        return
+      }
       if (!ensureEndAfterStart(startISO, endISO)) {
         setError('La fecha de fin debe ser posterior a la fecha de inicio')
         return
