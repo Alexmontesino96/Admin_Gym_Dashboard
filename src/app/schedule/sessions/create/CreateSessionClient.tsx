@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { eventsAPI, getUsersAPI, gymsAPI } from '@/lib/api'
+import { toGymZonedISO, ensureEndAfterStart } from '@/lib/time'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -79,12 +80,9 @@ export default function CreateSessionClient() {
       setError(null)
 
       const toApiDate = (val: string) => {
-        // Asumimos que el input datetime-local del usuario representa la hora local del gimnasio
-        // Enviamos sin timezone para que el backend lo interprete como hora local del gym
-        if (val.endsWith('Z')) return val.slice(0, -1)
-        if (val.length === 16) return `${val}:00`
-        if (val.length === 19) return val
-        return val
+        // Convertir desde hora local del gimnasio a ISO UTC con zona
+        const tz = gymInfo?.timezone || 'UTC'
+        return toGymZonedISO(val, tz, 'utc')
       }
 
       const payload: any = {
@@ -96,6 +94,10 @@ export default function CreateSessionClient() {
 
       if (sessionFormData.end_time) {
         payload.end_time = toApiDate(sessionFormData.end_time)
+        // Validación simple: end > start
+        if (!ensureEndAfterStart(payload.start_time, payload.end_time)) {
+          throw new Error('La hora de fin debe ser posterior a la de inicio')
+        }
       }
       if (sessionFormData.room) payload.room = sessionFormData.room
       if (sessionFormData.is_recurring !== undefined) payload.is_recurring = sessionFormData.is_recurring
