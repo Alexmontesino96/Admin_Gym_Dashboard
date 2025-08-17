@@ -79,9 +79,13 @@ export default function CreateSessionClient() {
       setSaving(true)
       setError(null)
 
+      if (!gymInfo?.timezone) {
+        setError('No se pudo determinar la zona horaria del gimnasio. Selecciona un gimnasio e inténtalo de nuevo.')
+        return
+      }
       const toApiDate = (val: string) => {
         // Convertir desde hora local del gimnasio a ISO UTC con zona
-        const tz = gymInfo?.timezone || 'UTC'
+        const tz = gymInfo.timezone as string
         return toGymZonedISO(val, tz, 'utc')
       }
 
@@ -371,7 +375,7 @@ export default function CreateSessionClient() {
           </Link>
           <button
             onClick={handleCreateSession}
-            disabled={saving}
+            disabled={saving || !gymInfo?.timezone}
             className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (

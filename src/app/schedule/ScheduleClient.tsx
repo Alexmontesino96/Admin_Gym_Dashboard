@@ -534,8 +534,12 @@ export default function ScheduleClient() {
     }
     try {
       setSavingSession(true);
+      if (!gymInfo?.timezone) {
+        setError('No se pudo determinar la zona horaria del gimnasio. Selecciona un gimnasio e inténtalo de nuevo.')
+        return
+      }
       const toApiDate = (val:string)=>{
-        const tz = gymInfo?.timezone || 'UTC'
+        const tz = gymInfo.timezone as string
         return toGymZonedISO(val, tz, 'utc')
       }
 
@@ -1503,7 +1507,7 @@ export default function ScheduleClient() {
             </div>
             <div className="mt-6 flex justify-end space-x-3">
               <button onClick={()=>setShowCreateSessionModal(false)} className="px-4 py-2 text-sm rounded border">Cancelar</button>
-              <button onClick={handleCreateSession} disabled={savingSession} className="px-4 py-2 text-sm rounded bg-blue-600 text-white disabled:opacity-50">{savingSession?'Guardando...':'Crear'}</button>
+              <button onClick={handleCreateSession} disabled={savingSession || !gymInfo?.timezone} className="px-4 py-2 text-sm rounded bg-blue-600 text-white disabled:opacity-50">{savingSession?'Guardando...':'Crear'}</button>
             </div>
           </div>
         </div>) }
@@ -1574,12 +1578,13 @@ export default function ScheduleClient() {
             </div>
             <div className="mt-5 flex justify-end gap-3 text-sm">
               <button onClick={()=>setShowEditSessionModal(false)} className="px-3 py-1 border rounded">Cancelar</button>
-              <button disabled={savingEdit} onClick={async()=>{
+              <button disabled={savingEdit || !gymInfo?.timezone} onClick={async()=>{
                 try{
                   setSavingEdit(true)
+                  if (!gymInfo?.timezone) { setError('No se pudo determinar la zona horaria del gimnasio.'); return }
                   const toApiDate = (val:string|undefined)=>{
                     if(!val) return undefined
-                    const tz = gymInfo?.timezone || 'UTC'
+                    const tz = gymInfo.timezone as string
                     return toGymZonedISO(val, tz, 'utc')
                   }
                   const payload: any = {}
