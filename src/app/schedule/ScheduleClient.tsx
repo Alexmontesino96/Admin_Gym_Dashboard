@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import { eventsAPI } from '@/lib/api'
 import { getUsersAPI } from '@/lib/api'
+import { gymsAPI } from '@/lib/api'
+import { toGymZonedISO, ensureEndAfterStart } from '@/lib/time'
 import { CalendarIcon, ClockIcon, MapPinIcon, UserGroupIcon, CheckCircleIcon, XCircleIcon, UserIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, TrashIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
@@ -86,6 +88,7 @@ export default function ScheduleClient() {
   const [loadingSessions, setLoadingSessions] = useState(false)
   const [rangeStart,setRangeStart]=useState<Date|null>(null)
   const [rangeEnd,setRangeEnd]=useState<Date|null>(null)
+  const [gymInfo, setGymInfo] = useState<any | null>(null)
 
   // Selector de semanas
   const [weeks, setWeeks] = useState<Date[]>([])
@@ -118,6 +121,16 @@ export default function ScheduleClient() {
       const data=await eventsAPI.getGymHoursByDay(day)
       setGymHours(data ? [data] : [])
     }catch(e){console.error(e)}finally{setLoadingHours(false)}
+  }
+
+  // Información del gimnasio (timezone)
+  const loadGymInfo = async () => {
+    try {
+      const data = await gymsAPI.getGymInfo()
+      setGymInfo(data)
+    } catch (err) {
+      console.error('Error cargando información del gimnasio:', err)
+    }
   }
 
   const generateWeeks = (baseDate: Date, count: number = 8) => {
@@ -522,10 +535,8 @@ export default function ScheduleClient() {
     try {
       setSavingSession(true);
       const toApiDate = (val:string)=>{
-        if(val.endsWith('Z')) return val
-        if(val.length===16) return `${val}:00Z`
-        if(val.length===19) return `${val}Z`
-        return val
+        const tz = gymInfo?.timezone || 'UTC'
+        return toGymZonedISO(val, tz, 'utc')
       }
 
       const payload: any = {
@@ -535,7 +546,12 @@ export default function ScheduleClient() {
         status: sessionFormData.status,
       };
 
-      if(sessionFormData.end_time){ payload.end_time = toApiDate(sessionFormData.end_time) }
+      if(sessionFormData.end_time){
+        payload.end_time = toApiDate(sessionFormData.end_time)
+        if (!ensureEndAfterStart(payload.start_time, payload.end_time)) {
+          throw new Error('La hora de fin debe ser posterior a la de inicio')
+        }
+      }
       if(sessionFormData.room) payload.room = sessionFormData.room
       if(sessionFormData.is_recurring!==undefined) payload.is_recurring = sessionFormData.is_recurring
       if(sessionFormData.recurrence_pattern) payload.recurrence_pattern = sessionFormData.recurrence_pattern
@@ -567,6 +583,8 @@ export default function ScheduleClient() {
       loadClasses()
     }
     if (activeTab === 'sessions') {
+      // Cargar timezone del gimnasio para conversión correcta de fechas
+      loadGymInfo()
       const start=new Date(); start.setDate(start.getDate()-14); start.setHours(0,0,0,0)
       const end=new Date(); end.setDate(end.getDate()+30); end.setHours(0,0,0,0)
       fetchSessionsInRange(start,end)
@@ -1561,23 +1579,19 @@ export default function ScheduleClient() {
                   setSavingEdit(true)
                   const toApiDate = (val:string|undefined)=>{
                     if(!val) return undefined
-                    // Si ya viene con 'Z', asumir correcto
-                    if(val.endsWith('Z')) return val
-                    // Si falta segundos, añadirlos
-                    if(val.length===16){ // YYYY-MM-DDTHH:MM
-                      return `${val}:00Z`
-                    }
-                    // Si tiene segundos pero no Z
-                    if(val.length===19){ // YYYY-MM-DDTHH:MM:SS
-                      return `${val}Z`
-                    }
-                    return val
+                    const tz = gymInfo?.timezone || 'UTC'
+                    return toGymZonedISO(val, tz, 'utc')
                   }
                   const payload: any = {}
                   if (editSession.class_id !== undefined) payload.class_id = editSession.class_id
                   if (editSession.trainer_id !== undefined) payload.trainer_id = editSession.trainer_id
                   if (editSession.start_time) payload.start_time = toApiDate(editSession.start_time)
-                  if (editSession.end_time) payload.end_time = toApiDate(editSession.end_time)
+                  if (editSession.end_time) {
+                    payload.end_time = toApiDate(editSession.end_time)
+                    if (!ensureEndAfterStart(payload.start_time, payload.end_time)) {
+                      throw new Error('La hora de fin debe ser posterior a la de inicio')
+                    }
+                  }
                   if (editSession.room !== undefined) payload.room = editSession.room
                   if (editSession.status) payload.status = editSession.status
                   if (editSession.notes !== undefined) payload.notes = editSession.notes
