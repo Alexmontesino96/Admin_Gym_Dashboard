@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Event, eventsAPI, EventUpdateData, EventCreateData, getUsersAPI, GymParticipant } from '@/lib/api'
+import { Event, eventsAPI, EventUpdateData, EventCreateData, getUsersAPI, GymParticipant, gymsAPI } from '@/lib/api'
+import { toGymZonedISO, ensureEndAfterStart } from '@/lib/time'
 import EventChatModal from '@/components/EventChatModal'
 import EventChatButton from '@/components/EventChatButton'
 
@@ -109,6 +110,7 @@ export default function EventsClient() {
   // Estados para chat inicial opcional al crear evento
   const [includeChat, setIncludeChat] = useState(false)
   const [firstMessageChat, setFirstMessageChat] = useState('Hello Everyone')
+  const [gymInfo, setGymInfo] = useState<any | null>(null)
 
   // Estados para registro masivo
   const [showBulkModal, setShowBulkModal] = useState(false)
@@ -135,6 +137,10 @@ export default function EventsClient() {
     try {
       setLoading(true)
       setError(null)
+      // Cargar info del gym para conocer su timezone (si no está)
+      if (!gymInfo) {
+        try { setGymInfo(await gymsAPI.getGymInfo()) } catch (e) { console.warn('No se pudo obtener gymInfo:', e) }
+      }
       
       const params: any = {}
       if (statusFilterMemo !== 'all') {
@@ -289,7 +295,18 @@ export default function EventsClient() {
         return
       }
 
-      const updatedEvent = await eventsAPI.updateEvent(editingEvent.id, changedFields)
+      // Convertir datetimes si están presentes
+      const tz = gymInfo?.timezone || 'UTC'
+      const payload: EventUpdateData = { ...changedFields }
+      if (payload.start_time) payload.start_time = toGymZonedISO(payload.start_time as string, tz, 'utc')
+      if (payload.end_time) {
+        payload.end_time = toGymZonedISO(payload.end_time as string, tz, 'utc')
+        if (payload.start_time && !ensureEndAfterStart(payload.start_time, payload.end_time)) {
+          throw new Error('La fecha de fin debe ser posterior a la fecha de inicio')
+        }
+      }
+
+      const updatedEvent = await eventsAPI.updateEvent(editingEvent.id, payload)
       
       // Actualizar la lista de eventos
       setEvents(prev => prev.map(event => 
@@ -383,11 +400,18 @@ export default function EventsClient() {
         return
       }
 
-      // Preparar payload; convertir fechas a ISO con zona horaria
+      // Convertir fechas a ISO con zona horaria del gym
+      const tz = gymInfo?.timezone || 'UTC'
+      const startISO = toGymZonedISO(createFormData.start_time, tz, 'utc')
+      const endISO = toGymZonedISO(createFormData.end_time, tz, 'utc')
+      if (!ensureEndAfterStart(startISO, endISO)) {
+        setError('La fecha de fin debe ser posterior a la fecha de inicio')
+        return
+      }
       const payload: any = {
         ...createFormData,
-        start_time: new Date(createFormData.start_time).toISOString().slice(0, -1),
-        end_time: new Date(createFormData.end_time).toISOString().slice(0, -1),
+        start_time: startISO,
+        end_time: endISO,
       }
       if (includeChat) {
         payload.first_message_chat = firstMessageChat.trim()
