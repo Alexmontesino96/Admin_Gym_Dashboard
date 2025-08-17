@@ -295,8 +295,12 @@ export default function EventsClient() {
         return
       }
 
-      // Convertir datetimes si están presentes
-      const tz = gymInfo?.timezone || 'UTC'
+      // Convertir datetimes si están presentes (requiere TZ del gimnasio)
+      const tz = gymInfo?.timezone as string
+      if (!tz) {
+        setError('No se pudo determinar la zona horaria del gimnasio. Selecciona un gimnasio e inténtalo de nuevo.')
+        return
+      }
       const payload: EventUpdateData = { ...changedFields }
       if (payload.start_time) payload.start_time = toGymZonedISO(formatDateTimeForInput(payload.start_time as string), tz, 'utc')
       if (payload.end_time) {
@@ -410,8 +414,12 @@ export default function EventsClient() {
         return
       }
 
-      // Convertir fechas a ISO con zona horaria del gym
-      const tz = gymInfo?.timezone || 'UTC'
+      // Convertir fechas a ISO con zona horaria del gym (sin fallback)
+      const tz = gymInfo?.timezone as string
+      if (!tz) {
+        setError('No se pudo determinar la zona horaria del gimnasio. Selecciona un gimnasio e inténtalo de nuevo.')
+        return
+      }
       let startISO: string, endISO: string
       try {
         startISO = toGymZonedISO(formatDateTimeForInput(createFormData.start_time), tz, 'utc')
@@ -1241,7 +1249,7 @@ export default function EventsClient() {
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   onClick={handleSaveEvent}
-                  disabled={saving}
+                  disabled={saving || !gymInfo?.timezone}
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? (
@@ -1295,6 +1303,11 @@ export default function EventsClient() {
                     </div>
                     
                     <form className="space-y-6">
+                      {gymInfo?.timezone ? (
+                        <p className="text-xs text-blue-600 bg-blue-50 inline-block px-2 py-1 rounded">Zona horaria del gimnasio: {gymInfo.timezone}</p>
+                      ) : (
+                        <p className="text-xs text-red-600 bg-red-50 inline-block px-2 py-1 rounded">Selecciona un gimnasio para habilitar la programación (falta zona horaria)</p>
+                      )}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
                           <label htmlFor="create-title" className="block text-sm font-medium text-gray-700 mb-2">
@@ -1421,7 +1434,7 @@ export default function EventsClient() {
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   onClick={handleCreateEvent}
-                  disabled={saving}
+                  disabled={saving || !gymInfo?.timezone}
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? (
