@@ -804,9 +804,16 @@ export default function EventsClient() {
       {/* Lista de eventos */}
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900">
-            Eventos ({filteredEvents.length})
-          </h3>
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-medium text-gray-900">
+              Eventos ({filteredEvents.length})
+            </h3>
+            {gymInfo?.timezone && (
+              <span className="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                Zona horaria: {gymInfo.timezone}
+              </span>
+            )}
+          </div>
           <button
             onClick={openCreateModal}
             className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
