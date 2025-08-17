@@ -298,9 +298,9 @@ export default function EventsClient() {
       // Convertir datetimes si están presentes
       const tz = gymInfo?.timezone || 'UTC'
       const payload: EventUpdateData = { ...changedFields }
-      if (payload.start_time) payload.start_time = toGymZonedISO(payload.start_time as string, tz, 'utc')
+      if (payload.start_time) payload.start_time = toGymZonedISO(formatDateTimeForInput(payload.start_time as string), tz, 'utc')
       if (payload.end_time) {
-        payload.end_time = toGymZonedISO(payload.end_time as string, tz, 'utc')
+        payload.end_time = toGymZonedISO(formatDateTimeForInput(payload.end_time as string), tz, 'utc')
         if (payload.start_time && !ensureEndAfterStart(payload.start_time, payload.end_time)) {
           throw new Error('La fecha de fin debe ser posterior a la fecha de inicio')
         }
@@ -342,8 +342,18 @@ export default function EventsClient() {
   }
 
   const formatDateTimeForInput = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toISOString().slice(0, 16)
+    // Accept aware ISO (Z/offset) or naive 'YYYY-MM-DDTHH:MM[:SS]'
+    if (!dateString) return ''
+    // If already naive like 'YYYY-MM-DDTHH:MM', keep first 16
+    if (/^\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}/.test(dateString) && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(dateString)) {
+      return dateString.slice(0, 16)
+    }
+    const d = new Date(dateString)
+    if (isNaN(d.getTime())) return ''
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const y = d.getFullYear(); const m = pad(d.getMonth() + 1); const day = pad(d.getDate())
+    const hh = pad(d.getHours()); const mm = pad(d.getMinutes())
+    return `${y}-${m}-${day}T${hh}:${mm}`
   }
 
   const openCreateModal = () => {
@@ -404,8 +414,8 @@ export default function EventsClient() {
       const tz = gymInfo?.timezone || 'UTC'
       let startISO: string, endISO: string
       try {
-        startISO = toGymZonedISO(createFormData.start_time, tz, 'utc')
-        endISO = toGymZonedISO(createFormData.end_time, tz, 'utc')
+        startISO = toGymZonedISO(formatDateTimeForInput(createFormData.start_time), tz, 'utc')
+        endISO = toGymZonedISO(formatDateTimeForInput(createFormData.end_time), tz, 'utc')
       } catch (e: any) {
         setError('Fecha u hora inválida. Revisa el formato seleccionado.')
         return
@@ -1143,7 +1153,7 @@ export default function EventsClient() {
                             type="datetime-local"
                             id="edit-start-time"
                             value={editFormData.start_time ? formatDateTimeForInput(editFormData.start_time) : ''}
-                            onChange={(e) => handleEditFormChange('start_time', e.target.value ? new Date(e.target.value).toISOString() : '')}
+                            onChange={(e) => handleEditFormChange('start_time', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                           />
@@ -1157,7 +1167,7 @@ export default function EventsClient() {
                             type="datetime-local"
                             id="edit-end-time"
                             value={editFormData.end_time ? formatDateTimeForInput(editFormData.end_time) : ''}
-                            onChange={(e) => handleEditFormChange('end_time', e.target.value ? new Date(e.target.value).toISOString() : '')}
+                            onChange={(e) => handleEditFormChange('end_time', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                           />
@@ -1309,7 +1319,7 @@ export default function EventsClient() {
                             type="datetime-local"
                             id="create-start-time"
                             value={createFormData.start_time ? formatDateTimeForInput(createFormData.start_time) : ''}
-                            onChange={(e) => handleCreateFormChange('start_time', e.target.value ? new Date(e.target.value).toISOString() : '')}
+                            onChange={(e) => handleCreateFormChange('start_time', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                           />
@@ -1323,7 +1333,7 @@ export default function EventsClient() {
                             type="datetime-local"
                             id="create-end-time"
                             value={createFormData.end_time ? formatDateTimeForInput(createFormData.end_time) : ''}
-                            onChange={(e) => handleCreateFormChange('end_time', e.target.value ? new Date(e.target.value).toISOString() : '')}
+                            onChange={(e) => handleCreateFormChange('end_time', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                           />
