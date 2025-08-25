@@ -33,7 +33,9 @@ import {
   FileText,
   PlusCircle,
   CreditCard,
-  BarChart3
+  BarChart3,
+  ClipboardList,
+  Copy
 } from 'lucide-react';
 import GymSelector from './GymSelector';
 
@@ -53,6 +55,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
   const [isScheduleExpanded, setIsScheduleExpanded] = useState(false);
   const [isNutritionExpanded, setIsNutritionExpanded] = useState(false);
   const [isMembershipExpanded, setIsMembershipExpanded] = useState(false);
+  const [isSurveysExpanded, setIsSurveysExpanded] = useState(false);
   const pathname = usePathname();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const gymSelectorRef = useRef<HTMLDivElement>(null);
@@ -98,6 +101,18 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
         { key: "membership-plans", label: "Planes", href: "/membership/planes", icon: FileText },
       ]
     },
+    {
+      key: "surveys",
+      label: "Encuestas",
+      href: "/surveys",
+      icon: ClipboardList,
+      hasSubmenu: true,
+      submenu: [
+        { key: "surveys-list", label: "Ver Todas", href: "/surveys", icon: FileText },
+        { key: "surveys-create", label: "Crear Nueva", href: "/surveys/create", icon: PlusCircle },
+        { key: "surveys-templates", label: "Plantillas", href: "/surveys/templates", icon: Copy }
+      ]
+    },
     { key: "gimnasio", label: "Gimnasio", href: "/gimnasio", icon: Building },
     { key: "chat", label: "Chat", href: "/chat", icon: MessageCircle },
     { key: "settings", label: "Configuración", href: "/settings", icon: Settings },
@@ -130,6 +145,9 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
     }
     if (pathname?.startsWith('/membership')) {
       setIsMembershipExpanded(true);
+    }
+    if (pathname?.startsWith('/surveys')) {
+      setIsSurveysExpanded(true);
     }
   }, [pathname]);
 
@@ -302,6 +320,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                               setIsNutritionExpanded(!isNutritionExpanded);
                             } else if (key === 'membership') {
                               setIsMembershipExpanded(!isMembershipExpanded);
+                            } else if (key === 'surveys') {
+                              setIsSurveysExpanded(!isSurveysExpanded);
                             }
                           }}
                           className={`p-1 rounded-md transition-colors ${
@@ -312,14 +332,20 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                         >
                           <ChevronRight 
                             className={`h-4 w-4 transition-transform duration-200 ${
-                              (key === 'schedule' && isScheduleExpanded) || (key === 'nutrition' && isNutritionExpanded) || (key === 'membership' && isMembershipExpanded) ? 'rotate-90' : ''
+                              (key === 'schedule' && isScheduleExpanded) || 
+                              (key === 'nutrition' && isNutritionExpanded) || 
+                              (key === 'membership' && isMembershipExpanded) ||
+                              (key === 'surveys' && isSurveysExpanded) ? 'rotate-90' : ''
                             }`}
                           />
                         </button>
                       </div>
                       
                       {/* Submenú */}
-                      {((key === 'schedule' && isScheduleExpanded) || (key === 'nutrition' && isNutritionExpanded) || (key === 'membership' && isMembershipExpanded)) && submenu && (
+                      {((key === 'schedule' && isScheduleExpanded) || 
+                        (key === 'nutrition' && isNutritionExpanded) || 
+                        (key === 'membership' && isMembershipExpanded) ||
+                        (key === 'surveys' && isSurveysExpanded)) && submenu && (
                         <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4">
                           {submenu.map(({ key: subKey, label: subLabel, href: subHref, icon: SubIcon }) => {
                             const isSubActive = pathname === subHref;

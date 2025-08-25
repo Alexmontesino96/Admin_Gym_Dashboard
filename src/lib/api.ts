@@ -1880,3 +1880,606 @@ export const getMealTypeIcon = (mealType: MealType): string => {
   };
   return icons[mealType] || '🍽️';
 };
+
+// ========================================
+// SURVEYS SYSTEM - TIPOS Y API
+// ========================================
+
+// ===== ENUMS =====
+export enum SurveyStatus {
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+  CLOSED = 'CLOSED',
+  ARCHIVED = 'ARCHIVED'
+}
+
+export enum QuestionType {
+  TEXT = 'TEXT',
+  TEXTAREA = 'TEXTAREA',
+  RADIO = 'RADIO',
+  CHECKBOX = 'CHECKBOX',
+  SELECT = 'SELECT',
+  SCALE = 'SCALE',
+  DATE = 'DATE',
+  TIME = 'TIME',
+  NUMBER = 'NUMBER',
+  EMAIL = 'EMAIL',
+  PHONE = 'PHONE',
+  YES_NO = 'YES_NO',
+  NPS = 'NPS'
+}
+
+// ===== INTERFACES PRINCIPALES =====
+export interface Survey {
+  id: number;
+  gym_id: number;
+  creator_id: number;
+  creator?: UserBasicInfo;
+  title: string;
+  description?: string;
+  instructions?: string;
+  status: SurveyStatus;
+  start_date?: string;
+  end_date?: string;
+  is_anonymous: boolean;
+  allow_multiple: boolean;
+  randomize_questions: boolean;
+  show_progress: boolean;
+  thank_you_message?: string;
+  tags?: string[];
+  target_audience?: string;
+  published_at?: string;
+  questions?: SurveyQuestion[];
+  response_count?: number;  // Solo disponible en getById
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SurveyQuestion {
+  id: number;
+  survey_id: number;
+  question_text: string;
+  question_type: QuestionType;
+  is_required: boolean;
+  order: number;
+  help_text?: string;
+  min_value?: number;
+  max_value?: number;
+  regex_validation?: string;
+  depends_on_question_id?: number;
+  depends_on_answer?: any;
+  choices?: QuestionChoice[];
+  other_option?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuestionChoice {
+  id: number;
+  question_id: number;
+  choice_text: string;
+  choice_value?: string;
+  order: number;
+  next_question_id?: number;
+}
+
+export interface SurveyResponse {
+  id: number;
+  survey_id: number;
+  user_id?: number;
+  user?: UserBasicInfo;
+  gym_id: number;
+  started_at: string;
+  completed_at?: string;
+  is_complete: boolean;
+  ip_address?: string;
+  user_agent?: string;
+  event_id?: number;
+  answers?: SurveyAnswer[];
+}
+
+export interface SurveyAnswer {
+  id: number;
+  response_id: number;
+  question_id: number;
+  question?: SurveyQuestion;
+  text_answer?: string;
+  choice_id?: number;
+  choice?: QuestionChoice;
+  choice_ids?: number[];
+  number_answer?: number;
+  date_answer?: string;
+  boolean_answer?: boolean;
+  other_text?: string;
+}
+
+export interface SurveyTemplate {
+  id: number;
+  gym_id?: number;
+  name: string;
+  description?: string;
+  category?: string;
+  template_data: any;
+  is_public: boolean;
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// ===== INTERFACES DE ESTADÍSTICAS =====
+export interface SurveyStatistics {
+  survey_id: number;
+  survey_title: string;
+  total_responses: number;
+  complete_responses: number;
+  incomplete_responses: number;
+  average_completion_time?: number;
+  response_rate?: number;
+  questions: QuestionStatistics[];
+  responses_by_date: Record<string, number>;
+  generated_at: string;
+}
+
+export interface QuestionStatistics {
+  question_id: number;
+  question_text: string;
+  question_type: QuestionType;
+  response_count: number;
+  statistics: {
+    // Para preguntas de texto
+    word_cloud?: WordFrequency[];
+    common_themes?: string[];
+    
+    // Para preguntas numéricas/escala
+    average?: number;
+    median?: number;
+    mode?: number;
+    std_dev?: number;
+    min?: number;
+    max?: number;
+    
+    // Para opciones múltiples
+    distribution?: Record<string, number>;
+    percentages?: Record<string, number>;
+    
+    // Para NPS
+    nps_score?: number;
+    promoters?: number;
+    passives?: number;
+    detractors?: number;
+    
+    // Para YES_NO
+    yes_count?: number;
+    no_count?: number;
+    yes_percentage?: number;
+  };
+}
+
+export interface WordFrequency {
+  word: string;
+  count: number;
+}
+
+export interface ResponseTrend {
+  date: string;
+  count: number;
+  cumulative: number;
+}
+
+// ===== INTERFACES DE CREACIÓN/ACTUALIZACIÓN =====
+export interface SurveyCreateData {
+  title: string;
+  description?: string;
+  instructions?: string;
+  start_date?: string;
+  end_date?: string;
+  is_anonymous?: boolean;
+  allow_multiple?: boolean;
+  randomize_questions?: boolean;
+  show_progress?: boolean;
+  thank_you_message?: string;
+  tags?: string[];
+  target_audience?: string;
+  questions?: SurveyQuestionCreateData[];
+}
+
+export interface SurveyQuestionCreateData {
+  question_text: string;
+  question_type: QuestionType;
+  is_required?: boolean;
+  order: number;
+  help_text?: string;
+  min_value?: number;
+  max_value?: number;
+  regex_validation?: string;
+  depends_on_question_id?: number;
+  depends_on_answer?: any;
+  choices?: QuestionChoiceCreateData[];
+  other_option?: boolean;
+}
+
+export interface QuestionChoiceCreateData {
+  choice_text: string;
+  choice_value?: string;
+  order: number;
+  next_question_id?: number;
+}
+
+export interface SurveyUpdateData {
+  title?: string;
+  description?: string;
+  instructions?: string;
+  status?: SurveyStatus;
+  start_date?: string;
+  end_date?: string;
+  is_anonymous?: boolean;
+  allow_multiple?: boolean;
+  randomize_questions?: boolean;
+  show_progress?: boolean;
+  thank_you_message?: string;
+  tags?: string[];
+  target_audience?: string;
+}
+
+export interface SurveyTemplateCreateData {
+  name: string;
+  description?: string;
+  category?: string;
+  template_data: any;
+  is_public?: boolean;
+}
+
+// Nuevas interfaces para respuestas
+export interface SubmitResponseData {
+  survey_id: number;
+  event_id?: number;
+  answers: AnswerData[];
+}
+
+export interface AnswerData {
+  question_id: number;
+  text_answer?: string;
+  choice_id?: number;
+  choice_ids?: number[];
+  number_answer?: number;
+  date_answer?: string;
+  boolean_answer?: boolean;
+  other_text?: string;
+}
+
+export interface CreateFromTemplateData {
+  template_id: number;
+  title?: string;
+  description?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+// ===== INTERFACES DE FILTROS =====
+export interface SurveyFilters {
+  status?: SurveyStatus;
+  creator_id?: number;
+  is_anonymous?: boolean;
+  has_responses?: boolean;
+  search?: string;
+  tags?: string[];
+  start_date_from?: string;
+  start_date_to?: string;
+  end_date_from?: string;
+  end_date_to?: string;
+  skip?: number;
+  limit?: number;
+}
+
+export interface SurveyResponseFilters {
+  user_id?: number;
+  is_complete?: boolean;
+  completed_from?: string;
+  completed_to?: string;
+  skip?: number;
+  limit?: number;
+}
+
+// ===== CONFIGURACIÓN DE TIPOS DE PREGUNTAS =====
+export interface QuestionTypeConfig {
+  icon: string;
+  label: string;
+  description: string;
+  hasChoices: boolean;
+  hasMinMax: boolean;
+  hasOtherOption: boolean;
+  defaultProps?: any;
+}
+
+export const QUESTION_TYPE_CONFIG: Record<QuestionType, QuestionTypeConfig> = {
+  [QuestionType.TEXT]: {
+    icon: '📝',
+    label: 'Texto corto',
+    description: 'Respuesta de una línea',
+    hasChoices: false,
+    hasMinMax: false,
+    hasOtherOption: false,
+    defaultProps: { max_length: 100 }
+  },
+  [QuestionType.TEXTAREA]: {
+    icon: '📄',
+    label: 'Texto largo',
+    description: 'Respuesta de múltiples líneas',
+    hasChoices: false,
+    hasMinMax: false,
+    hasOtherOption: false,
+    defaultProps: { max_length: 500 }
+  },
+  [QuestionType.RADIO]: {
+    icon: '⭕',
+    label: 'Opción única',
+    description: 'Seleccionar una opción',
+    hasChoices: true,
+    hasMinMax: false,
+    hasOtherOption: true
+  },
+  [QuestionType.CHECKBOX]: {
+    icon: '☑️',
+    label: 'Opción múltiple',
+    description: 'Seleccionar varias opciones',
+    hasChoices: true,
+    hasMinMax: false,
+    hasOtherOption: true
+  },
+  [QuestionType.SELECT]: {
+    icon: '📋',
+    label: 'Dropdown',
+    description: 'Lista desplegable',
+    hasChoices: true,
+    hasMinMax: false,
+    hasOtherOption: true
+  },
+  [QuestionType.SCALE]: {
+    icon: '⚖️',
+    label: 'Escala',
+    description: 'Escala numérica',
+    hasChoices: false,
+    hasMinMax: true,
+    hasOtherOption: false,
+    defaultProps: { min_value: 1, max_value: 5 }
+  },
+  [QuestionType.DATE]: {
+    icon: '📅',
+    label: 'Fecha',
+    description: 'Selector de fecha',
+    hasChoices: false,
+    hasMinMax: false,
+    hasOtherOption: false
+  },
+  [QuestionType.TIME]: {
+    icon: '⏰',
+    label: 'Hora',
+    description: 'Selector de hora',
+    hasChoices: false,
+    hasMinMax: false,
+    hasOtherOption: false
+  },
+  [QuestionType.NUMBER]: {
+    icon: '🔢',
+    label: 'Número',
+    description: 'Entrada numérica',
+    hasChoices: false,
+    hasMinMax: true,
+    hasOtherOption: false
+  },
+  [QuestionType.EMAIL]: {
+    icon: '✉️',
+    label: 'Email',
+    description: 'Correo electrónico',
+    hasChoices: false,
+    hasMinMax: false,
+    hasOtherOption: false
+  },
+  [QuestionType.PHONE]: {
+    icon: '📱',
+    label: 'Teléfono',
+    description: 'Número telefónico',
+    hasChoices: false,
+    hasMinMax: false,
+    hasOtherOption: false
+  },
+  [QuestionType.YES_NO]: {
+    icon: '👍',
+    label: 'Sí/No',
+    description: 'Pregunta binaria',
+    hasChoices: false,
+    hasMinMax: false,
+    hasOtherOption: false
+  },
+  [QuestionType.NPS]: {
+    icon: '📊',
+    label: 'NPS',
+    description: 'Net Promoter Score (0-10)',
+    hasChoices: false,
+    hasMinMax: false,
+    hasOtherOption: false,
+    defaultProps: { min_value: 0, max_value: 10 }
+  }
+};
+
+// ===== CONFIGURACIÓN DE ESTADOS =====
+export const SURVEY_STATUS_CONFIG = {
+  [SurveyStatus.DRAFT]: {
+    icon: '📝',
+    color: 'gray',
+    label: 'Borrador',
+    description: 'En construcción'
+  },
+  [SurveyStatus.PUBLISHED]: {
+    icon: '🟢',
+    color: 'green',
+    label: 'Publicada',
+    description: 'Activa y recibiendo respuestas'
+  },
+  [SurveyStatus.CLOSED]: {
+    icon: '🔒',
+    color: 'orange',
+    label: 'Cerrada',
+    description: 'No acepta más respuestas'
+  },
+  [SurveyStatus.ARCHIVED]: {
+    icon: '📦',
+    color: 'purple',
+    label: 'Archivada',
+    description: 'Guardada para referencia'
+  }
+};
+
+// ===== API CLIENT =====
+export const surveysAPI = {
+  // Endpoints para usuarios (responder encuestas)
+  getAvailable: async (): Promise<Survey[]> => {
+    return apiCall('/surveys/available');
+  },
+
+  submitResponse: async (responseData: SubmitResponseData): Promise<SurveyResponse> => {
+    return apiCall('/surveys/responses', {
+      method: 'POST',
+      body: JSON.stringify(responseData),
+    });
+  },
+
+  getMyResponses: async (skip = 0, limit = 100): Promise<SurveyResponse[]> => {
+    return apiCall(`/surveys/my-responses?skip=${skip}&limit=${limit}`);
+  },
+
+  // Gestión de encuestas (admin/trainer)
+  getMySurveys: async (statusFilter?: SurveyStatus, skip = 0, limit = 100): Promise<Survey[]> => {
+    const params = new URLSearchParams();
+    if (statusFilter) params.append('status_filter', statusFilter);
+    params.append('skip', skip.toString());
+    params.append('limit', limit.toString());
+    return apiCall(`/surveys/my-surveys?${params.toString()}`);
+  },
+
+  getById: async (surveyId: number): Promise<Survey> => {
+    return apiCall(`/surveys/${surveyId}`);
+  },
+
+  create: async (surveyData: SurveyCreateData): Promise<Survey> => {
+    return apiCall('/surveys/', {
+      method: 'POST',
+      body: JSON.stringify(surveyData),
+    });
+  },
+
+  update: async (surveyId: number, surveyData: SurveyUpdateData): Promise<Survey> => {
+    return apiCall(`/surveys/${surveyId}`, {
+      method: 'PUT',
+      body: JSON.stringify(surveyData),
+    });
+  },
+
+  delete: async (surveyId: number): Promise<void> => {
+    return apiCall(`/surveys/${surveyId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Control de estado
+  publish: async (surveyId: number): Promise<Survey> => {
+    return apiCall(`/surveys/${surveyId}/publish`, {
+      method: 'POST',
+    });
+  },
+
+  close: async (surveyId: number): Promise<Survey> => {
+    return apiCall(`/surveys/${surveyId}/close`, {
+      method: 'POST',
+    });
+  },
+
+  // Analytics
+  getStatistics: async (surveyId: number): Promise<SurveyStatistics> => {
+    return apiCall(`/surveys/${surveyId}/statistics`);
+  },
+
+  getResponses: async (
+    surveyId: number, 
+    skip = 0, 
+    limit = 100, 
+    onlyComplete = true
+  ): Promise<SurveyResponse[]> => {
+    const params = new URLSearchParams({
+      skip: skip.toString(),
+      limit: limit.toString(),
+      only_complete: onlyComplete.toString()
+    });
+    return apiCall(`/surveys/${surveyId}/responses?${params.toString()}`);
+  },
+
+  exportData: async (surveyId: number, format: 'csv' | 'excel' = 'csv'): Promise<Blob> => {
+    const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/export?format=${format}`, {
+      method: 'GET',
+      headers: await getAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      throw createAPIError('Error al exportar datos', response.status);
+    }
+    
+    return response.blob();
+  },
+
+  // Templates
+  getTemplates: async (category?: string, skip = 0, limit = 100): Promise<SurveyTemplate[]> => {
+    const params = new URLSearchParams({
+      skip: skip.toString(),
+      limit: limit.toString()
+    });
+    if (category) params.append('category', category);
+    return apiCall(`/surveys/templates?${params.toString()}`);
+  },
+
+  createFromTemplate: async (templateData: CreateFromTemplateData): Promise<Survey> => {
+    return apiCall('/surveys/from-template', {
+      method: 'POST',
+      body: JSON.stringify(templateData),
+    });
+  },
+};
+
+// ===== HELPER FUNCTIONS =====
+export const getSurveyStatusConfig = (status: SurveyStatus) => {
+  return SURVEY_STATUS_CONFIG[status];
+};
+
+export const getQuestionTypeConfig = (type: QuestionType) => {
+  return QUESTION_TYPE_CONFIG[type];
+};
+
+export const calculateNPSScore = (promoters: number, passives: number, detractors: number): number => {
+  const total = promoters + passives + detractors;
+  if (total === 0) return 0;
+  return Math.round(((promoters - detractors) / total) * 100);
+};
+
+export const formatSurveyDate = (date: string | undefined): string => {
+  if (!date) return 'Sin fecha';
+  return new Date(date).toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+export const isSurveyActive = (survey: Survey): boolean => {
+  if (survey.status !== SurveyStatus.PUBLISHED) return false;
+  
+  const now = new Date();
+  if (survey.start_date && new Date(survey.start_date) > now) return false;
+  if (survey.end_date && new Date(survey.end_date) < now) return false;
+  
+  return true;
+};
+
+export const canEditSurvey = (survey: Survey): boolean => {
+  return survey.status === SurveyStatus.DRAFT;
+};
