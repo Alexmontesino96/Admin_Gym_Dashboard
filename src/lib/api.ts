@@ -2414,9 +2414,20 @@ export const surveysAPI = {
   },
 
   exportData: async (surveyId: number, format: 'csv' | 'excel' = 'csv'): Promise<Blob> => {
+    const accessToken = await getAccessToken();
+    const gymId = getSelectedGymId();
+    
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${accessToken}`,
+    };
+    
+    if (gymId && gymId !== 'none') {
+      headers['X-Gym-ID'] = gymId;
+    }
+    
     const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/export?format=${format}`, {
       method: 'GET',
-      headers: await getAuthHeaders(),
+      headers,
     });
     
     if (!response.ok) {

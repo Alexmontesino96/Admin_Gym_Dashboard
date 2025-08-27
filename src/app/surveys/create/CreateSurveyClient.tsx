@@ -48,11 +48,12 @@ export default function CreateSurveyClient() {
 
   const addQuestion = (type: QuestionType) => {
     const config = getQuestionTypeConfig(type)
+    const currentQuestions = formData.questions || []
     const newQuestion: SurveyQuestionCreateData = {
       question_text: '',
       question_type: type,
       is_required: false,
-      order: formData.questions.length,
+      order: currentQuestions.length,
       help_text: '',
       choices: config.hasChoices ? [
         { choice_text: 'Opción 1', order: 0 },
@@ -63,15 +64,15 @@ export default function CreateSurveyClient() {
 
     setFormData(prev => ({
       ...prev,
-      questions: [...prev.questions, newQuestion]
+      questions: [...currentQuestions, newQuestion]
     }))
-    setActiveQuestionIndex(formData.questions.length)
+    setActiveQuestionIndex(currentQuestions.length)
   }
 
   const updateQuestion = (index: number, updates: Partial<SurveyQuestionCreateData>) => {
     setFormData(prev => ({
       ...prev,
-      questions: prev.questions.map((q, i) => 
+      questions: (prev.questions || []).map((q, i) => 
         i === index ? { ...q, ...updates } : q
       )
     }))
@@ -80,7 +81,7 @@ export default function CreateSurveyClient() {
   const deleteQuestion = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      questions: prev.questions.filter((_, i) => i !== index)
+      questions: (prev.questions || []).filter((_, i) => i !== index)
     }))
     if (activeQuestionIndex === index) {
       setActiveQuestionIndex(null)
@@ -88,29 +89,33 @@ export default function CreateSurveyClient() {
   }
 
   const duplicateQuestion = (index: number) => {
-    const questionToDuplicate = formData.questions[index]
+    const currentQuestions = formData.questions || []
+    const questionToDuplicate = currentQuestions[index]
+    if (!questionToDuplicate) return
+    
     const duplicatedQuestion = {
       ...questionToDuplicate,
-      order: formData.questions.length,
+      order: currentQuestions.length,
       choices: questionToDuplicate.choices?.map(c => ({ ...c }))
     }
     
     setFormData(prev => ({
       ...prev,
-      questions: [...prev.questions, duplicatedQuestion]
+      questions: [...currentQuestions, duplicatedQuestion]
     }))
   }
 
   const moveQuestion = (index: number, direction: 'up' | 'down') => {
+    const currentQuestions = formData.questions || []
     if (
       (direction === 'up' && index === 0) ||
-      (direction === 'down' && index === formData.questions.length - 1)
+      (direction === 'down' && index === currentQuestions.length - 1)
     ) {
       return
     }
 
     const newIndex = direction === 'up' ? index - 1 : index + 1
-    const newQuestions = [...formData.questions]
+    const newQuestions = [...currentQuestions]
     const [movedQuestion] = newQuestions.splice(index, 1)
     newQuestions.splice(newIndex, 0, movedQuestion)
     
@@ -127,8 +132,9 @@ export default function CreateSurveyClient() {
   }
 
   const addChoice = (questionIndex: number) => {
-    const question = formData.questions[questionIndex]
-    if (!question.choices) return
+    const currentQuestions = formData.questions || []
+    const question = currentQuestions[questionIndex]
+    if (!question || !question.choices) return
 
     const newChoice: QuestionChoiceCreateData = {
       choice_text: `Opción ${question.choices.length + 1}`,
@@ -141,8 +147,9 @@ export default function CreateSurveyClient() {
   }
 
   const updateChoice = (questionIndex: number, choiceIndex: number, text: string) => {
-    const question = formData.questions[questionIndex]
-    if (!question.choices) return
+    const currentQuestions = formData.questions || []
+    const question = currentQuestions[questionIndex]
+    if (!question || !question.choices) return
 
     const newChoices = question.choices.map((c, i) => 
       i === choiceIndex ? { ...c, choice_text: text } : c
@@ -152,8 +159,9 @@ export default function CreateSurveyClient() {
   }
 
   const deleteChoice = (questionIndex: number, choiceIndex: number) => {
-    const question = formData.questions[questionIndex]
-    if (!question.choices || question.choices.length <= 2) return
+    const currentQuestions = formData.questions || []
+    const question = currentQuestions[questionIndex]
+    if (!question || !question.choices || question.choices.length <= 2) return
 
     const newChoices = question.choices
       .filter((_, i) => i !== choiceIndex)
@@ -169,11 +177,12 @@ export default function CreateSurveyClient() {
       newErrors.title = 'El título es requerido'
     }
 
-    if (formData.questions.length === 0) {
+    const currentQuestions = formData.questions || []
+    if (currentQuestions.length === 0) {
       newErrors.questions = 'Debe agregar al menos una pregunta'
     }
 
-    formData.questions.forEach((q, i) => {
+    currentQuestions.forEach((q, i) => {
       if (!q.question_text.trim()) {
         newErrors[`question_${i}`] = 'El texto de la pregunta es requerido'
       }
@@ -370,7 +379,7 @@ export default function CreateSurveyClient() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">
-                Preguntas ({formData.questions.length})
+                Preguntas ({(formData.questions || []).length})
               </h2>
               {errors.questions && (
                 <p className="text-sm text-red-600">{errors.questions}</p>
@@ -379,7 +388,7 @@ export default function CreateSurveyClient() {
 
             {/* Lista de preguntas */}
             <div className="space-y-4">
-              {formData.questions.map((question, index) => {
+              {(formData.questions || []).map((question, index) => {
                 const config = getQuestionTypeConfig(question.question_type)
                 const isActive = activeQuestionIndex === index
 
@@ -432,7 +441,7 @@ export default function CreateSurveyClient() {
                                 e.stopPropagation()
                                 moveQuestion(index, 'down')
                               }}
-                              disabled={index === formData.questions.length - 1}
+                              disabled={index === (formData.questions || []).length - 1}
                               className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
                             >
                               <ChevronDown className="h-4 w-4" />
@@ -588,7 +597,7 @@ export default function CreateSurveyClient() {
                 )
               })}
 
-              {formData.questions.length === 0 && (
+              {(formData.questions || []).length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <p className="mb-2">No hay preguntas aún</p>
                   <p className="text-sm">Selecciona un tipo de pregunta para comenzar</p>
@@ -617,11 +626,11 @@ export default function CreateSurveyClient() {
             </div>
 
             {/* Vista previa rápida */}
-            {showPreview && formData.questions.length > 0 && (
+            {showPreview && (formData.questions || []).length > 0 && (
               <div className="mt-6 pt-6 border-t">
                 <h3 className="font-semibold mb-4">Vista Previa</h3>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {formData.questions.map((q, i) => (
+                  {(formData.questions || []).map((q, i) => (
                     <div key={i} className="p-3 bg-gray-50 rounded text-sm">
                       <p className="font-medium mb-1">
                         {i + 1}. {q.question_text || `Pregunta ${i + 1}`}
