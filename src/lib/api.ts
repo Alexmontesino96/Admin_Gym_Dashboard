@@ -365,6 +365,30 @@ export interface MembershipSummary {
   monthly_revenue: number;
 }
 
+// ===== WORKSPACE TYPES (GYM VS TRAINER) =====
+export enum WorkspaceType {
+  GYM = 'gym',
+  PERSONAL_TRAINER = 'personal_trainer'
+}
+
+export interface TrainerCertification {
+  name: string;
+  year: number;
+  institution: string;
+}
+
+export interface WorkspaceContext {
+  workspace_id: number;
+  type: WorkspaceType;
+  name: string;
+  terminology: {
+    user_singular: string;
+    user_plural: string;
+    workspace: string;
+    relationship: string;
+  };
+}
+
 export interface UserGymMembership {
   id: number;
   name: string;
@@ -379,6 +403,11 @@ export interface UserGymMembership {
   updated_at: string;
   user_email: string;
   user_role_in_gym: 'MEMBER' | 'TRAINER' | 'ADMIN' | 'SUPER_ADMIN' | 'OWNER';
+  // Campos de workspace type
+  type?: WorkspaceType;
+  trainer_specialties?: string[];
+  trainer_certifications?: TrainerCertification[];
+  max_clients?: number;
 }
 
 export interface GymWithStats {
@@ -398,6 +427,12 @@ export interface GymWithStats {
   admins_count: number;
   events_count: number;
   classes_count: number;
+  // Campos de workspace type
+  type: WorkspaceType;
+  trainer_specialties?: string[];
+  trainer_certifications?: TrainerCertification[];
+  max_clients?: number;
+  active_clients_count?: number;
 }
 
 export interface GymUpdateData {
@@ -408,6 +443,22 @@ export interface GymUpdateData {
   email?: string;
   description?: string;
   is_active?: boolean;
+}
+
+// ===== ENUMS PARA SISTEMA DE PAGOS DE EVENTOS =====
+export enum RefundPolicyType {
+  NO_REFUND = 'NO_REFUND',
+  FULL_REFUND = 'FULL_REFUND',
+  PARTIAL_REFUND = 'PARTIAL_REFUND',
+  CREDIT = 'CREDIT'
+}
+
+export enum PaymentStatusType {
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  REFUNDED = 'REFUNDED',
+  CREDITED = 'CREDITED',
+  EXPIRED = 'EXPIRED'
 }
 
 export interface Event {
@@ -423,6 +474,15 @@ export interface Event {
   created_at: string;
   updated_at: string;
   participants_count: number;
+  // Campos de monetización
+  is_paid: boolean;
+  price_cents?: number;
+  currency?: string;
+  refund_policy?: RefundPolicyType;
+  refund_deadline_hours?: number;
+  partial_refund_percentage?: number;
+  stripe_product_id?: string;
+  stripe_price_id?: string;
 }
 
 export interface EventUpdateData {
@@ -433,6 +493,13 @@ export interface EventUpdateData {
   location?: string;
   max_participants?: number;
   status?: 'DRAFT' | 'PUBLISHED' | 'CANCELLED' | 'COMPLETED' | 'SCHEDULED';
+  // Campos de pago
+  is_paid?: boolean;
+  price_cents?: number;
+  currency?: string;
+  refund_policy?: RefundPolicyType;
+  refund_deadline_hours?: number;
+  partial_refund_percentage?: number;
 }
 
 export interface EventCreateData {
@@ -443,6 +510,55 @@ export interface EventCreateData {
   location?: string;
   max_participants?: number;
   first_message_chat?: string;
+  // Campos de pago
+  is_paid?: boolean;
+  price_cents?: number;
+  currency?: string;
+  refund_policy?: RefundPolicyType;
+  refund_deadline_hours?: number;
+  partial_refund_percentage?: number;
+}
+
+// ===== INTERFACES PARA SISTEMA DE PAGOS DE EVENTOS =====
+export interface EventParticipation {
+  id: number;
+  event_id: number;
+  member_id: number;
+  status: 'REGISTERED' | 'WAITING_LIST' | 'CANCELLED';
+  payment_status?: PaymentStatusType;
+  payment_required: boolean;
+  payment_client_secret?: string;
+  payment_amount?: number;
+  payment_currency?: string;
+  payment_deadline?: string;
+  amount_paid_cents?: number;
+  registered_at: string;
+  cancelled_at?: string;
+}
+
+export interface PaymentIntentResponse {
+  client_secret: string;
+  payment_intent_id: string;
+  amount: number;
+  currency: string;
+  payment_deadline?: string;
+}
+
+export interface RefundRequest {
+  reason?: string;
+}
+
+export interface AdminPaymentLinkRequest {
+  user_id: number;
+  notes?: string;
+}
+
+export interface EventPaymentStats {
+  total_revenue_cents: number;
+  paid_participants: number;
+  pending_participants: number;
+  refunded_amount_cents: number;
+  conversion_rate: number;
 }
 
 // Interfaces para Planes Nutricionales
@@ -963,6 +1079,11 @@ export const dashboardAPI = {
   getOverview: async (): Promise<any> => {
     return apiCall('/dashboard/overview');
   },
+
+  // Obtener contexto del workspace (tipo, terminología, features)
+  getWorkspaceContext: async (): Promise<WorkspaceContext> => {
+    return apiCall('/api/v1/context/workspace');
+  },
 };
 
 // Funciones específicas para endpoints de gimnasios
@@ -1366,6 +1487,67 @@ export const eventsAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
+  },
+
+  // ===== ENDPOINTS DE PAGOS DE EVENTOS =====
+
+  // USUARIO: Crear Payment Intent para una participación
+  createPaymentIntent: async (participationId: number): Promise<PaymentIntentResponse> => {
+    return apiCall(`/events/participation/${participationId}/payment-intent`, {
+      method: 'POST',
+    });
+  },
+
+  // USUARIO: Confirmar pago después de Stripe
+  confirmPayment: async (participationId: number, paymentIntentId: string): Promise<EventParticipation> => {
+    return apiCall(`/events/participation/${participationId}/confirm-payment`, {
+      method: 'POST',
+      body: JSON.stringify({ payment_intent_id: paymentIntentId }),
+    });
+  },
+
+  // USUARIO: Cancelar participación con reembolso
+  cancelParticipationWithRefund: async (eventId: number): Promise<{ message: string; refund_amount?: number }> => {
+    return apiCall(`/events/participation/${eventId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // ADMIN: Obtener todos los eventos de pago
+  getPaymentEvents: async (onlyActive?: boolean): Promise<Event[]> => {
+    const searchParams = new URLSearchParams();
+    if (onlyActive) searchParams.append('only_active', 'true');
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return apiCall(`/events/admin/payments/events${query}`);
+  },
+
+  // ADMIN: Obtener pagos de un evento específico
+  getEventPayments: async (eventId: number, paymentStatus?: PaymentStatusType): Promise<EventParticipation[]> => {
+    const searchParams = new URLSearchParams();
+    if (paymentStatus) searchParams.append('payment_status', paymentStatus);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return apiCall(`/events/admin/events/${eventId}/payments${query}`);
+  },
+
+  // ADMIN: Procesar reembolso manual
+  processRefund: async (participationId: number, reason?: string): Promise<EventParticipation> => {
+    return apiCall(`/events/admin/participation/${participationId}/refund`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  },
+
+  // ADMIN: Actualizar estado de pago manualmente
+  updatePaymentStatus: async (participationId: number, newStatus: PaymentStatusType): Promise<EventParticipation> => {
+    return apiCall(`/events/admin/participation/${participationId}/payment-status`, {
+      method: 'PUT',
+      body: JSON.stringify({ new_status: newStatus }),
+    });
+  },
+
+  // ADMIN: Obtener estadísticas de pagos de un evento
+  getEventPaymentStats: async (eventId: number): Promise<EventPaymentStats> => {
+    return apiCall(`/events/admin/events/${eventId}/payment-stats`);
   },
 };
 
@@ -2493,4 +2675,134 @@ export const isSurveyActive = (survey: Survey): boolean => {
 
 export const canEditSurvey = (survey: Survey): boolean => {
   return survey.status === SurveyStatus.DRAFT;
+};
+
+// ===== HELPERS PARA SISTEMA DE PAGOS DE EVENTOS =====
+
+/**
+ * Formatea un precio en centavos a formato de moneda legible
+ * @param cents - Precio en centavos (ej: 4999 = €49.99)
+ * @param currency - Código ISO de moneda (default: 'EUR')
+ * @returns Precio formateado (ej: "€49.99")
+ */
+export const formatPrice = (cents: number, currency: string = 'EUR'): string => {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: currency,
+  }).format(cents / 100);
+};
+
+/**
+ * Calcula el monto de reembolso según política y tiempo restante
+ * @param amountCents - Monto original pagado en centavos
+ * @param policy - Política de reembolso del evento
+ * @param percentage - Porcentaje de reembolso parcial (solo para PARTIAL_REFUND)
+ * @param deadlineHours - Horas antes del evento para reembolso
+ * @param eventStartTime - Fecha/hora de inicio del evento en ISO
+ * @returns Monto de reembolso en centavos
+ */
+export const calculateRefundAmount = (
+  amountCents: number,
+  policy: RefundPolicyType,
+  percentage?: number,
+  deadlineHours?: number,
+  eventStartTime?: string
+): number => {
+  // Sin reembolso
+  if (policy === RefundPolicyType.NO_REFUND) {
+    return 0;
+  }
+
+  // Solo crédito (no dinero)
+  if (policy === RefundPolicyType.CREDIT) {
+    return 0;
+  }
+
+  // Verificar si está dentro del plazo
+  if (deadlineHours && eventStartTime) {
+    const now = new Date();
+    const eventStart = new Date(eventStartTime);
+    const deadline = new Date(eventStart.getTime() - deadlineHours * 60 * 60 * 1000);
+
+    // Fuera del plazo
+    if (now > deadline) {
+      return 0;
+    }
+  }
+
+  // Reembolso completo
+  if (policy === RefundPolicyType.FULL_REFUND) {
+    return amountCents;
+  }
+
+  // Reembolso parcial
+  if (policy === RefundPolicyType.PARTIAL_REFUND && percentage) {
+    return Math.round((amountCents * percentage) / 100);
+  }
+
+  return 0;
+};
+
+/**
+ * Obtiene el label descriptivo de una política de reembolso
+ * @param policy - Política de reembolso
+ * @returns Texto descriptivo de la política
+ */
+export const getRefundPolicyLabel = (policy: RefundPolicyType): string => {
+  switch (policy) {
+    case RefundPolicyType.NO_REFUND:
+      return 'Sin reembolso';
+    case RefundPolicyType.FULL_REFUND:
+      return 'Reembolso completo';
+    case RefundPolicyType.PARTIAL_REFUND:
+      return 'Reembolso parcial';
+    case RefundPolicyType.CREDIT:
+      return 'Crédito para futuros eventos';
+    default:
+      return policy;
+  }
+};
+
+/**
+ * Obtiene el label descriptivo de un estado de pago
+ * @param status - Estado de pago
+ * @returns Texto descriptivo del estado
+ */
+export const getPaymentStatusLabel = (status: PaymentStatusType): string => {
+  switch (status) {
+    case PaymentStatusType.PENDING:
+      return 'Pendiente';
+    case PaymentStatusType.PAID:
+      return 'Pagado';
+    case PaymentStatusType.REFUNDED:
+      return 'Reembolsado';
+    case PaymentStatusType.CREDITED:
+      return 'Crédito otorgado';
+    case PaymentStatusType.EXPIRED:
+      return 'Expirado';
+    default:
+      return status;
+  }
+};
+
+/**
+ * Obtiene el color del badge según estado de pago
+ * @param status - Estado de pago
+ * @returns Clases de Tailwind para el badge
+ */
+export const getPaymentStatusColor = (status: PaymentStatusType): string => {
+  switch (status) {
+    case PaymentStatusType.PENDING:
+      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    case PaymentStatusType.PAID:
+      return 'bg-green-100 text-green-800 border-green-200';
+    case PaymentStatusType.REFUNDED:
+      return 'bg-blue-100 text-blue-800 border-blue-200';
+    case PaymentStatusType.CREDITED:
+      return 'bg-purple-100 text-purple-800 border-purple-200';
+    case PaymentStatusType.EXPIRED:
+      return 'bg-red-100 text-red-800 border-red-200';
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
 };

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { 
+import {
   Users,
   Calendar,
   DollarSign,
@@ -38,6 +38,7 @@ import {
   Copy
 } from 'lucide-react';
 import GymSelector from './GymSelector';
+import { useTerminology } from '@/hooks/useTerminology';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -56,14 +57,35 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
   const [isNutritionExpanded, setIsNutritionExpanded] = useState(false);
   const [isMembershipExpanded, setIsMembershipExpanded] = useState(false);
   const [isSurveysExpanded, setIsSurveysExpanded] = useState(false);
+  const [isEventosExpanded, setIsEventosExpanded] = useState(false);
   const pathname = usePathname();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const gymSelectorRef = useRef<HTMLDivElement>(null);
 
+  // Hook para terminología adaptativa
+  const { userPlural, workspace, loading: terminologyLoading } = useTerminology();
+
+  // Helper para cerrar sidebar solo en móvil
+  const closeSidebarOnMobile = () => {
+    if (window.innerWidth < 768) { // md breakpoint es 768px
+      setIsSidebarOpen(false);
+    }
+  };
+
   const menuItems = [
     { key: "dashboard", label: "Dashboard", href: "/", icon: Home },
-    { key: "usuarios", label: "Usuarios", href: "/usuarios", icon: Users },
-    { key: "eventos", label: "Eventos", href: "/eventos", icon: MessageCircle },
+    { key: "usuarios", label: userPlural.charAt(0).toUpperCase() + userPlural.slice(1), href: "/usuarios", icon: Users },
+    {
+      key: "eventos",
+      label: "Eventos",
+      href: "/eventos",
+      icon: Calendar,
+      hasSubmenu: true,
+      submenu: [
+        { key: "eventos-list", label: "Ver Eventos", href: "/eventos", icon: CalendarDays },
+        { key: "eventos-payments", label: "Dashboard de Pagos", href: "/eventos/admin/payments", icon: DollarSign },
+      ]
+    },
     { 
       key: "schedule", 
       label: "Schedule", 
@@ -113,7 +135,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
         { key: "surveys-templates", label: "Plantillas", href: "/surveys/templates", icon: Copy }
       ]
     },
-    { key: "gimnasio", label: "Gimnasio", href: "/gimnasio", icon: Building },
+    { key: "gimnasio", label: workspace.charAt(0).toUpperCase() + workspace.slice(1), href: "/gimnasio", icon: Building },
     { key: "chat", label: "Chat", href: "/chat", icon: MessageCircle },
     { key: "settings", label: "Configuración", href: "/settings", icon: Settings },
   ];
@@ -148,6 +170,9 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
     }
     if (pathname?.startsWith('/surveys')) {
       setIsSurveysExpanded(true);
+    }
+    if (pathname?.startsWith('/eventos')) {
+      setIsEventosExpanded(true);
     }
   }, [pathname]);
 
@@ -196,7 +221,9 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                   <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center">
                     <Building2 className="h-3 w-3 text-white" />
                   </div>
-                  <span className="hidden sm:inline text-sm font-medium text-slate-700">Gimnasio</span>
+                  <span className="hidden sm:inline text-sm font-medium text-slate-700">
+                    {workspace.charAt(0).toUpperCase() + workspace.slice(1)}
+                  </span>
                   <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${showGymSelector ? 'rotate-180' : ''}`} />
                 </button>
                 
@@ -292,10 +319,10 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                       <div className="flex items-center">
                         <Link
                           href={href}
-                          onClick={() => setIsSidebarOpen(false)}
+                          onClick={closeSidebarOnMobile}
                           className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition group flex-1 ${
-                            isActive 
-                              ? "bg-indigo-50 text-indigo-600" 
+                            isActive
+                              ? "bg-indigo-50 text-indigo-600"
                               : "hover:bg-indigo-50/70 text-slate-700 hover:text-indigo-600"
                           }`}
                         >
@@ -322,6 +349,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                               setIsMembershipExpanded(!isMembershipExpanded);
                             } else if (key === 'surveys') {
                               setIsSurveysExpanded(!isSurveysExpanded);
+                            } else if (key === 'eventos') {
+                              setIsEventosExpanded(!isEventosExpanded);
                             }
                           }}
                           className={`p-1 rounded-md transition-colors ${
@@ -330,22 +359,24 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                               : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
                           }`}
                         >
-                          <ChevronRight 
+                          <ChevronRight
                             className={`h-4 w-4 transition-transform duration-200 ${
-                              (key === 'schedule' && isScheduleExpanded) || 
-                              (key === 'nutrition' && isNutritionExpanded) || 
+                              (key === 'schedule' && isScheduleExpanded) ||
+                              (key === 'nutrition' && isNutritionExpanded) ||
                               (key === 'membership' && isMembershipExpanded) ||
-                              (key === 'surveys' && isSurveysExpanded) ? 'rotate-90' : ''
+                              (key === 'surveys' && isSurveysExpanded) ||
+                              (key === 'eventos' && isEventosExpanded) ? 'rotate-90' : ''
                             }`}
                           />
                         </button>
                       </div>
                       
                       {/* Submenú */}
-                      {((key === 'schedule' && isScheduleExpanded) || 
-                        (key === 'nutrition' && isNutritionExpanded) || 
+                      {((key === 'schedule' && isScheduleExpanded) ||
+                        (key === 'nutrition' && isNutritionExpanded) ||
                         (key === 'membership' && isMembershipExpanded) ||
-                        (key === 'surveys' && isSurveysExpanded)) && submenu && (
+                        (key === 'surveys' && isSurveysExpanded) ||
+                        (key === 'eventos' && isEventosExpanded)) && submenu && (
                         <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4">
                           {submenu.map(({ key: subKey, label: subLabel, href: subHref, icon: SubIcon }) => {
                             const isSubActive = pathname === subHref;
@@ -353,10 +384,10 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                               <li key={subKey}>
                                 <Link
                                   href={subHref}
-                                  onClick={() => setIsSidebarOpen(false)}
+                                  onClick={closeSidebarOnMobile}
                                   className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition group text-sm ${
-                                    isSubActive 
-                                      ? "bg-indigo-50 text-indigo-600" 
+                                    isSubActive
+                                      ? "bg-indigo-50 text-indigo-600"
                                       : "hover:bg-indigo-50/70 text-slate-600 hover:text-indigo-600"
                                   }`}
                                 >
@@ -385,10 +416,10 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                   <li key={key}>
                     <Link
                       href={href}
-                      onClick={() => setIsSidebarOpen(false)}
+                      onClick={closeSidebarOnMobile}
                       className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition group ${
-                        isActive 
-                          ? "bg-indigo-50 text-indigo-600" 
+                        isActive
+                          ? "bg-indigo-50 text-indigo-600"
                           : "hover:bg-indigo-50/70 text-slate-700 hover:text-indigo-600"
                       }`}
                     >

@@ -2,10 +2,28 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Event, eventsAPI, EventUpdateData, EventCreateData, getUsersAPI, GymParticipant, gymsAPI } from '@/lib/api'
+import {
+  Event,
+  eventsAPI,
+  EventUpdateData,
+  EventCreateData,
+  getUsersAPI,
+  GymParticipant,
+  gymsAPI,
+  RefundPolicyType,
+  formatPrice,
+  getRefundPolicyLabel,
+  EventParticipation,
+  PaymentStatusType
+} from '@/lib/api'
 import { toGymZonedISO, ensureEndAfterStart } from '@/lib/time'
 import EventChatModal from '@/components/EventChatModal'
 import EventChatButton from '@/components/EventChatButton'
+import EventPaymentConfig from '@/components/EventPaymentConfig'
+import EventPaymentBadge, { EventPaymentInfo } from '@/components/EventPaymentBadge'
+import EventPaymentModal from '@/components/EventPaymentModal'
+import EventParticipantListEnhanced from '@/components/EventParticipantListEnhanced'
+import { CreditCard } from 'lucide-react'
 
 // Skeleton UI detallado para eventos
 const EventsSkeleton = () => (
@@ -103,6 +121,13 @@ export default function EventsClient() {
     end_time: '',
     location: '',
     max_participants: 0,
+    // Campos de pago
+    is_paid: false,
+    price_cents: 0,
+    currency: 'EUR',
+    refund_policy: RefundPolicyType.FULL_REFUND,
+    refund_deadline_hours: 24,
+    partial_refund_percentage: 50,
   })
 
   // Estados para eliminación de eventos
@@ -131,6 +156,13 @@ export default function EventsClient() {
   // Estados para chat
   const [showChatModal, setShowChatModal] = useState(false)
   const [chatEvent, setChatEvent] = useState<Event | null>(null)
+
+  // Estados para pagos
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentEvent, setPaymentEvent] = useState<Event | null>(null)
+  const [participationIdForPayment, setParticipationIdForPayment] = useState<number | null>(null)
+  const [showEnhancedParticipants, setShowEnhancedParticipants] = useState(false)
+  const [eventForParticipants, setEventForParticipants] = useState<Event | null>(null)
 
   // Memoizar el filtro para evitar re-renders innecesarios
   const statusFilterMemo = useMemo(() => statusFilter, [statusFilter])
@@ -249,16 +281,16 @@ export default function EventsClient() {
       status: event.status,
       canEdit: event.status !== 'COMPLETED'
     })
-    
+
     // No permitir editar eventos completados
     if (event.status === 'COMPLETED') {
       setError('No se pueden editar eventos completados')
       return
     }
-    
+
     // Limpiar cualquier error previo
     setError(null)
-    
+
     setEditingEvent(event)
     setEditFormData({
       title: event.title,
@@ -268,6 +300,13 @@ export default function EventsClient() {
       location: event.location,
       max_participants: event.max_participants,
       status: event.status,
+      // Campos de pago
+      is_paid: event.is_paid,
+      price_cents: event.price_cents,
+      currency: event.currency,
+      refund_policy: event.refund_policy,
+      refund_deadline_hours: event.refund_deadline_hours,
+      partial_refund_percentage: event.partial_refund_percentage,
     })
     setShowEditModal(true)
   }
@@ -380,6 +419,13 @@ export default function EventsClient() {
       end_time: '',
       location: '',
       max_participants: 0,
+      // Campos de pago
+      is_paid: false,
+      price_cents: 0,
+      currency: 'EUR',
+      refund_policy: RefundPolicyType.FULL_REFUND,
+      refund_deadline_hours: 24,
+      partial_refund_percentage: 50,
     })
     setShowCreateModal(true)
   }
@@ -392,6 +438,13 @@ export default function EventsClient() {
       end_time: '',
       location: '',
       max_participants: 0,
+      // Campos de pago
+      is_paid: false,
+      price_cents: 0,
+      currency: 'EUR',
+      refund_policy: RefundPolicyType.FULL_REFUND,
+      refund_deadline_hours: 24,
+      partial_refund_percentage: 50,
     })
     setShowCreateModal(false)
     // Limpiar el query param 'create' si viene de /eventos?create=1
@@ -872,6 +925,12 @@ export default function EventsClient() {
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
                         {getStatusLabel(event.status)}
                       </span>
+                      <EventPaymentBadge
+                        isPaid={event.is_paid}
+                        priceCents={event.price_cents}
+                        currency={event.currency}
+                        size="sm"
+                      />
                     </div>
                     <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
                       <span className="flex items-center">
@@ -1105,6 +1164,48 @@ export default function EventsClient() {
                         </div>
                       </div>
 
+                      {/* Información de pago */}
+                      {selectedEvent.is_paid && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <h5 className="font-medium text-blue-900 mb-3 flex items-center">
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            Información de Pago
+                          </h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <span className="text-blue-700 font-medium">Precio:</span>
+                              <span className="ml-2 text-blue-900 font-semibold">
+                                {formatPrice(selectedEvent.price_cents || 0, selectedEvent.currency || 'EUR')}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-blue-700 font-medium">Política de reembolso:</span>
+                              <span className="ml-2 text-blue-900">
+                                {getRefundPolicyLabel(selectedEvent.refund_policy!)}
+                              </span>
+                            </div>
+                            {selectedEvent.refund_policy !== RefundPolicyType.NO_REFUND && (
+                              <>
+                                <div>
+                                  <span className="text-blue-700 font-medium">Plazo cancelación:</span>
+                                  <span className="ml-2 text-blue-900">
+                                    {selectedEvent.refund_deadline_hours}h antes
+                                  </span>
+                                </div>
+                                {selectedEvent.refund_policy === RefundPolicyType.PARTIAL_REFUND && (
+                                  <div>
+                                    <span className="text-blue-700 font-medium">Reembolso:</span>
+                                    <span className="ml-2 text-blue-900">
+                                      {selectedEvent.partial_refund_percentage}%
+                                    </span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div>
                         <h5 className="font-medium text-gray-700 mb-2">Descripción</h5>
                         <p className="text-gray-600 whitespace-pre-wrap">{selectedEvent.description}</p>
@@ -1125,6 +1226,19 @@ export default function EventsClient() {
                 </div>
               </div>
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                {selectedEvent.is_paid && (
+                  <button
+                    onClick={() => {
+                      setEventForParticipants(selectedEvent)
+                      setShowEnhancedParticipants(true)
+                      closeModal()
+                    }}
+                    className="w-full inline-flex items-center justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Ver Pagos
+                  </button>
+                )}
                 <button
                   onClick={closeModal}
                   className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm"
@@ -1265,9 +1379,25 @@ export default function EventsClient() {
                             required
                           />
                         </div>
-
-
                       </div>
+
+                      {/* Configuración de pagos */}
+                      <EventPaymentConfig
+                        isPaid={editFormData.is_paid || false}
+                        priceCents={editFormData.price_cents}
+                        currency={editFormData.currency}
+                        refundPolicy={editFormData.refund_policy}
+                        refundDeadlineHours={editFormData.refund_deadline_hours}
+                        partialRefundPercentage={editFormData.partial_refund_percentage}
+                        onIsPaidChange={(value) => handleEditFormChange('is_paid', value)}
+                        onPriceChange={(value) => handleEditFormChange('price_cents', value)}
+                        onCurrencyChange={(value) => handleEditFormChange('currency', value)}
+                        onRefundPolicyChange={(value) => handleEditFormChange('refund_policy', value)}
+                        onDeadlineHoursChange={(value) => handleEditFormChange('refund_deadline_hours', value)}
+                        onPercentageChange={(value) => handleEditFormChange('partial_refund_percentage', value)}
+                        disabled={saving}
+                        hasExistingPayments={false} // TODO: Verificar si hay pagos existentes
+                      />
                     </form>
                   </div>
                 </div>
@@ -1453,6 +1583,23 @@ export default function EventsClient() {
                           </div>
                         )}
                       </div>
+
+                      {/* Configuración de pagos */}
+                      <EventPaymentConfig
+                        isPaid={createFormData.is_paid || false}
+                        priceCents={createFormData.price_cents}
+                        currency={createFormData.currency}
+                        refundPolicy={createFormData.refund_policy}
+                        refundDeadlineHours={createFormData.refund_deadline_hours}
+                        partialRefundPercentage={createFormData.partial_refund_percentage}
+                        onIsPaidChange={(value) => handleCreateFormChange('is_paid', value)}
+                        onPriceChange={(value) => handleCreateFormChange('price_cents', value)}
+                        onCurrencyChange={(value) => handleCreateFormChange('currency', value)}
+                        onRefundPolicyChange={(value) => handleCreateFormChange('refund_policy', value)}
+                        onDeadlineHoursChange={(value) => handleCreateFormChange('refund_deadline_hours', value)}
+                        onPercentageChange={(value) => handleCreateFormChange('partial_refund_percentage', value)}
+                        disabled={saving}
+                      />
                     </form>
                   </div>
                 </div>
@@ -1671,6 +1818,90 @@ export default function EventsClient() {
           onClose={closeChatModal}
           eventId={chatEvent.id}
           eventTitle={chatEvent.title}
+        />
+      )}
+
+      {/* Modal de lista de participantes mejorada con pagos */}
+      {showEnhancedParticipants && eventForParticipants && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              onClick={() => {
+                setShowEnhancedParticipants(false)
+                setEventForParticipants(null)
+              }}
+            />
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    Gestión de Participantes y Pagos: {eventForParticipants.title}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowEnhancedParticipants(false)
+                      setEventForParticipants(null)
+                    }}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <EventParticipantListEnhanced
+                  event={eventForParticipants}
+                  isAdmin={true}
+                  onRefundSuccess={(participation) => {
+                    console.log('Reembolso exitoso:', participation)
+                    loadEvents() // Recargar eventos para actualizar contadores
+                  }}
+                  onPaymentStatusUpdate={(participation) => {
+                    console.log('Estado de pago actualizado:', participation)
+                    loadEvents() // Recargar eventos
+                  }}
+                />
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  onClick={() => {
+                    setShowEnhancedParticipants(false)
+                    setEventForParticipants(null)
+                  }}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de pago con Stripe */}
+      {showPaymentModal && paymentEvent && participationIdForPayment && (
+        <EventPaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => {
+            setShowPaymentModal(false)
+            setPaymentEvent(null)
+            setParticipationIdForPayment(null)
+          }}
+          event={paymentEvent}
+          participationId={participationIdForPayment}
+          onPaymentSuccess={(participation) => {
+            console.log('Pago exitoso:', participation)
+            setShowPaymentModal(false)
+            setPaymentEvent(null)
+            setParticipationIdForPayment(null)
+            loadEvents() // Recargar eventos para actualizar estado
+            // TODO: Mostrar mensaje de éxito
+          }}
         />
       )}
     </div>
