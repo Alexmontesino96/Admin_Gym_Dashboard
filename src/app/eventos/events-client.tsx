@@ -509,6 +509,14 @@ export default function EventsClient() {
         start_time: startISO,
         end_time: endISO,
       }
+      // Normalizar campos de pago para eventos gratuitos antes de enviar
+      const isFreeEvent = !payload.is_paid || !payload.price_cents || payload.price_cents === 0
+      if (isFreeEvent) {
+        // El backend rechaza refund_policy en eventos gratuitos (422)
+        delete payload.refund_policy
+        delete payload.refund_deadline_hours
+        delete payload.partial_refund_percentage
+      }
       if (includeChat) {
         payload.first_message_chat = firstMessageChat.trim()
       }
