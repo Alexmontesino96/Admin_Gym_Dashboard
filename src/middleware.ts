@@ -5,11 +5,11 @@ export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // Rutas que no requieren autenticación
-  const publicRoutes = ['/auth/login', '/auth/logout', '/auth/callback']
-  
+  const publicRoutes = ['/', '/login', '/register']
+
   // Rutas que requieren autenticación pero no requieren gimnasio seleccionado
-  const authOnlyRoutes = ['/select-gym']
-  
+  const authOnlyRoutes = ['/select-gym', '/post-login']
+
   // Rutas de API que no necesitan verificación de gimnasio
   const apiExemptRoutes = ['/api/auth', '/api/token']
 
@@ -65,7 +65,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public files (public folder)
+     * - auth routes (handled by Auth0)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|auth/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 } 

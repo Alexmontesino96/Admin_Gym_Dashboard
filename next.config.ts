@@ -42,6 +42,49 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'example.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.example.com',
+        port: '',
+        pathname: '/**',
+      },
+      // Permitir dominios comunes para CDNs de imágenes
+      {
+        protocol: 'https',
+        hostname: 'imgur.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.imgur.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cloudinary.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.cloudinary.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   
@@ -100,7 +143,7 @@ const nextConfig: NextConfig = {
   trailingSlash: false,
 
   // Optimizaciones ligeras y seguras
-  swcMinify: true, // Usar SWC para minificación más rápida
+  // swcMinify ya está habilitado por defecto en Next.js 15
   poweredByHeader: false, // Quitar header X-Powered-By
   
   // Optimización para desarrollo

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { gymsAPI, UserGymMembership, setSelectedGymId, clearSelectedGymId } from '@/lib/api'
+import { gymsAPI, UserGymMembership, setSelectedGymId, clearSelectedGymId, WorkspaceType } from '@/lib/api'
 import { Building, Users, Calendar, ChevronRight, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 
@@ -20,7 +20,12 @@ export default function GymSelectorClient({ user: _ }: GymSelectorClientProps) {
   const [error, setError] = useState<string | null>(null)
   const [selectedGym, setSelectedGym] = useState<number | null>(null)
   const [selecting, setSelecting] = useState(false)
+  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
   const searchParams = useSearchParams()
+
+  const handleImageError = (gymId: number) => {
+    setImageErrors(prev => new Set(prev).add(gymId))
+  }
 
   const fetchUserGyms = useCallback(async () => {
     try {
@@ -58,26 +63,29 @@ export default function GymSelectorClient({ user: _ }: GymSelectorClientProps) {
     try {
       setSelecting(true)
       setSelectedGym(gymId)
-      
+
       console.log('Seleccionando gimnasio:', gymId)
-      
+
       // Usar la función de la API que establece localStorage y cookie
       setSelectedGymId(gymId.toString())
-      
+
+      // Limpiar cache de workspace context para forzar re-fetch
+      sessionStorage.removeItem('workspace_context')
+
       console.log('Gimnasio guardado, redirigiendo...')
-      
+
       // Pequeña pausa para asegurar que se guarde
       await new Promise(resolve => setTimeout(resolve, 100))
-      
+
       // Determinar la URL de destino
       const returnTo = searchParams?.get('returnTo')
       const destinationUrl = returnTo && returnTo !== '/select-gym' ? returnTo : '/'
-      
+
       console.log('Redirigiendo a:', destinationUrl)
-      
+
       // Forzar recarga de la página para que el middleware tome efecto
       window.location.href = destinationUrl
-      
+
     } catch (error) {
       console.error('Error al seleccionar gimnasio:', error)
       setError('Error al seleccionar el gimnasio. Por favor, intenta de nuevo.')
@@ -105,6 +113,21 @@ export default function GymSelectorClient({ user: _ }: GymSelectorClientProps) {
         return 'bg-blue-100 text-blue-800 border-blue-200'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getWorkspaceTypeBadge = (gym: UserGymMembership) => {
+    if (gym.type === WorkspaceType.PERSONAL_TRAINER) {
+      return {
+        label: 'Entrenador Personal',
+        icon: '👤',
+        color: 'bg-green-100 text-green-800 border-green-200'
+      }
+    }
+    return {
+      label: 'Gimnasio',
+      icon: '🏢',
+      color: 'bg-blue-100 text-blue-800 border-blue-200'
     }
   }
 
@@ -177,39 +200,51 @@ export default function GymSelectorClient({ user: _ }: GymSelectorClientProps) {
       )}
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {gyms.map((gym) => (
-          <div
-            key={gym.id}
-            className={`bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group ${
-              selectedGym === gym.id ? 'ring-2 ring-blue-500 bg-blue-50' : ''
-            } ${selecting ? 'pointer-events-none opacity-75' : ''}`}
-            onClick={() => !selecting && handleGymSelect(gym.id)}
-          >
-            {/* Header con logo o placeholder */}
-            <div className="h-32 bg-gradient-to-br from-blue-500 to-blue-600 relative overflow-hidden">
-              {gym.logo_url ? (
-                <Image
-                  src={gym.logo_url}
-                  alt={`Logo de ${gym.name}`}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <Building className="h-12 w-12 text-white opacity-80" />
+        {gyms.map((gym) => {
+          const workspaceTypeBadge = getWorkspaceTypeBadge(gym)
+          return (
+            <div
+              key={gym.id}
+              className={`bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group ${
+                selectedGym === gym.id ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+              } ${selecting ? 'pointer-events-none opacity-75' : ''}`}
+              onClick={() => !selecting && handleGymSelect(gym.id)}
+            >
+              {/* Header con logo o placeholder */}
+              <div className="h-32 bg-gradient-to-br from-blue-500 to-blue-600 relative overflow-hidden">
+                {gym.logo_url && !imageErrors.has(gym.id) ? (
+                  <Image
+                    src={gym.logo_url}
+                    alt={`Logo de ${gym.name}`}
+                    fill
+                    className="object-cover"
+                    onError={() => handleImageError(gym.id)}
+                    unoptimized={gym.logo_url.includes('example.com')}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <Building className="h-12 w-12 text-white opacity-80" />
+                  </div>
+                )}
+
+                {/* Badge de tipo de workspace */}
+                <div className="absolute top-3 left-3">
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full border ${workspaceTypeBadge.color} flex items-center gap-1`}>
+                    <span>{workspaceTypeBadge.icon}</span>
+                    <span>{workspaceTypeBadge.label}</span>
+                  </span>
                 </div>
-              )}
-              
-              {/* Badge de rol */}
-              <div className="absolute top-3 right-3">
-                <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getRoleBadgeColor(gym.user_role_in_gym)}`}>
-                  {getRoleDisplayName(gym.user_role_in_gym)}
-                </span>
-              </div>
+
+                {/* Badge de rol */}
+                <div className="absolute top-3 right-3">
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getRoleBadgeColor(gym.user_role_in_gym)}`}>
+                    {getRoleDisplayName(gym.user_role_in_gym)}
+                  </span>
+                </div>
 
               {/* Indicador de selección */}
               {selectedGym === gym.id && (
-                <div className="absolute top-3 left-3">
+                <div className="absolute bottom-3 left-3">
                   <Loader2 className="h-5 w-5 animate-spin text-white" />
                 </div>
               )}
@@ -251,7 +286,8 @@ export default function GymSelectorClient({ user: _ }: GymSelectorClientProps) {
               </div>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {gyms.length > 1 && !selecting && (

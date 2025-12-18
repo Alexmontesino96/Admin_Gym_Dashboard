@@ -1,19 +1,15 @@
 import { auth0 } from "@/lib/auth0";
 import { redirect } from 'next/navigation';
-import MainLayout from '@/components/MainLayout';
-import DashboardClient from './DashboardClient';
+import LandingPage from '@/components/LandingPage';
 
 export default async function Home() {
   const session = await auth0.getSession();
 
-  // Si no hay sesión, redirigir a login
-  if (!session) {
-    redirect('/login');
+  // Si ya está autenticado, redirigir al selector de gimnasio
+  if (session) {
+    redirect('/select-gym');
   }
 
-  return (
-    <MainLayout user={session.user}>
-      <DashboardClient />
-    </MainLayout>
-  );
+  // Si no hay sesión, mostrar landing page
+  return <LandingPage />;
 }

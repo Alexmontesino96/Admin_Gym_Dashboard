@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { gymsAPI, GymWithStats, GymUpdateData } from '@/lib/api';
+import { gymsAPI, GymWithStats, GymUpdateData, WorkspaceType } from '@/lib/api';
 import Image from 'next/image';
-import { 
+import {
   BuildingOfficeIcon,
   PencilIcon,
   CheckIcon,
@@ -17,10 +17,15 @@ import {
   PhoneIcon,
   EnvelopeIcon,
   GlobeAltIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  SparklesIcon,
+  TrophyIcon
 } from '@heroicons/react/24/outline';
+import { useTerminology } from '@/hooks/useTerminology';
 
 export default function GymInfoClient() {
+  const { workspace } = useTerminology();
+
   const [gymInfo, setGymInfo] = useState<GymWithStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,7 +145,9 @@ export default function GymInfoClient() {
                 <BuildingOfficeIcon className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Información del Gimnasio</h1>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Información del {workspace.charAt(0).toUpperCase() + workspace.slice(1)}
+                </h1>
                 <p className="text-gray-600">Gestiona los detalles y configuración</p>
               </div>
             </div>
@@ -208,7 +215,7 @@ export default function GymInfoClient() {
                 {/* Nombre */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nombre del Gimnasio
+                    Nombre del {workspace.charAt(0).toUpperCase() + workspace.slice(1)}
                   </label>
                   {isEditing ? (
                     <input
@@ -436,6 +443,88 @@ export default function GymInfoClient() {
                 </div>
               </div>
             </div>
+
+            {/* Información específica de Trainer (solo si es personal_trainer) */}
+            {gymInfo.type === WorkspaceType.PERSONAL_TRAINER && (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl shadow-sm border border-green-200 p-6">
+                <div className="flex items-center mb-6">
+                  <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center mr-3">
+                    <SparklesIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Información de Entrenador Personal</h2>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Capacidad de clientes */}
+                  {gymInfo.max_clients && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Capacidad de Clientes
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <div className="text-2xl font-bold text-green-600">
+                          {gymInfo.active_clients_count || 0} / {gymInfo.max_clients}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          ({Math.round(((gymInfo.active_clients_count || 0) / gymInfo.max_clients) * 100)}% ocupado)
+                        </div>
+                      </div>
+                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(100, ((gymInfo.active_clients_count || 0) / gymInfo.max_clients) * 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Especialidades */}
+                  {gymInfo.trainer_specialties && gymInfo.trainer_specialties.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Especialidades
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {gymInfo.trainer_specialties.map((specialty, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-200"
+                          >
+                            {specialty}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Certificaciones */}
+                  {gymInfo.trainer_certifications && gymInfo.trainer_certifications.length > 0 && (
+                    <div className="lg:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Certificaciones
+                      </label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {gymInfo.trainer_certifications.map((cert, index) => (
+                          <div
+                            key={index}
+                            className="flex items-start space-x-3 bg-white rounded-lg p-4 border border-green-200"
+                          >
+                            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <TrophyIcon className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{cert.name}</p>
+                              <p className="text-sm text-gray-600">{cert.institution}</p>
+                              <p className="text-xs text-gray-500 mt-1">Año: {cert.year}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Información del sistema */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

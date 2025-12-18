@@ -10,6 +10,7 @@ import {
   CalendarIcon,
   UserGroupIcon
 } from '@heroicons/react/24/outline';
+import { getSelectedGymId, setSelectedGymId } from '@/lib/api';
 
 interface Gym {
   id: number;
@@ -86,13 +87,13 @@ export default function GymSelector({ onGymChange, compact = false }: GymSelecto
 
       // Auto-seleccionar el primer gimnasio si hay alguno
       if (data.length > 0) {
-        const savedGymId = localStorage.getItem('selected_gym_id');
+        const savedGymId = getSelectedGymId();
         const gymToSelect = savedGymId
           ? data.find((gym: Gym) => gym.id === parseInt(savedGymId)) || data[0]
           : data[0];
-        
+
         setSelectedGym(gymToSelect);
-        localStorage.setItem('selected_gym_id', gymToSelect.id.toString());
+        setSelectedGymId(gymToSelect.id.toString());
         onGymChange?.(gymToSelect.id);
       }
     } catch (err) {
@@ -109,8 +110,18 @@ export default function GymSelector({ onGymChange, compact = false }: GymSelecto
 
   const handleGymChange = (gym: Gym) => {
     setSelectedGym(gym);
-    localStorage.setItem('selected_gym_id', gym.id.toString());
+    setSelectedGymId(gym.id.toString());
+
+    // Limpiar cache de workspace context para forzar re-fetch
+    sessionStorage.removeItem('workspace_context');
+
+    // Notificar cambio a otros componentes
+    window.dispatchEvent(new CustomEvent('gymChanged', { detail: { gymId: gym.id } }));
+
     onGymChange?.(gym.id);
+
+    // Recargar la página para aplicar el nuevo contexto
+    window.location.reload();
   };
 
   if (loading) {

@@ -26,20 +26,22 @@ import {
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTerminology } from '@/hooks/useTerminology';
 
-const roleOptions = [
+// Funciones helper para crear opciones dinámicas
+const createRoleOptions = (userSingular: string) => [
   { id: 'all', name: 'Todos los roles', color: 'text-gray-600', bgColor: 'bg-gray-100' },
-  { id: 'MEMBER', name: 'Miembro', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  { id: 'MEMBER', name: userSingular.charAt(0).toUpperCase() + userSingular.slice(1), color: 'text-blue-600', bgColor: 'bg-blue-100' },
   { id: 'TRAINER', name: 'Entrenador', color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
   { id: 'ADMIN', name: 'Administrador', color: 'text-purple-600', bgColor: 'bg-purple-100' },
   { id: 'OWNER', name: 'Propietario', color: 'text-orange-600', bgColor: 'bg-orange-100' },
   { id: 'SUPER_ADMIN', name: 'Super Admin', color: 'text-red-600', bgColor: 'bg-red-100' }
 ];
 
-const roleChangeOptions = [
-  { value: 'MEMBER', name: 'Miembro', description: 'Acceso básico al gimnasio', color: 'text-blue-600', bgColor: 'bg-blue-50' },
+const createRoleChangeOptions = (userSingular: string, workspace: string) => [
+  { value: 'MEMBER', name: userSingular.charAt(0).toUpperCase() + userSingular.slice(1), description: `Acceso básico al ${workspace}`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
   { value: 'TRAINER', name: 'Entrenador', description: 'Puede gestionar clases y entrenamientos', color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
-  { value: 'ADMIN', name: 'Administrador', description: 'Gestión completa del gimnasio', color: 'text-purple-600', bgColor: 'bg-purple-50' }
+  { value: 'ADMIN', name: 'Administrador', description: `Gestión completa del ${workspace}`, color: 'text-purple-600', bgColor: 'bg-purple-50' }
 ];
 
 // Extend the GymParticipant interface to include membership status
@@ -118,11 +120,17 @@ const UsersLoadingSkeleton = () => (
 
 export default function UsersClient() {
   const router = useRouter();
+  const { userSingular, userPlural, workspace } = useTerminology();
+
+  // Crear opciones dinámicas basadas en terminología
+  const roleOptions = useMemo(() => createRoleOptions(userSingular), [userSingular]);
+  const roleChangeOptions = useMemo(() => createRoleChangeOptions(userSingular, workspace), [userSingular, workspace]);
+
   const [users, setUsers] = useState<GymParticipantWithMembership[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<GymParticipantWithMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filtros
   const [selectedRole, setSelectedRole] = useState(roleOptions[0]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -628,7 +636,7 @@ export default function UsersClient() {
               </span>
               Gestión de Usuarios
             </h1>
-            <p className="text-lg text-gray-600">Administrar miembros y entrenadores del gimnasio</p>
+            <p className="text-lg text-gray-600">Administrar {userPlural} y entrenadores del {workspace}</p>
           </div>
           <div className="flex space-x-4">
             <button
@@ -1069,7 +1077,7 @@ export default function UsersClient() {
                                 </div>
                               )}
                               <div>
-                                <label className="text-sm font-medium text-gray-500">Gimnasio</label>
+                                <label className="text-sm font-medium text-gray-500">{workspace.charAt(0).toUpperCase() + workspace.slice(1)}</label>
                                 <p className="text-gray-900">{selectedUser.membershipStatus.gym_name}</p>
                               </div>
                             </div>
@@ -1273,7 +1281,7 @@ export default function UsersClient() {
                 <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                   <div className="flex items-center justify-between mb-6">
                     <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
-                      Añadir Usuario al Gimnasio
+                      Añadir Usuario al {workspace.charAt(0).toUpperCase() + workspace.slice(1)}
                     </Dialog.Title>
                     <button
                       onClick={clearAddUserModal}
@@ -1289,7 +1297,7 @@ export default function UsersClient() {
                         <UserIcon className="h-8 w-8 text-white" />
                       </div>
                       <p className="text-gray-600 text-sm">
-                        Busca usuarios por email para añadirlos al gimnasio. El usuario será asignado como MEMBER por defecto.
+                        Busca usuarios por email para añadirlos al {workspace}. El usuario será asignado como {userSingular.toUpperCase()} por defecto.
                       </p>
                     </div>
 
@@ -1413,7 +1421,7 @@ export default function UsersClient() {
                 <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                   <div className="flex items-center justify-between mb-6">
                     <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
-                      Eliminar Usuario del Gimnasio
+                      Eliminar Usuario del {workspace.charAt(0).toUpperCase() + workspace.slice(1)}
                     </Dialog.Title>
                     <button
                       onClick={() => {
@@ -1437,7 +1445,7 @@ export default function UsersClient() {
                           ¿Estás seguro?
                         </h4>
                         <p className="text-gray-600 text-sm mb-4">
-                          Vas a eliminar a <span className="font-medium">{getDisplayName(userToDelete)}</span> del gimnasio.
+                          Vas a eliminar a <span className="font-medium">{getDisplayName(userToDelete)}</span> del {workspace}.
                           Esta acción no se puede deshacer.
                         </p>
                       </div>
@@ -1448,7 +1456,7 @@ export default function UsersClient() {
                           <div>
                             <h5 className="text-sm font-medium text-yellow-800">Información importante</h5>
                             <ul className="text-xs text-yellow-700 mt-1 space-y-1">
-                              <li>• El usuario perderá acceso al gimnasio</li>
+                              <li>• El usuario perderá acceso al {workspace}</li>
                               <li>• Se eliminarán sus datos de membresía</li>
                               <li>• El usuario puede ser añadido nuevamente más tarde</li>
                             </ul>
@@ -1616,7 +1624,7 @@ export default function UsersClient() {
                           {selectedUserForAdd.email}
                         </p>
                         <p className="text-gray-600 text-sm">
-                          ¿Estás seguro que deseas añadir este usuario al gimnasio?
+                          ¿Estás seguro que deseas añadir este usuario al {workspace}?
                         </p>
                       </div>
 
@@ -1627,7 +1635,7 @@ export default function UsersClient() {
                             <h5 className="text-sm font-medium text-blue-800">Información del proceso</h5>
                             <ul className="text-xs text-blue-700 mt-1 space-y-1">
                               <li>• El usuario será añadido como MEMBER</li>
-                              <li>• Tendrá acceso básico al gimnasio</li>
+                              <li>• Tendrá acceso básico al {workspace}</li>
                               <li>• Podrás cambiar su rol después si es necesario</li>
                             </ul>
                           </div>
