@@ -296,12 +296,25 @@ export default function GymRegistrationWizard() {
         gym_type: gymData.gym_type
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/register-gym-owner`, {
+      const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/register-gym-owner`
+      console.log('🚀 Registering gym:', {
+        url,
+        payload: { ...payload, password: '***' },
+        apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL
+      })
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
+      })
+
+      console.log('📥 Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        contentType: response.headers.get('content-type')
       })
 
       // Verificar content-type antes de parsear
@@ -320,6 +333,11 @@ export default function GymRegistrationWizard() {
       }
 
       if (!response.ok) {
+        console.error('❌ Registration failed:', {
+          status: response.status,
+          data
+        })
+
         // Manejar errores específicos
         if (response.status === 422) {
           // Errores de validación de Pydantic
@@ -346,6 +364,8 @@ export default function GymRegistrationWizard() {
         }
         return
       }
+
+      console.log('✅ Registration successful:', data)
 
       // Éxito - Redirigir a página de verificación
       window.location.href = `/verify-email?email=${encodeURIComponent(data.user.email)}&gym=${encodeURIComponent(data.gym.name)}&type=${encodeURIComponent(gymData.gym_type)}`
