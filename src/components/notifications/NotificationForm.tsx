@@ -27,6 +27,7 @@ export default function NotificationForm({
         </label>
         <input
           id="title"
+          name="title"
           type="text"
           value={formData.title}
           onChange={(e) => onChange('title', e.target.value)}
@@ -58,6 +59,7 @@ export default function NotificationForm({
         </label>
         <textarea
           id="message"
+          name="message"
           value={formData.message}
           onChange={(e) => onChange('message', e.target.value)}
           placeholder="Ej: Revisa los nuevos horarios para la próxima semana en la app"
@@ -90,6 +92,7 @@ export default function NotificationForm({
           </label>
           <textarea
             id="data"
+            name="data"
             value={formData.data || ''}
             onChange={(e) => onChange('data', e.target.value)}
             placeholder='{"type": "announcement", "priority": "normal"}'

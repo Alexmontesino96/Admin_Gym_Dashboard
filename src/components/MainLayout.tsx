@@ -52,13 +52,7 @@ interface MainLayoutProps {
 export default function MainLayout({ children, user }: MainLayoutProps) {
   const [showGymSelector, setShowGymSelector] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    // Inicializar sidebar abierto en desktop, cerrado en mobile
-    if (typeof window !== 'undefined') {
-      return window.innerWidth >= 768;
-    }
-    return false;
-  });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isScheduleExpanded, setIsScheduleExpanded] = useState(false);
   const [isNutritionExpanded, setIsNutritionExpanded] = useState(false);
   const [isMembershipExpanded, setIsMembershipExpanded] = useState(false);
@@ -71,10 +65,28 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
   // Hook para terminología adaptativa
   const { userPlural, workspace, myWorkspace, loading: terminologyLoading } = useTerminology();
 
+  // Inicializar sidebar según tamaño de pantalla (solo en cliente)
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsSidebarOpen(true);
+      } else {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    // Ejecutar al montar
+    handleResize();
+
+    // Escuchar cambios de tamaño
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Helper para cerrar sidebar solo en móvil
   const closeSidebarOnMobile = () => {
     // Solo cerrar en móviles (ventanas menores a 768px)
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    if (window.innerWidth < 768) {
       setIsSidebarOpen(false);
     }
   };
@@ -181,11 +193,6 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
     }
     if (pathname?.startsWith('/eventos')) {
       setIsEventosExpanded(true);
-    }
-
-    // Mantener sidebar abierto en desktop después de navegación
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-      setIsSidebarOpen(true);
     }
   }, [pathname]);
 
