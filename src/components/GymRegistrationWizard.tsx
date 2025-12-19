@@ -113,9 +113,17 @@ export default function GymRegistrationWizard() {
         body: JSON.stringify({ email })
       })
 
-      const data = await response.json()
+      if (!response.ok) {
+        // Si no es 200, no intentar parsear JSON
+        console.error('Email check failed with status:', response.status)
+        setEmailAvailable(null)
+        return
+      }
 
-      if (response.ok) {
+      // Verificar que hay contenido antes de parsear
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json()
         setEmailAvailable(data.available)
         if (!data.available) {
           setFieldErrors(prev => ({
@@ -128,9 +136,13 @@ export default function GymRegistrationWizard() {
             return rest
           })
         }
+      } else {
+        console.error('Response is not JSON')
+        setEmailAvailable(null)
       }
     } catch (err) {
       console.error('Error checking email:', err)
+      setEmailAvailable(null)
     } finally {
       setEmailCheckLoading(false)
     }
@@ -286,7 +298,20 @@ export default function GymRegistrationWizard() {
         body: JSON.stringify(payload)
       })
 
-      const data = await response.json()
+      // Verificar content-type antes de parsear
+      const contentType = response.headers.get('content-type')
+      let data = null
+
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json()
+      } else {
+        // Si no es JSON, crear un objeto de error genérico
+        data = {
+          detail: {
+            message: 'Error en el servidor. Por favor intenta de nuevo.'
+          }
+        }
+      }
 
       if (!response.ok) {
         // Manejar errores específicos
