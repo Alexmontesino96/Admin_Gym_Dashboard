@@ -300,15 +300,21 @@ export default function GymRegistrationWizard() {
       console.log('🚀 Registering gym:', {
         url,
         payload: { ...payload, password: '***' },
+        passwordLength: payload.password?.length,
+        passwordExists: !!payload.password,
+        allFields: Object.keys(payload).map(key => `${key}: ${key === 'password' ? '***' : payload[key as keyof typeof payload]}`),
         apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL
       })
+
+      const bodyToSend = JSON.stringify(payload)
+      console.log('📤 Request body (string):', bodyToSend.substring(0, 200) + '...')
 
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: bodyToSend
       })
 
       console.log('📥 Response received:', {
