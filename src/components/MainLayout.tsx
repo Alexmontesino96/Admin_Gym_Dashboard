@@ -63,7 +63,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
   const gymSelectorRef = useRef<HTMLDivElement>(null);
 
   // Hook para terminología adaptativa
-  const { userPlural, workspace, loading: terminologyLoading } = useTerminology();
+  const { userPlural, workspace, myWorkspace, loading: terminologyLoading } = useTerminology();
 
   // Helper para cerrar sidebar solo en móvil
   const closeSidebarOnMobile = () => {
@@ -135,7 +135,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
         { key: "surveys-templates", label: "Plantillas", href: "/surveys/templates", icon: Copy }
       ]
     },
-    { key: "gimnasio", label: workspace.charAt(0).toUpperCase() + workspace.slice(1), href: "/gimnasio", icon: Building },
+    { key: "gimnasio", label: myWorkspace, href: "/gimnasio", icon: Building },
     { key: "chat", label: "Chat", href: "/chat", icon: MessageCircle },
     { key: "settings", label: "Configuración", href: "/settings", icon: Settings },
   ];

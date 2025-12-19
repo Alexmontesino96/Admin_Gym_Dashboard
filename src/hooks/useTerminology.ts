@@ -40,7 +40,7 @@ export function useTerminology() {
     // Workspace
     workspace: workspaceTerm,
     workspaceName: workspace?.workspace?.name || 'Gimnasio',
-    myWorkspace: `Mi ${workspaceTerm}`,
+    myWorkspace: isTrainer ? 'Mi Panel' : `Mi ${workspaceTerm}`,
     workspaceInfo: `Información del ${workspaceTerm}`,
 
     // Relaciones
