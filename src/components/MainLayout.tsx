@@ -135,6 +135,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
         { key: "surveys-templates", label: "Plantillas", href: "/surveys/templates", icon: Copy }
       ]
     },
+    { key: "notificaciones", label: "Notificaciones", href: "/notificaciones", icon: Bell },
     { key: "gimnasio", label: myWorkspace, href: "/gimnasio", icon: Building },
     { key: "chat", label: "Chat", href: "/chat", icon: MessageCircle },
     { key: "settings", label: "Configuración", href: "/settings", icon: Settings },

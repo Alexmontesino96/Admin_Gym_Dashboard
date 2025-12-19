@@ -2722,6 +2722,66 @@ export const surveysAPI = {
   },
 };
 
+// ===== NOTIFICATIONS API =====
+
+/**
+ * Request para enviar notificación a usuarios específicos
+ */
+export interface NotificationSendRequest {
+  user_ids: string[];
+  title: string;
+  message: string;
+  data?: Record<string, any>;
+}
+
+/**
+ * Request para enviar notificación a todos los miembros del gimnasio
+ */
+export interface NotificationToGymRequest {
+  title: string;
+  message: string;
+  data?: Record<string, any>;
+}
+
+/**
+ * Response del servidor al enviar notificaciones
+ */
+export interface NotificationResponse {
+  success: boolean;
+  message: string;
+  errors?: string[];
+}
+
+/**
+ * API para envío de notificaciones push a través de OneSignal
+ * Requiere permisos de ADMIN u OWNER
+ */
+export const notificationsAPI = {
+  /**
+   * Envía notificación push a usuarios específicos
+   * @param payload - Datos de la notificación con IDs de usuarios
+   * @returns Response con estado del envío
+   */
+  sendToUsers: async (payload: NotificationSendRequest): Promise<NotificationResponse> => {
+    return await apiCall('/notifications/send', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Envía notificación push a TODOS los miembros del gimnasio
+   * @param payload - Datos de la notificación (sin IDs de usuarios)
+   * @returns Response con estado del envío y cantidad de destinatarios
+   */
+  sendToAllMembers: async (payload: NotificationToGymRequest): Promise<NotificationResponse> => {
+    return await apiCall('/notifications/send-to-gym', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+};
+
 // ===== HELPER FUNCTIONS =====
 export const getSurveyStatusConfig = (status: SurveyStatus) => {
   return SURVEY_STATUS_CONFIG[status];
