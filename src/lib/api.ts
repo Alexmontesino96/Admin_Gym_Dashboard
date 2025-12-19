@@ -378,15 +378,100 @@ export interface TrainerCertification {
 }
 
 export interface WorkspaceContext {
-  workspace_id: number;
-  type: WorkspaceType;
-  name: string;
-  terminology: {
-    user_singular: string;
-    user_plural: string;
-    workspace: string;
-    relationship: string;
+  workspace: {
+    id: number;
+    name: string;
+    type: 'gym' | 'personal_trainer';
+    is_personal_trainer: boolean;
+    display_name: string;
+    entity_label: string;
+    timezone: string;
+    email: string | null;
+    phone: string | null;
+    address: string | null;
+    max_clients: number | null;
+    specialties: string[] | null;
   };
+  terminology: {
+    gym: string;
+    gym_plural: string;
+    member: string;
+    members: string;
+    trainer: string;
+    trainers: string;
+    class: string;
+    classes: string;
+    schedule: string;
+    membership: string;
+    memberships: string;
+    equipment: string;
+    event: string;
+    events: string;
+    owner: string;
+    admin: string;
+    dashboard: string;
+  };
+  features: {
+    chat: boolean;
+    notifications: boolean;
+    profile: boolean;
+    health_tracking: boolean;
+    nutrition: boolean;
+    surveys: boolean;
+    payments: boolean;
+    show_multiple_trainers: boolean;
+    show_equipment_management: boolean;
+    show_class_schedule: boolean;
+    show_gym_hours: boolean;
+    show_appointments: boolean;
+    show_client_progress: boolean;
+    show_session_packages: boolean;
+    simplified_billing: boolean;
+    show_staff_management: boolean;
+    max_clients_limit: boolean;
+    personal_branding: boolean;
+    quick_client_add: boolean;
+    session_tracking: boolean;
+    client_notes: boolean;
+    event_management: boolean;
+    capacity_management: boolean;
+    equipment_booking: boolean;
+  };
+  navigation: Array<{
+    id: string;
+    label: string;
+    icon: string;
+    path: string;
+  }>;
+  quick_actions: Array<{
+    id: string;
+    label: string;
+    icon: string;
+    color: string;
+    action: string;
+  }>;
+  branding: {
+    logo_url: string | null;
+    primary_color: string;
+    secondary_color: string;
+    accent_color: string;
+    app_title: string;
+    app_subtitle: string;
+    theme: string;
+    show_logo: boolean;
+    compact_mode: boolean;
+  };
+  user_context: {
+    id: number;
+    email: string;
+    name: string;
+    photo_url: string | null;
+    role: string;
+    role_label: string;
+    permissions: string[];
+  };
+  api_version: string;
+  environment: string;
 }
 
 export interface UserGymMembership {
@@ -1082,7 +1167,7 @@ export const dashboardAPI = {
 
   // Obtener contexto del workspace (tipo, terminología, features)
   getWorkspaceContext: async (): Promise<WorkspaceContext> => {
-    return apiCall('/api/v1/context/workspace');
+    return apiCall('/context/workspace');
   },
 };
 

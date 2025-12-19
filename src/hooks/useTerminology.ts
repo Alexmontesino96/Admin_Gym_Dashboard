@@ -14,11 +14,11 @@ export function useTerminology() {
   }
 
   // Usar terminología del workspace o valores por defecto
-  const terminology = workspace?.terminology || defaultTerminology
-  const userSingular = terminology.user_singular || defaultTerminology.userSingular
-  const userPlural = terminology.user_plural || defaultTerminology.userPlural
-  const workspaceTerm = terminology.workspace || defaultTerminology.workspace
-  const relationship = terminology.relationship || defaultTerminology.relationship
+  const terminology = workspace?.terminology
+  const userSingular = terminology?.member || defaultTerminology.userSingular
+  const userPlural = terminology?.members || defaultTerminology.userPlural
+  const workspaceTerm = terminology?.gym || defaultTerminology.workspace
+  const relationship = terminology?.membership || defaultTerminology.relationship
 
   // Capitalizar de forma segura
   const capitalizeFirst = (str: string) => {
@@ -39,7 +39,7 @@ export function useTerminology() {
 
     // Workspace
     workspace: workspaceTerm,
-    workspaceName: workspace?.name || 'Gimnasio',
+    workspaceName: workspace?.workspace?.name || 'Gimnasio',
     myWorkspace: `Mi ${workspaceTerm}`,
     workspaceInfo: `Información del ${workspaceTerm}`,
 
