@@ -289,7 +289,8 @@ export default function UsersClient() {
 
   // Aplicar filtros
   useEffect(() => {
-    let filtered = users;
+    // Filtro automático: excluir usuarios con rol OWNER
+    let filtered = users.filter(user => user.gym_role !== 'OWNER');
 
     // Filtro por rol
     if (selectedRole.id !== 'all') {
