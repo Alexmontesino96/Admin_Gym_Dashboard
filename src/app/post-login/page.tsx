@@ -9,9 +9,11 @@ export default async function PostLoginPage() {
     redirect('/login')
   }
 
-  // Limpiar cualquier selección previa de gimnasio
-  // Esto se hace en el servidor, pero también se limpiará en el cliente
-  
-  // Redirigir inmediatamente a selección de gimnasio
-  redirect('/select-gym')
+  // Limpiar cualquier selección previa de gimnasio al hacer login
+  // Esto fuerza al usuario a seleccionar un gimnasio explícitamente
+  clearSelectedGymId()
+
+  // Redirigir al dashboard
+  // El middleware detectará que no hay gimnasio seleccionado y redirigirá a /select-gym
+  redirect('/dashboard')
 } 

@@ -5,9 +5,10 @@ import { Building2, Users, Calendar, BarChart3, Shield, Zap } from 'lucide-react
 export default async function LoginPage() {
   const session = await auth0.getSession()
 
-  // Si ya está autenticado, redirigir a select-gym
+  // Si ya está autenticado, redirigir al dashboard
+  // El middleware manejará la redirección a /select-gym si no hay gimnasio seleccionado
   if (session) {
-    redirect('/select-gym')
+    redirect('/dashboard')
   }
 
   return (
