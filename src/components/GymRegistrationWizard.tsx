@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   User,
   Lock,
@@ -67,6 +67,10 @@ export default function GymRegistrationWizard() {
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
+  // Estado para validación de email
+  const [emailCheckLoading, setEmailCheckLoading] = useState(false)
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null)
+
   // Estados de los formularios
   const [ownerData, setOwnerData] = useState<OwnerData>({
     email: '',
@@ -91,6 +95,57 @@ export default function GymRegistrationWizard() {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     return regex.test(email)
   }
+
+  // Verificar disponibilidad de email
+  const checkEmailAvailability = useCallback(async (email: string) => {
+    if (!email || !validateEmail(email)) {
+      setEmailAvailable(null)
+      return
+    }
+
+    setEmailCheckLoading(true)
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/check-email-availability`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setEmailAvailable(data.available)
+        if (!data.available) {
+          setFieldErrors(prev => ({
+            ...prev,
+            email: 'Este email ya está registrado'
+          }))
+        } else {
+          setFieldErrors(prev => {
+            const { email, ...rest } = prev
+            return rest
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Error checking email:', err)
+    } finally {
+      setEmailCheckLoading(false)
+    }
+  }, [])
+
+  // Debounce para validación de email
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (ownerData.email) {
+        checkEmailAvailability(ownerData.email)
+      }
+    }, 800)
+
+    return () => clearTimeout(timer)
+  }, [ownerData.email, checkEmailAvailability])
 
   // Validación de teléfono
   const validatePhone = (phone: string): boolean => {
@@ -343,15 +398,40 @@ export default function GymRegistrationWizard() {
                     <input
                       type="email"
                       value={ownerData.email}
-                      onChange={(e) => setOwnerData({ ...ownerData, email: e.target.value })}
-                      className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                        fieldErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                      onChange={(e) => {
+                        setOwnerData({ ...ownerData, email: e.target.value })
+                        setEmailAvailable(null)
+                      }}
+                      className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                        fieldErrors.email
+                          ? 'border-red-300 bg-red-50'
+                          : emailAvailable === true
+                          ? 'border-green-300 bg-green-50'
+                          : 'border-gray-300'
                       }`}
                       placeholder="tu@email.com"
                     />
+                    {/* Indicadores de estado */}
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {emailCheckLoading && (
+                        <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
+                      )}
+                      {!emailCheckLoading && emailAvailable === true && validateEmail(ownerData.email) && (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      )}
+                      {!emailCheckLoading && emailAvailable === false && (
+                        <AlertCircle className="h-5 w-5 text-red-600" />
+                      )}
+                    </div>
                   </div>
                   {fieldErrors.email && (
                     <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
+                  )}
+                  {!fieldErrors.email && emailAvailable === true && (
+                    <p className="mt-1 text-sm text-green-600 flex items-center space-x-1">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Email disponible</span>
+                    </p>
                   )}
                 </div>
 
