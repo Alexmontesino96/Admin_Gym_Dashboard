@@ -52,7 +52,13 @@ interface MainLayoutProps {
 export default function MainLayout({ children, user }: MainLayoutProps) {
   const [showGymSelector, setShowGymSelector] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    // Inicializar sidebar abierto en desktop, cerrado en mobile
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768;
+    }
+    return false;
+  });
   const [isScheduleExpanded, setIsScheduleExpanded] = useState(false);
   const [isNutritionExpanded, setIsNutritionExpanded] = useState(false);
   const [isMembershipExpanded, setIsMembershipExpanded] = useState(false);
@@ -67,7 +73,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
 
   // Helper para cerrar sidebar solo en móvil
   const closeSidebarOnMobile = () => {
-    if (window.innerWidth < 768) { // md breakpoint es 768px
+    // Solo cerrar en móviles (ventanas menores a 768px)
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsSidebarOpen(false);
     }
   };
@@ -158,7 +165,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
     };
   }, []);
 
-  // Auto-expandir schedule si estamos en una ruta de schedule
+  // Auto-expandir submenús según la ruta actual
   useEffect(() => {
     if (pathname?.startsWith('/schedule')) {
       setIsScheduleExpanded(true);
@@ -174,6 +181,11 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
     }
     if (pathname?.startsWith('/eventos')) {
       setIsEventosExpanded(true);
+    }
+
+    // Mantener sidebar abierto en desktop después de navegación
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      setIsSidebarOpen(true);
     }
   }, [pathname]);
 
