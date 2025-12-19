@@ -71,13 +71,6 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
       const width = window.innerWidth;
       const isDesktop = width >= 768;
 
-      console.log('[Sidebar Debug] handleResize', {
-        windowWidth: width,
-        isDesktop,
-        currentState: isSidebarOpen,
-        newState: isDesktop
-      });
-
       if (isDesktop) {
         setIsSidebarOpen(true);
       } else {
@@ -86,7 +79,6 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
     };
 
     // Ejecutar al montar
-    console.log('[Sidebar Debug] Component mounted, initializing sidebar');
     handleResize();
 
     // Escuchar cambios de tamaño
@@ -96,18 +88,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
 
   // Helper para cerrar sidebar solo en móvil
   const closeSidebarOnMobile = () => {
-    const width = window.innerWidth;
-    const isMobile = width < 768;
-
-    console.log('[Sidebar Debug] closeSidebarOnMobile called', {
-      windowWidth: width,
-      isMobile,
-      currentState: isSidebarOpen,
-      action: isMobile ? 'WILL CLOSE' : 'NO ACTION (desktop)'
-    });
-
     // Solo cerrar en móviles (ventanas menores a 768px)
-    if (isMobile) {
+    if (window.innerWidth < 768) {
       setIsSidebarOpen(false);
     }
   };
@@ -346,9 +328,10 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
         {/* Sidebar - Siempre visible en desktop */}
         <aside
           data-sidebar-open={isSidebarOpen}
-          className={`fixed md:top-16 md:h-[calc(100vh-4rem)] inset-y-0 left-0 z-20 w-64 bg-white/90 border-r border-slate-200 backdrop-blur-md flex flex-col shadow-sm ${
-            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } md:!translate-x-0 transition-transform duration-300 ease-in-out`}
+          className="fixed md:top-16 md:h-[calc(100vh-4rem)] inset-y-0 left-0 z-20 w-64 bg-white/90 border-r border-slate-200 backdrop-blur-md flex flex-col shadow-sm transition-transform duration-300 ease-in-out"
+          style={{
+            transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)'
+          }}
         >
                     <nav className="flex-1 py-8 px-6 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
             <ul className="space-y-1 font-medium">
