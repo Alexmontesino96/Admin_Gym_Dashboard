@@ -105,7 +105,14 @@ export default function GymRegistrationWizard() {
 
     setEmailCheckLoading(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users/check-email-availability`, {
+      const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/users/check-email-availability`
+      console.log('🔍 Checking email availability:', {
+        url,
+        email,
+        apiKey: process.env.NEXT_PUBLIC_API_KEY ? '✅ Present' : '❌ Missing'
+      })
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
