@@ -414,33 +414,40 @@ export default function MembershipDashboardClient() {
           </h3>
           <div className="space-y-4">
             {/* Plan Más Popular */}
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-blue-600">Más Popular</span>
-                <span className="text-sm text-blue-600">{stats.analysis.most_popular_plan.users_count} usuarios</span>
+            {stats.analysis.most_popular_plan ? (
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-blue-600">Más Popular</span>
+                  <span className="text-sm text-blue-600">{stats.analysis.most_popular_plan.users_count} usuarios</span>
+                </div>
+                <h4 className="font-semibold text-slate-900">{stats.analysis.most_popular_plan.plan.name}</h4>
+                <p className="text-sm text-slate-600">{stats.analysis.most_popular_plan.plan.description}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-sm text-slate-500">
+                    {formatCurrency(stats.analysis.most_popular_plan.plan.price_amount, stats.analysis.most_popular_plan.plan.currency)} / {formatBillingInterval(stats.analysis.most_popular_plan.plan.billing_interval)}
+                  </span>
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    stats.analysis.most_popular_plan.plan.is_active
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {stats.analysis.most_popular_plan.plan.is_active ? 'Activo' : 'Inactivo'}
+                  </span>
+                </div>
               </div>
-              <h4 className="font-semibold text-slate-900">{stats.analysis.most_popular_plan.plan.name}</h4>
-              <p className="text-sm text-slate-600">{stats.analysis.most_popular_plan.plan.description}</p>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-sm text-slate-500">
-                  {formatCurrency(stats.analysis.most_popular_plan.plan.price_amount, stats.analysis.most_popular_plan.plan.currency)} / {formatBillingInterval(stats.analysis.most_popular_plan.plan.billing_interval)}
-                </span>
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  stats.analysis.most_popular_plan.plan.is_active
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {stats.analysis.most_popular_plan.plan.is_active ? 'Activo' : 'Inactivo'}
-                </span>
+            ) : (
+              <div className="bg-blue-50 rounded-lg p-4 text-center">
+                <p className="text-sm text-blue-600">No hay planes con usuarios activos</p>
               </div>
-            </div>
+            )}
 
             {/* Plan con Más Ingresos */}
-            <div className="bg-green-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-green-600">Mayor Ingreso</span>
-                <span className="text-sm text-green-600">
-                  {formatCurrency(stats.analysis.highest_revenue_plan.estimated_monthly_revenue, stats.analysis.highest_revenue_plan.plan.currency)}
+            {stats.analysis.highest_revenue_plan ? (
+              <div className="bg-green-50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-green-600">Mayor Ingreso</span>
+                  <span className="text-sm text-green-600">
+                    {formatCurrency(stats.analysis.highest_revenue_plan.estimated_monthly_revenue, stats.analysis.highest_revenue_plan.plan.currency)}
                 </span>
               </div>
               <h4 className="font-semibold text-slate-900">{stats.analysis.highest_revenue_plan.plan.name}</h4>
@@ -458,6 +465,11 @@ export default function MembershipDashboardClient() {
                 </span>
               </div>
             </div>
+            ) : (
+              <div className="bg-green-50 rounded-lg p-4 text-center">
+                <p className="text-sm text-green-600">No hay datos de ingresos disponibles</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
