@@ -105,36 +105,39 @@ export default function GymRegistrationWizard() {
 
     setEmailCheckLoading(true)
     try {
-      // Usar GET con query parameter en lugar de POST
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/check-email-availability?email=${encodeURIComponent(email)}`, {
-        method: 'GET',
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/check-email-availability`, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'X-API-Key': process.env.NEXT_PUBLIC_API_KEY || ''
+        },
+        body: JSON.stringify({ email })
       })
 
       if (!response.ok) {
-        // Si no es 200, no intentar parsear JSON
         console.error('Email check failed with status:', response.status)
         setEmailAvailable(null)
         return
       }
 
-      // Verificar que hay contenido antes de parsear
+      // Verificar content-type antes de parsear
       const contentType = response.headers.get('content-type')
       if (contentType && contentType.includes('application/json')) {
         const data = await response.json()
-        setEmailAvailable(data.available)
-        if (!data.available) {
-          setFieldErrors(prev => ({
-            ...prev,
-            email: 'Este email ya está registrado'
-          }))
-        } else {
+
+        // El backend retorna { status: "success" } o { status: "error" }
+        if (data.status === 'success') {
+          setEmailAvailable(true)
           setFieldErrors(prev => {
             const { email, ...rest } = prev
             return rest
           })
+        } else if (data.status === 'error') {
+          setEmailAvailable(false)
+          setFieldErrors(prev => ({
+            ...prev,
+            email: data.message || 'Este email ya está registrado'
+          }))
         }
       } else {
         console.error('Response is not JSON')
