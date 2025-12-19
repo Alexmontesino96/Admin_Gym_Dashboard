@@ -344,9 +344,12 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - Siempre visible en desktop */}
-        <aside className={`${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:!translate-x-0 fixed md:fixed md:top-16 md:h-[calc(100vh-4rem)] inset-y-0 left-0 z-20 w-64 bg-white/90 border-r border-slate-200 backdrop-blur-md transition-transform duration-300 ease-in-out flex flex-col shadow-sm`}>
+        <aside
+          data-sidebar-open={isSidebarOpen}
+          className={`fixed md:top-16 md:h-[calc(100vh-4rem)] inset-y-0 left-0 z-20 w-64 bg-white/90 border-r border-slate-200 backdrop-blur-md flex flex-col shadow-sm ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          } md:!translate-x-0 transition-transform duration-300 ease-in-out`}
+        >
                     <nav className="flex-1 py-8 px-6 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
             <ul className="space-y-1 font-medium">
               {menuItems.map((item) => {
