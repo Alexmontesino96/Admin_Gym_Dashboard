@@ -1,8 +1,8 @@
 import { auth0 } from '@/lib/auth0'
 import { redirect } from 'next/navigation'
-import GymRegistrationWizard from '@/components/GymRegistrationWizard'
+import VerifyEmailClient from './VerifyEmailClient'
 
-export default async function RegisterPage() {
+export default async function VerifyEmailPage() {
   const session = await auth0.getSession()
 
   // Si ya está autenticado, redirigir a select-gym
@@ -10,5 +10,5 @@ export default async function RegisterPage() {
     redirect('/select-gym')
   }
 
-  return <GymRegistrationWizard />
+  return <VerifyEmailClient />
 }

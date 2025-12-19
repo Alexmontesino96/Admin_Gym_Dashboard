@@ -5,7 +5,7 @@ export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // Rutas que no requieren autenticación
-  const publicRoutes = ['/', '/login', '/register']
+  const publicRoutes = ['/', '/login', '/register', '/verify-email']
 
   // Rutas que requieren autenticación pero no requieren gimnasio seleccionado
   const authOnlyRoutes = ['/select-gym', '/post-login']
