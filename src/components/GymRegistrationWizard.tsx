@@ -105,12 +105,12 @@ export default function GymRegistrationWizard() {
 
     setEmailCheckLoading(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/check-email-availability`, {
-        method: 'POST',
+      // Usar GET con query parameter en lugar de POST
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/check-email-availability?email=${encodeURIComponent(email)}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email })
+        }
       })
 
       if (!response.ok) {
@@ -148,16 +148,12 @@ export default function GymRegistrationWizard() {
     }
   }, [])
 
-  // Debounce para validación de email
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (ownerData.email) {
-        checkEmailAvailability(ownerData.email)
-      }
-    }, 800)
-
-    return () => clearTimeout(timer)
-  }, [ownerData.email, checkEmailAvailability])
+  // Manejar blur del campo email (cuando el usuario sale del campo)
+  const handleEmailBlur = () => {
+    if (ownerData.email && validateEmail(ownerData.email)) {
+      checkEmailAvailability(ownerData.email)
+    }
+  }
 
   // Validación de teléfono
   const validatePhone = (phone: string): boolean => {
@@ -427,6 +423,7 @@ export default function GymRegistrationWizard() {
                         setOwnerData({ ...ownerData, email: e.target.value })
                         setEmailAvailable(null)
                       }}
+                      onBlur={handleEmailBlur}
                       className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                         fieldErrors.email
                           ? 'border-red-300 bg-red-50'
