@@ -14,6 +14,31 @@ export default function VerifyEmailClient() {
   const searchParams = useSearchParams()
   const email = searchParams?.get('email') || ''
   const gymName = searchParams?.get('gym') || ''
+  const gymType = searchParams?.get('type') || 'gym'
+
+  // Módulos según tipo
+  const modules = gymType === 'personal_trainer'
+    ? [
+        'Usuarios',
+        'Chat',
+        'Salud',
+        'Nutrición',
+        'Facturación',
+        'Citas',
+        'Progreso',
+        'Encuestas'
+      ]
+    : [
+        'Usuarios',
+        'Horarios',
+        'Eventos',
+        'Chat',
+        'Facturación',
+        'Salud',
+        'Nutrición',
+        'Encuestas',
+        'Equipamiento'
+      ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
@@ -35,15 +60,24 @@ export default function VerifyEmailClient() {
 
           {/* Información del Gimnasio */}
           {gymName && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-8 border border-blue-200">
+            <div className={`bg-gradient-to-r rounded-xl p-6 mb-8 border ${
+              gymType === 'personal_trainer'
+                ? 'from-green-50 to-emerald-50 border-green-200'
+                : 'from-blue-50 to-indigo-50 border-blue-200'
+            }`}>
               <div className="flex items-center space-x-3 mb-2">
-                <Building2 className="h-6 w-6 text-blue-600" />
+                <Building2 className={`h-6 w-6 ${
+                  gymType === 'personal_trainer' ? 'text-green-600' : 'text-blue-600'
+                }`} />
                 <h2 className="text-lg font-semibold text-gray-900">
                   {gymName}
                 </h2>
               </div>
               <p className="text-sm text-gray-600 ml-9">
-                Tu gimnasio está listo para empezar
+                {gymType === 'personal_trainer'
+                  ? 'Tu espacio de trabajo está listo para empezar'
+                  : 'Tu gimnasio está listo para empezar'
+                }
               </p>
             </div>
           )}
@@ -115,20 +149,13 @@ export default function VerifyEmailClient() {
         {/* Módulos Activados */}
         <div className="mt-6 bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-gray-200">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">
-            Módulos Activados en tu Gimnasio:
+            {gymType === 'personal_trainer'
+              ? 'Módulos Activados en tu Espacio de Trabajo:'
+              : 'Módulos Activados en tu Gimnasio:'
+            }
           </h3>
           <div className="grid grid-cols-3 gap-3">
-            {[
-              'Usuarios',
-              'Horarios',
-              'Eventos',
-              'Chat',
-              'Facturación',
-              'Salud',
-              'Nutrición',
-              'Encuestas',
-              'Equipamiento'
-            ].map((module) => (
+            {modules.map((module) => (
               <div
                 key={module}
                 className="flex items-center space-x-2 text-sm text-gray-700"

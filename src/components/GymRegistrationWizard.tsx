@@ -13,7 +13,9 @@ import {
   AlertCircle,
   ArrowRight,
   ArrowLeft,
-  Loader2
+  Loader2,
+  Users,
+  Dumbbell
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -33,6 +35,7 @@ interface GymData {
   gym_phone: string
   gym_email: string
   timezone: string
+  gym_type: 'gym' | 'personal_trainer'
 }
 
 interface PasswordStrength {
@@ -79,7 +82,8 @@ export default function GymRegistrationWizard() {
     gym_address: '',
     gym_phone: '',
     gym_email: '',
-    timezone: 'America/Mexico_City'
+    timezone: 'America/Mexico_City',
+    gym_type: 'gym'
   })
 
   // Validación de email
@@ -215,7 +219,8 @@ export default function GymRegistrationWizard() {
         gym_address: gymData.gym_address || undefined,
         gym_phone: gymData.gym_phone || undefined,
         gym_email: gymData.gym_email || undefined,
-        timezone: gymData.timezone
+        timezone: gymData.timezone,
+        gym_type: gymData.gym_type
       }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/register-gym-owner`, {
@@ -257,7 +262,7 @@ export default function GymRegistrationWizard() {
       }
 
       // Éxito - Redirigir a página de verificación
-      window.location.href = `/verify-email?email=${encodeURIComponent(data.user.email)}&gym=${encodeURIComponent(data.gym.name)}`
+      window.location.href = `/verify-email?email=${encodeURIComponent(data.user.email)}&gym=${encodeURIComponent(data.gym.name)}&type=${encodeURIComponent(gymData.gym_type)}`
 
     } catch (err) {
       console.error('Registration error:', err)
@@ -493,17 +498,91 @@ export default function GymRegistrationWizard() {
             {step === 2 && (
               <div className="space-y-6">
                 <div className="text-center pb-4 border-b border-gray-200">
-                  <Building2 className="h-12 w-12 text-indigo-600 mx-auto mb-2" />
-                  <h2 className="text-xl font-semibold text-gray-900">Datos del Gimnasio</h2>
+                  {gymData.gym_type === 'gym' ? (
+                    <Building2 className="h-12 w-12 text-indigo-600 mx-auto mb-2" />
+                  ) : (
+                    <Dumbbell className="h-12 w-12 text-green-600 mx-auto mb-2" />
+                  )}
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {gymData.gym_type === 'gym' ? 'Datos del Gimnasio' : 'Datos del Espacio de Trabajo'}
+                  </h2>
                   <p className="text-sm text-gray-600 mt-1">
                     Información de tu negocio
                   </p>
                 </div>
 
+                {/* Selector de Tipo de Gimnasio */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Tipo de Negocio *
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Opción: Gimnasio Tradicional */}
+                    <button
+                      type="button"
+                      onClick={() => setGymData({ ...gymData, gym_type: 'gym' })}
+                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 ${
+                        gymData.gym_type === 'gym'
+                          ? 'border-blue-600 bg-blue-50 shadow-lg'
+                          : 'border-gray-300 bg-white hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <Users className={`h-10 w-10 mx-auto mb-3 ${
+                          gymData.gym_type === 'gym' ? 'text-blue-600' : 'text-gray-400'
+                        }`} />
+                        <h3 className={`font-semibold mb-1 ${
+                          gymData.gym_type === 'gym' ? 'text-blue-900' : 'text-gray-900'
+                        }`}>
+                          Gimnasio
+                        </h3>
+                        <p className="text-xs text-gray-600">
+                          Gimnasio tradicional con múltiples miembros y entrenadores
+                        </p>
+                      </div>
+                      {gymData.gym_type === 'gym' && (
+                        <div className="absolute top-3 right-3">
+                          <CheckCircle className="h-5 w-5 text-blue-600" />
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Opción: Entrenador Personal */}
+                    <button
+                      type="button"
+                      onClick={() => setGymData({ ...gymData, gym_type: 'personal_trainer' })}
+                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 ${
+                        gymData.gym_type === 'personal_trainer'
+                          ? 'border-green-600 bg-green-50 shadow-lg'
+                          : 'border-gray-300 bg-white hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <Dumbbell className={`h-10 w-10 mx-auto mb-3 ${
+                          gymData.gym_type === 'personal_trainer' ? 'text-green-600' : 'text-gray-400'
+                        }`} />
+                        <h3 className={`font-semibold mb-1 ${
+                          gymData.gym_type === 'personal_trainer' ? 'text-green-900' : 'text-gray-900'
+                        }`}>
+                          Entrenador Personal
+                        </h3>
+                        <p className="text-xs text-gray-600">
+                          Entrenador independiente con clientes directos
+                        </p>
+                      </div>
+                      {gymData.gym_type === 'personal_trainer' && (
+                        <div className="absolute top-3 right-3">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
                 {/* Nombre del Gimnasio */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nombre del Gimnasio *
+                    {gymData.gym_type === 'gym' ? 'Nombre del Gimnasio *' : 'Tu Nombre Profesional *'}
                   </label>
                   <div className="relative">
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -514,12 +593,18 @@ export default function GymRegistrationWizard() {
                       className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                         fieldErrors.gym_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
                       }`}
-                      placeholder="Fitness Pro México"
+                      placeholder={gymData.gym_type === 'gym' ? 'Fitness Pro México' : 'Juan Pérez Training'}
                     />
                   </div>
                   {fieldErrors.gym_name && (
                     <p className="mt-1 text-sm text-red-600">{fieldErrors.gym_name}</p>
                   )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    {gymData.gym_type === 'gym'
+                      ? 'Nombre de tu gimnasio o centro de entrenamiento'
+                      : 'Nombre con el que te conocerán tus clientes'
+                    }
+                  </p>
                 </div>
 
                 {/* Dirección */}
