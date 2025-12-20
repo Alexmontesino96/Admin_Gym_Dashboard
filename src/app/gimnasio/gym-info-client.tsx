@@ -32,7 +32,12 @@ import {
 import { useTerminology } from '@/hooks/useTerminology';
 
 export default function GymInfoClient() {
-  const { workspace, userPlural, userSingular } = useTerminology();
+  const terminology = useTerminology();
+
+  // Validación defensiva para asegurar que sean strings
+  const workspace = typeof terminology.workspace === 'string' ? terminology.workspace : 'gimnasio';
+  const userPlural = typeof terminology.userPlural === 'string' ? terminology.userPlural : 'miembros';
+  const userSingular = typeof terminology.userSingular === 'string' ? terminology.userSingular : 'miembro';
 
   const [gymInfo, setGymInfo] = useState<GymWithStats | null>(null);
   const [loading, setLoading] = useState(true);
