@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Building2,
   Users,
@@ -32,8 +34,11 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
+import '@/lib/i18n'
+import LanguageSelector from './LanguageSelector'
 
 export default function LandingPage() {
+  const { t } = useTranslation()
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
@@ -47,17 +52,18 @@ export default function LandingPage() {
               <span className="text-xl font-bold text-gray-900">GymFlow</span>
             </div>
             <div className="flex items-center space-x-4">
+              <LanguageSelector />
               <Link
                 href="/login"
                 className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
               >
-                Iniciar Sesión
+                {t('nav.login')}
               </Link>
               <Link
                 href="/register"
                 className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
               >
-                Crear mi Gimnasio
+                {t('nav.createGym')}
               </Link>
             </div>
           </div>
@@ -78,35 +84,34 @@ export default function LandingPage() {
               {/* Badge de urgencia */}
               <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-orange-100 to-red-100 text-orange-700 px-4 py-2 rounded-full mb-6 animate-pulse">
                 <Flame className="h-4 w-4" />
-                <span className="text-sm font-semibold">235 gimnasios activaron Stories esta semana</span>
+                <span className="text-sm font-semibold">235 {t('hero.badge')}</span>
               </div>
 
               <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                Transforma tu Gimnasio en una{' '}
+                {t('hero.headline')}{' '}
                 <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
-                  Comunidad
+                  {t('hero.headlineHighlight')}
                 </span>{' '}
-                que Nunca Quiere Irse
+                {t('hero.headlineEnd')}
               </h1>
 
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Aumenta tu retención hasta un <span className="font-bold text-purple-600">60%</span> con
-                la única plataforma que combina <span className="font-bold text-pink-600">Stories</span>, <span className="font-bold text-green-600">Chat en Tiempo Real</span> y <span className="font-bold text-blue-600">Feed Social</span> - como <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Instagram</span>, pero para fitness. Usada por <span className="font-bold text-indigo-600">1,200+ gimnasios</span> en Latinoamérica.
+                {t('hero.subheadline')} <span className="font-bold text-purple-600">{t('hero.subheadlineRetention')}</span> {t('hero.subheadlineContinue')} <span className="font-bold text-pink-600">{t('hero.stories')}</span>, <span className="font-bold text-green-600">{t('hero.chat')}</span> {t('hero.subheadlineEnd')} <span className="font-bold text-blue-600">{t('hero.feed')}</span> {t('hero.subheadlineEnd')} <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">{t('hero.instagram')}</span>{t('hero.subheadlineFitness')} <span className="font-bold text-indigo-600">{t('hero.gymsCount')}</span> {t('hero.subheadlineLocation')}
               </p>
 
               {/* Métricas destacadas */}
               <div className="grid grid-cols-3 gap-6 mb-10">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-600 mb-1">60%</div>
-                  <div className="text-sm text-gray-600">Mayor Retención</div>
+                  <div className="text-3xl font-bold text-purple-600 mb-1">{t('hero.metric1Value')}</div>
+                  <div className="text-sm text-gray-600">{t('hero.metric1Label')}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600 mb-1">500K+</div>
-                  <div className="text-sm text-gray-600">Mensajes Diarios</div>
+                  <div className="text-3xl font-bold text-green-600 mb-1">{t('hero.metric2Value')}</div>
+                  <div className="text-sm text-gray-600">{t('hero.metric2Label')}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-pink-600 mb-1">24/7</div>
-                  <div className="text-sm text-gray-600">Conexión</div>
+                  <div className="text-3xl font-bold text-pink-600 mb-1">{t('hero.metric3Value')}</div>
+                  <div className="text-sm text-gray-600">{t('hero.metric3Label')}</div>
                 </div>
               </div>
 
@@ -116,14 +121,14 @@ export default function LandingPage() {
                   href="/register"
                   className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:scale-105 flex items-center justify-center space-x-2"
                 >
-                  <span>Crear mi Gimnasio Gratis</span>
+                  <span>{t('hero.ctaPrimary')}</span>
                   <ArrowRight className="h-5 w-5" />
                 </Link>
                 <Link
                   href="/login"
                   className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl font-semibold text-lg hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 flex items-center justify-center"
                 >
-                  Iniciar Sesión
+                  {t('hero.ctaSecondary')}
                 </Link>
               </div>
 
@@ -131,11 +136,11 @@ export default function LandingPage() {
               <div className="mt-8 flex items-center space-x-6 text-sm text-gray-500">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span>Sin tarjeta de crédito</span>
+                  <span>{t('hero.trustBadge1')}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span>Setup en 5 minutos</span>
+                  <span>{t('hero.trustBadge2')}</span>
                 </div>
               </div>
             </div>
@@ -161,8 +166,8 @@ export default function LandingPage() {
                     <TrendingUp className="h-6 w-6 text-green-600" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-gray-900">+43%</div>
-                    <div className="text-sm text-gray-600">Crecimiento promedio</div>
+                    <div className="text-2xl font-bold text-gray-900">{t('hero.floatingCardValue')}</div>
+                    <div className="text-sm text-gray-600">{t('hero.floatingCardLabel')}</div>
                   </div>
                 </div>
               </div>
@@ -175,13 +180,13 @@ export default function LandingPage() {
       <section className="py-16 bg-white border-y border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <p className="text-gray-600 font-medium mb-6">Confiado por gimnasios líderes en toda Latinoamérica</p>
+            <p className="text-gray-600 font-medium mb-6">{t('socialProof.title')}</p>
             <div className="flex items-center justify-center space-x-2 text-yellow-500">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star key={star} className="h-6 w-6 fill-current" />
               ))}
-              <span className="ml-2 text-gray-900 font-semibold">4.9/5.0</span>
-              <span className="text-gray-500">(347 reseñas)</span>
+              <span className="ml-2 text-gray-900 font-semibold">{t('socialProof.rating')}</span>
+              <span className="text-gray-500">({t('socialProof.reviews')})</span>
             </div>
           </div>
         </div>
