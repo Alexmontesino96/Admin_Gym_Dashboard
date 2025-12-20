@@ -3019,3 +3019,361 @@ export const getPaymentStatusColor = (status: PaymentStatusType): string => {
       return 'bg-gray-100 text-gray-800 border-gray-200';
   }
 };
+
+// ========================================
+// ACTIVITY FEED SYSTEM - TIPOS Y API
+// ========================================
+
+// ===== ENUMS =====
+export enum ActivityType {
+  TRAINING_COUNT = 'training_count',
+  CLASS_CHECKIN = 'class_checkin',
+  ACHIEVEMENT_UNLOCKED = 'achievement_unlocked',
+  STREAK_MILESTONE = 'streak_milestone',
+  PR_BROKEN = 'pr_broken',
+  GOAL_COMPLETED = 'goal_completed',
+  SOCIAL_ACTIVITY = 'social_activity',
+  CLASS_POPULAR = 'class_popular',
+  HOURLY_SUMMARY = 'hourly_summary',
+  MOTIVATIONAL = 'motivational'
+}
+
+export enum RankingType {
+  CONSISTENCY = 'consistency',
+  ATTENDANCE = 'attendance',
+  IMPROVEMENT = 'improvement',
+  ACTIVITY = 'activity',
+  DEDICATION = 'dedication'
+}
+
+export enum RankingPeriod {
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  MONTHLY = 'monthly'
+}
+
+export enum HourlyTrend {
+  INCREASING = 'increasing',
+  DECREASING = 'decreasing',
+  STABLE = 'stable'
+}
+
+// ===== INTERFACES PRINCIPALES =====
+export interface Activity {
+  id: string;
+  type: 'realtime' | 'summary';
+  subtype: ActivityType | string;
+  count: number;
+  message: string;
+  timestamp: string;
+  icon: string;
+  ttl_minutes: number;
+  metadata?: Record<string, any>;
+}
+
+export interface ActivityFeedResponse {
+  activities: Activity[];
+  count: number;
+  has_more: boolean;
+  offset: number;
+  limit: number;
+}
+
+export interface PopularClass {
+  name: string;
+  participants: number;
+  capacity: number;
+  percentage: number;
+}
+
+export interface RealtimeStats {
+  active_now: number;
+  by_area: Record<string, number>;
+  popular_classes: PopularClass[];
+  is_peak_hour: boolean;
+  peak_hours: string[];
+  hourly_trend: HourlyTrend;
+}
+
+export interface RealtimeStatsResponse {
+  status: string;
+  data: RealtimeStats;
+}
+
+export interface InsightsResponse {
+  insights: string[];
+  count: number;
+}
+
+export interface RankingEntry {
+  position: number;
+  value: number;
+  badge: string | null;
+}
+
+export interface RankingsResponse {
+  type: RankingType;
+  period: RankingPeriod;
+  rankings: RankingEntry[];
+  unit: string;
+  count: number;
+}
+
+export interface DailySummaryStats {
+  attendance: number;
+  achievements: number;
+  personal_records: number;
+  goals_completed: number;
+  classes_completed: number;
+  total_hours: number;
+  active_streaks: number;
+  average_class_size: number;
+  engagement_score: number;
+}
+
+export interface DailySummaryResponse {
+  date: string;
+  stats: DailySummaryStats;
+  highlights: string[];
+}
+
+export interface ActivityFeedHealth {
+  status: 'healthy' | 'unhealthy';
+  redis: 'connected' | 'disconnected';
+  memory_usage_mb?: number;
+  anonymous_mode: boolean;
+  privacy_compliant: boolean;
+  keys_count?: {
+    feed: number;
+    realtime: number;
+    daily: number;
+    total: number;
+  };
+  configuration?: {
+    min_aggregation_threshold: number;
+    show_user_names: boolean;
+    ttl_enabled: boolean;
+  };
+  error?: string;
+}
+
+// ===== CONFIGURACION DE ICONOS POR TIPO =====
+export const ACTIVITY_TYPE_CONFIG: Record<string, { icon: string; label: string; color: string }> = {
+  [ActivityType.TRAINING_COUNT]: {
+    icon: '💪',
+    label: 'Entrenando',
+    color: 'blue'
+  },
+  [ActivityType.CLASS_CHECKIN]: {
+    icon: '📍',
+    label: 'Check-in',
+    color: 'green'
+  },
+  [ActivityType.ACHIEVEMENT_UNLOCKED]: {
+    icon: '⭐',
+    label: 'Logro',
+    color: 'yellow'
+  },
+  [ActivityType.STREAK_MILESTONE]: {
+    icon: '🔥',
+    label: 'Racha',
+    color: 'orange'
+  },
+  [ActivityType.PR_BROKEN]: {
+    icon: '🏆',
+    label: 'Record',
+    color: 'purple'
+  },
+  [ActivityType.GOAL_COMPLETED]: {
+    icon: '🎯',
+    label: 'Meta',
+    color: 'teal'
+  },
+  [ActivityType.SOCIAL_ACTIVITY]: {
+    icon: '👥',
+    label: 'Social',
+    color: 'pink'
+  },
+  [ActivityType.CLASS_POPULAR]: {
+    icon: '📈',
+    label: 'Clase Popular',
+    color: 'indigo'
+  },
+  [ActivityType.HOURLY_SUMMARY]: {
+    icon: '📊',
+    label: 'Resumen',
+    color: 'gray'
+  },
+  [ActivityType.MOTIVATIONAL]: {
+    icon: '💫',
+    label: 'Motivacional',
+    color: 'amber'
+  }
+};
+
+export const RANKING_TYPE_CONFIG: Record<RankingType, { icon: string; label: string; description: string }> = {
+  [RankingType.CONSISTENCY]: {
+    icon: '🔥',
+    label: 'Consistencia',
+    description: 'Dias consecutivos de entrenamiento'
+  },
+  [RankingType.ATTENDANCE]: {
+    icon: '📍',
+    label: 'Asistencia',
+    description: 'Clases asistidas en el periodo'
+  },
+  [RankingType.IMPROVEMENT]: {
+    icon: '📈',
+    label: 'Mejora',
+    description: 'Porcentaje de mejora'
+  },
+  [RankingType.ACTIVITY]: {
+    icon: '⏱️',
+    label: 'Actividad',
+    description: 'Horas totales de entrenamiento'
+  },
+  [RankingType.DEDICATION]: {
+    icon: '💎',
+    label: 'Dedicacion',
+    description: 'Puntuacion de dedicacion'
+  }
+};
+
+// ===== API CLIENT =====
+export const activityFeedAPI = {
+  /**
+   * Obtiene el feed de actividades anonimo con paginacion
+   * @param limit - Numero de actividades (1-100, default 20)
+   * @param offset - Offset para paginacion (default 0)
+   */
+  getFeed: async (limit: number = 20, offset: number = 0): Promise<ActivityFeedResponse> => {
+    return apiCall(`/activity_feed/?limit=${limit}&offset=${offset}`);
+  },
+
+  /**
+   * Obtiene estadisticas en tiempo real del gimnasio
+   */
+  getRealtimeStats: async (): Promise<RealtimeStatsResponse> => {
+    return apiCall('/activity_feed/realtime');
+  },
+
+  /**
+   * Obtiene insights motivacionales basados en actividad actual
+   */
+  getInsights: async (): Promise<InsightsResponse> => {
+    return apiCall('/activity_feed/insights');
+  },
+
+  /**
+   * Obtiene rankings anonimos (solo valores, sin nombres)
+   * @param rankingType - Tipo de ranking
+   * @param period - Periodo (daily, weekly, monthly)
+   * @param limit - Posiciones a mostrar (1-50, default 10)
+   */
+  getRankings: async (
+    rankingType: RankingType,
+    period: RankingPeriod = RankingPeriod.WEEKLY,
+    limit: number = 10
+  ): Promise<RankingsResponse> => {
+    return apiCall(`/activity_feed/rankings/${rankingType}?period=${period}&limit=${limit}`);
+  },
+
+  /**
+   * Obtiene resumen de estadisticas del dia actual
+   */
+  getDailySummary: async (): Promise<DailySummaryResponse> => {
+    return apiCall('/activity_feed/stats/summary');
+  },
+
+  /**
+   * Health check del sistema de Activity Feed
+   */
+  getHealth: async (): Promise<ActivityFeedHealth> => {
+    return apiCall('/activity_feed/health');
+  },
+
+  /**
+   * Genera actividad de prueba (solo para desarrollo/testing)
+   * @param activityType - Tipo de actividad a generar
+   * @param count - Cantidad para la actividad
+   */
+  generateTestActivity: async (
+    activityType: ActivityType,
+    count: number
+  ): Promise<{ status: string; activity?: Activity; reason?: string }> => {
+    return apiCall(`/activity_feed/test/generate-activity?activity_type=${activityType}&count=${count}`, {
+      method: 'POST'
+    });
+  }
+};
+
+// ===== HELPER FUNCTIONS =====
+export const getActivityTypeConfig = (type: string) => {
+  return ACTIVITY_TYPE_CONFIG[type] || {
+    icon: '📌',
+    label: 'Actividad',
+    color: 'gray'
+  };
+};
+
+export const getRankingTypeConfig = (type: RankingType) => {
+  return RANKING_TYPE_CONFIG[type];
+};
+
+export const formatActivityTime = (timestamp: string): string => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+
+  if (diffMins < 1) return 'Ahora mismo';
+  if (diffMins < 60) return `Hace ${diffMins} min`;
+  if (diffHours < 24) return `Hace ${diffHours}h`;
+
+  return date.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+export const getTrendIcon = (trend: HourlyTrend): string => {
+  switch (trend) {
+    case HourlyTrend.INCREASING:
+      return '📈';
+    case HourlyTrend.DECREASING:
+      return '📉';
+    case HourlyTrend.STABLE:
+      return '➡️';
+    default:
+      return '➡️';
+  }
+};
+
+export const getTrendLabel = (trend: HourlyTrend): string => {
+  switch (trend) {
+    case HourlyTrend.INCREASING:
+      return 'En aumento';
+    case HourlyTrend.DECREASING:
+      return 'Disminuyendo';
+    case HourlyTrend.STABLE:
+      return 'Estable';
+    default:
+      return 'Estable';
+  }
+};
+
+export const getRankingBadge = (position: number): string | null => {
+  switch (position) {
+    case 1:
+      return '🥇';
+    case 2:
+      return '🥈';
+    case 3:
+      return '🥉';
+    default:
+      return null;
+  }
+};

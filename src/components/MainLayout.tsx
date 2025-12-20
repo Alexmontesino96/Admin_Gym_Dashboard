@@ -36,7 +36,11 @@ import {
   BarChart3,
   ClipboardList,
   Copy,
-  Sparkles
+  Sparkles,
+  Activity,
+  TrendingUp,
+  Trophy,
+  Zap
 } from 'lucide-react';
 import GymSelector from './GymSelector';
 import { useTerminology } from '@/hooks/useTerminology';
@@ -59,6 +63,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
   const [isMembershipExpanded, setIsMembershipExpanded] = useState(false);
   const [isSurveysExpanded, setIsSurveysExpanded] = useState(false);
   const [isEventosExpanded, setIsEventosExpanded] = useState(false);
+  const [isActivityFeedExpanded, setIsActivityFeedExpanded] = useState(false);
   const pathname = usePathname();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const gymSelectorRef = useRef<HTMLDivElement>(null);
@@ -159,10 +164,22 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
       ]
     },
     { key: "notificaciones", label: "Notificaciones", href: "/notificaciones", icon: Bell },
-    { key: "features", label: "Más Características", href: "/features", icon: Sparkles },
+    { key: "features", label: "Mas Caracteristicas", href: "/features", icon: Sparkles },
     { key: "gimnasio", label: myWorkspace, href: "/gimnasio", icon: Building },
     { key: "chat", label: "Chat", href: "/chat", icon: MessageCircle },
-    { key: "settings", label: "Configuración", href: "/settings", icon: Settings },
+    {
+      key: "activity-feed",
+      label: "Feed de Actividad",
+      href: "/activity-feed",
+      icon: Activity,
+      hasSubmenu: true,
+      submenu: [
+        { key: "activity-feed-main", label: "Feed Principal", href: "/activity-feed", icon: Zap },
+        { key: "activity-realtime", label: "Tiempo Real", href: "/activity-feed/realtime", icon: TrendingUp },
+        { key: "activity-rankings", label: "Rankings", href: "/activity-feed/rankings", icon: Trophy },
+      ]
+    },
+    { key: "settings", label: "Configuracion", href: "/settings", icon: Settings },
   ];
 
   // Cerrar menús al hacer clic fuera
@@ -198,6 +215,9 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
     }
     if (pathname?.startsWith('/eventos')) {
       setIsEventosExpanded(true);
+    }
+    if (pathname?.startsWith('/activity-feed')) {
+      setIsActivityFeedExpanded(true);
     }
   }, [pathname]);
 
@@ -380,6 +400,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                               setIsSurveysExpanded(!isSurveysExpanded);
                             } else if (key === 'eventos') {
                               setIsEventosExpanded(!isEventosExpanded);
+                            } else if (key === 'activity-feed') {
+                              setIsActivityFeedExpanded(!isActivityFeedExpanded);
                             }
                           }}
                           className={`p-1 rounded-md transition-colors ${
@@ -394,7 +416,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                               (key === 'nutrition' && isNutritionExpanded) ||
                               (key === 'membership' && isMembershipExpanded) ||
                               (key === 'surveys' && isSurveysExpanded) ||
-                              (key === 'eventos' && isEventosExpanded) ? 'rotate-90' : ''
+                              (key === 'eventos' && isEventosExpanded) ||
+                              (key === 'activity-feed' && isActivityFeedExpanded) ? 'rotate-90' : ''
                             }`}
                           />
                         </button>
@@ -405,7 +428,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                         (key === 'nutrition' && isNutritionExpanded) ||
                         (key === 'membership' && isMembershipExpanded) ||
                         (key === 'surveys' && isSurveysExpanded) ||
-                        (key === 'eventos' && isEventosExpanded)) && submenu && (
+                        (key === 'eventos' && isEventosExpanded) ||
+                        (key === 'activity-feed' && isActivityFeedExpanded)) && submenu && (
                         <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4">
                           {submenu.map(({ key: subKey, label: subLabel, href: subHref, icon: SubIcon }) => {
                             const isSubActive = pathname === subHref;
