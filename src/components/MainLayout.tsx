@@ -41,7 +41,8 @@ import {
   TrendingUp,
   Trophy,
   Zap,
-  FlaskConical
+  FlaskConical,
+  Award
 } from 'lucide-react';
 import GymSelector from './GymSelector';
 import { useTerminology } from '@/hooks/useTerminology';
@@ -164,6 +165,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
         { key: "surveys-templates", label: "Plantillas", href: "/surveys/templates", icon: Copy }
       ]
     },
+    { key: "logros", label: "Logros", href: "/logros", icon: Award },
     { key: "notificaciones", label: "Notificaciones", href: "/notificaciones", icon: Bell },
     { key: "features", label: "Mas Caracteristicas", href: "/features", icon: Sparkles },
     { key: "gimnasio", label: myWorkspace, href: "/gimnasio", icon: Building },

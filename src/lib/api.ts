@@ -3377,3 +3377,528 @@ export const getRankingBadge = (position: number): string | null => {
       return null;
   }
 };
+
+// ========================================
+// ACHIEVEMENTS SYSTEM - TIPOS Y API
+// ========================================
+
+// ===== ENUMS =====
+export enum AchievementType {
+  ATTENDANCE_STREAK = 'attendance_streak',
+  WEIGHT_GOAL = 'weight_goal',
+  CLASS_MILESTONE = 'class_milestone',
+  SOCIAL_ENGAGEMENT = 'social_engagement',
+  STRENGTH_GAIN = 'strength_gain',
+  ENDURANCE_MILESTONE = 'endurance_milestone',
+  CONSISTENCY = 'consistency'
+}
+
+export enum AchievementRarity {
+  COMMON = 'common',
+  RARE = 'rare',
+  EPIC = 'epic',
+  LEGENDARY = 'legendary'
+}
+
+// ===== INTERFACES =====
+export interface Achievement {
+  id: number;
+  user_id: number;
+  gym_id: number;
+  achievement_type: AchievementType;
+  title: string;
+  description: string;
+  icon: string;
+  value: number;
+  unit: string;
+  rarity: AchievementRarity;
+  earned_at: string;
+  is_milestone: boolean;
+  points_awarded: number;
+  created_at: string;
+}
+
+export interface AchievementsByRarity {
+  common: Achievement[];
+  rare: Achievement[];
+  epic: Achievement[];
+  legendary: Achievement[];
+}
+
+export interface AchievementsResponse {
+  total_achievements: number;
+  total_points: number;
+  by_rarity: AchievementsByRarity;
+  recent: Achievement[];
+}
+
+export interface AchievementStats {
+  total_achievements: number;
+  total_points: number;
+  by_type: Record<AchievementType, number>;
+  by_rarity: Record<AchievementRarity, number>;
+  recent_achievements: Achievement[];
+  next_milestones: NextMilestone[];
+}
+
+export interface NextMilestone {
+  type: AchievementType;
+  title: string;
+  description: string;
+  current_value: number;
+  target_value: number;
+  progress_percentage: number;
+  rarity: AchievementRarity;
+  points_reward: number;
+}
+
+// ===== CONFIGURACION DE RAREZA =====
+export const RARITY_CONFIG: Record<AchievementRarity, {
+  label: string;
+  color: string;
+  bgColor: string;
+  textColor: string;
+  borderColor: string;
+  glowColor: string;
+  points: number;
+}> = {
+  [AchievementRarity.COMMON]: {
+    label: 'Comun',
+    color: 'gray',
+    bgColor: 'bg-gray-100',
+    textColor: 'text-gray-700',
+    borderColor: 'border-gray-300',
+    glowColor: 'shadow-gray-200',
+    points: 10
+  },
+  [AchievementRarity.RARE]: {
+    label: 'Raro',
+    color: 'blue',
+    bgColor: 'bg-blue-100',
+    textColor: 'text-blue-700',
+    borderColor: 'border-blue-300',
+    glowColor: 'shadow-blue-200',
+    points: 25
+  },
+  [AchievementRarity.EPIC]: {
+    label: 'Epico',
+    color: 'purple',
+    bgColor: 'bg-purple-100',
+    textColor: 'text-purple-700',
+    borderColor: 'border-purple-300',
+    glowColor: 'shadow-purple-200',
+    points: 50
+  },
+  [AchievementRarity.LEGENDARY]: {
+    label: 'Legendario',
+    color: 'yellow',
+    bgColor: 'bg-yellow-100',
+    textColor: 'text-yellow-700',
+    borderColor: 'border-yellow-400',
+    glowColor: 'shadow-yellow-300',
+    points: 100
+  }
+};
+
+// ===== CONFIGURACION DE TIPOS =====
+export const ACHIEVEMENT_TYPE_CONFIG: Record<AchievementType, {
+  icon: string;
+  label: string;
+  description: string;
+  color: string;
+}> = {
+  [AchievementType.ATTENDANCE_STREAK]: {
+    icon: '🔥',
+    label: 'Racha de Asistencia',
+    description: 'Dias consecutivos de entrenamiento',
+    color: 'orange'
+  },
+  [AchievementType.WEIGHT_GOAL]: {
+    icon: '⚖️',
+    label: 'Meta de Peso',
+    description: 'Objetivos de peso alcanzados',
+    color: 'green'
+  },
+  [AchievementType.CLASS_MILESTONE]: {
+    icon: '🎯',
+    label: 'Hito de Clases',
+    description: 'Clases completadas',
+    color: 'blue'
+  },
+  [AchievementType.SOCIAL_ENGAGEMENT]: {
+    icon: '👥',
+    label: 'Participacion Social',
+    description: 'Interacciones en la comunidad',
+    color: 'pink'
+  },
+  [AchievementType.STRENGTH_GAIN]: {
+    icon: '💪',
+    label: 'Ganancia de Fuerza',
+    description: 'Mejoras en ejercicios de fuerza',
+    color: 'red'
+  },
+  [AchievementType.ENDURANCE_MILESTONE]: {
+    icon: '🏃',
+    label: 'Resistencia',
+    description: 'Hitos de resistencia cardiovascular',
+    color: 'teal'
+  },
+  [AchievementType.CONSISTENCY]: {
+    icon: '📅',
+    label: 'Consistencia',
+    description: 'Asistencia regular a largo plazo',
+    color: 'indigo'
+  }
+};
+
+// ===== DATOS MOCK PARA DESARROLLO =====
+// Nota: Usar estos datos mientras el endpoint del backend no este disponible
+export const MOCK_ACHIEVEMENTS: AchievementsResponse = {
+  total_achievements: 12,
+  total_points: 375,
+  by_rarity: {
+    common: [
+      {
+        id: 1,
+        user_id: 1,
+        gym_id: 1,
+        achievement_type: AchievementType.ATTENDANCE_STREAK,
+        title: '🔥 Racha de 3 Dias',
+        description: 'Has entrenado 3 dias consecutivos. ¡Buen comienzo!',
+        icon: '🔥',
+        value: 3,
+        unit: 'dias',
+        rarity: AchievementRarity.COMMON,
+        earned_at: '2025-12-15T10:30:00Z',
+        is_milestone: true,
+        points_awarded: 10,
+        created_at: '2025-12-15T10:30:00Z'
+      },
+      {
+        id: 2,
+        user_id: 1,
+        gym_id: 1,
+        achievement_type: AchievementType.CLASS_MILESTONE,
+        title: '🎯 Primera Clase',
+        description: 'Completaste tu primera clase. ¡El viaje comienza!',
+        icon: '🎯',
+        value: 1,
+        unit: 'clases',
+        rarity: AchievementRarity.COMMON,
+        earned_at: '2025-12-10T09:00:00Z',
+        is_milestone: true,
+        points_awarded: 10,
+        created_at: '2025-12-10T09:00:00Z'
+      }
+    ],
+    rare: [
+      {
+        id: 3,
+        user_id: 1,
+        gym_id: 1,
+        achievement_type: AchievementType.ATTENDANCE_STREAK,
+        title: '🔥 Racha de 7 Dias',
+        description: 'Has entrenado 7 dias consecutivos. ¡Semana perfecta!',
+        icon: '🔥',
+        value: 7,
+        unit: 'dias',
+        rarity: AchievementRarity.RARE,
+        earned_at: '2025-12-18T10:30:00Z',
+        is_milestone: true,
+        points_awarded: 25,
+        created_at: '2025-12-18T10:30:00Z'
+      },
+      {
+        id: 4,
+        user_id: 1,
+        gym_id: 1,
+        achievement_type: AchievementType.CLASS_MILESTONE,
+        title: '🎯 Guerrero de 10 Clases',
+        description: 'Has completado 10 clases. ¡Estas en racha!',
+        icon: '🎯',
+        value: 10,
+        unit: 'clases',
+        rarity: AchievementRarity.RARE,
+        earned_at: '2025-12-17T14:00:00Z',
+        is_milestone: true,
+        points_awarded: 25,
+        created_at: '2025-12-17T14:00:00Z'
+      },
+      {
+        id: 5,
+        user_id: 1,
+        gym_id: 1,
+        achievement_type: AchievementType.WEIGHT_GOAL,
+        title: '⚖️ Meta Alcanzada: 5kg',
+        description: '¡Has alcanzado tu meta de perder 5kg!',
+        icon: '⚖️',
+        value: 5,
+        unit: 'kg',
+        rarity: AchievementRarity.RARE,
+        earned_at: '2025-12-16T08:00:00Z',
+        is_milestone: true,
+        points_awarded: 25,
+        created_at: '2025-12-16T08:00:00Z'
+      }
+    ],
+    epic: [
+      {
+        id: 6,
+        user_id: 1,
+        gym_id: 1,
+        achievement_type: AchievementType.ATTENDANCE_STREAK,
+        title: '🔥 Mes Imparable',
+        description: 'Has entrenado 30 dias consecutivos. ¡Increible dedicacion!',
+        icon: '🔥',
+        value: 30,
+        unit: 'dias',
+        rarity: AchievementRarity.EPIC,
+        earned_at: '2025-12-01T10:30:00Z',
+        is_milestone: true,
+        points_awarded: 50,
+        created_at: '2025-12-01T10:30:00Z'
+      },
+      {
+        id: 7,
+        user_id: 1,
+        gym_id: 1,
+        achievement_type: AchievementType.CLASS_MILESTONE,
+        title: '🏆 Centurion de las Clases',
+        description: '¡100 clases completadas! Eres un veterano.',
+        icon: '🏆',
+        value: 100,
+        unit: 'clases',
+        rarity: AchievementRarity.EPIC,
+        earned_at: '2025-11-15T16:00:00Z',
+        is_milestone: true,
+        points_awarded: 50,
+        created_at: '2025-11-15T16:00:00Z'
+      },
+      {
+        id: 8,
+        user_id: 1,
+        gym_id: 1,
+        achievement_type: AchievementType.WEIGHT_GOAL,
+        title: '⚖️ Transformacion Completa',
+        description: '¡Has perdido 10kg! Transformacion increible.',
+        icon: '⚖️',
+        value: 10,
+        unit: 'kg',
+        rarity: AchievementRarity.EPIC,
+        earned_at: '2025-10-20T08:00:00Z',
+        is_milestone: true,
+        points_awarded: 50,
+        created_at: '2025-10-20T08:00:00Z'
+      }
+    ],
+    legendary: [
+      {
+        id: 9,
+        user_id: 1,
+        gym_id: 1,
+        achievement_type: AchievementType.ATTENDANCE_STREAK,
+        title: '🔥 Medio Ano de Fuego',
+        description: '¡180 dias consecutivos! Eres una leyenda viviente.',
+        icon: '🔥',
+        value: 180,
+        unit: 'dias',
+        rarity: AchievementRarity.LEGENDARY,
+        earned_at: '2025-06-15T10:30:00Z',
+        is_milestone: true,
+        points_awarded: 100,
+        created_at: '2025-06-15T10:30:00Z'
+      }
+    ]
+  },
+  recent: [
+    {
+      id: 3,
+      user_id: 1,
+      gym_id: 1,
+      achievement_type: AchievementType.ATTENDANCE_STREAK,
+      title: '🔥 Racha de 7 Dias',
+      description: 'Has entrenado 7 dias consecutivos. ¡Semana perfecta!',
+      icon: '🔥',
+      value: 7,
+      unit: 'dias',
+      rarity: AchievementRarity.RARE,
+      earned_at: '2025-12-18T10:30:00Z',
+      is_milestone: true,
+      points_awarded: 25,
+      created_at: '2025-12-18T10:30:00Z'
+    },
+    {
+      id: 4,
+      user_id: 1,
+      gym_id: 1,
+      achievement_type: AchievementType.CLASS_MILESTONE,
+      title: '🎯 Guerrero de 10 Clases',
+      description: 'Has completado 10 clases. ¡Estas en racha!',
+      icon: '🎯',
+      value: 10,
+      unit: 'clases',
+      rarity: AchievementRarity.RARE,
+      earned_at: '2025-12-17T14:00:00Z',
+      is_milestone: true,
+      points_awarded: 25,
+      created_at: '2025-12-17T14:00:00Z'
+    },
+    {
+      id: 5,
+      user_id: 1,
+      gym_id: 1,
+      achievement_type: AchievementType.WEIGHT_GOAL,
+      title: '⚖️ Meta Alcanzada: 5kg',
+      description: '¡Has alcanzado tu meta de perder 5kg!',
+      icon: '⚖️',
+      value: 5,
+      unit: 'kg',
+      rarity: AchievementRarity.RARE,
+      earned_at: '2025-12-16T08:00:00Z',
+      is_milestone: true,
+      points_awarded: 25,
+      created_at: '2025-12-16T08:00:00Z'
+    }
+  ]
+};
+
+export const MOCK_NEXT_MILESTONES: NextMilestone[] = [
+  {
+    type: AchievementType.ATTENDANCE_STREAK,
+    title: '🔥 Racha de 14 Dias',
+    description: 'Entrena 14 dias consecutivos',
+    current_value: 7,
+    target_value: 14,
+    progress_percentage: 50,
+    rarity: AchievementRarity.RARE,
+    points_reward: 25
+  },
+  {
+    type: AchievementType.CLASS_MILESTONE,
+    title: '🎯 Atleta de 25 Clases',
+    description: 'Completa 25 clases',
+    current_value: 10,
+    target_value: 25,
+    progress_percentage: 40,
+    rarity: AchievementRarity.RARE,
+    points_reward: 25
+  },
+  {
+    type: AchievementType.CONSISTENCY,
+    title: '📅 Campeon de Consistencia',
+    description: 'Mantiene 90% de asistencia durante 3 meses',
+    current_value: 45,
+    target_value: 90,
+    progress_percentage: 50,
+    rarity: AchievementRarity.LEGENDARY,
+    points_reward: 100
+  }
+];
+
+// ===== API CLIENT =====
+export const achievementsAPI = {
+  /**
+   * Obtiene todos los achievements del usuario actual
+   * Nota: Actualmente retorna datos mock ya que el endpoint no existe
+   */
+  getMyAchievements: async (): Promise<AchievementsResponse> => {
+    try {
+      // Intentar obtener del backend real
+      return await apiCall('/users/me/achievements');
+    } catch (error) {
+      // Si falla (404 porque no existe), retornar mock
+      console.warn('Endpoint de achievements no disponible, usando datos de ejemplo');
+      return MOCK_ACHIEVEMENTS;
+    }
+  },
+
+  /**
+   * Obtiene estadisticas detalladas de achievements
+   */
+  getStats: async (): Promise<AchievementStats> => {
+    try {
+      return await apiCall('/users/me/achievements/stats');
+    } catch (error) {
+      // Datos mock para estadisticas
+      const achievements = MOCK_ACHIEVEMENTS;
+      const allAchievements = [
+        ...achievements.by_rarity.common,
+        ...achievements.by_rarity.rare,
+        ...achievements.by_rarity.epic,
+        ...achievements.by_rarity.legendary
+      ];
+
+      const byType = allAchievements.reduce((acc, a) => {
+        acc[a.achievement_type] = (acc[a.achievement_type] || 0) + 1;
+        return acc;
+      }, {} as Record<AchievementType, number>);
+
+      const byRarity = {
+        [AchievementRarity.COMMON]: achievements.by_rarity.common.length,
+        [AchievementRarity.RARE]: achievements.by_rarity.rare.length,
+        [AchievementRarity.EPIC]: achievements.by_rarity.epic.length,
+        [AchievementRarity.LEGENDARY]: achievements.by_rarity.legendary.length
+      };
+
+      return {
+        total_achievements: achievements.total_achievements,
+        total_points: achievements.total_points,
+        by_type: byType,
+        by_rarity: byRarity,
+        recent_achievements: achievements.recent,
+        next_milestones: MOCK_NEXT_MILESTONES
+      };
+    }
+  },
+
+  /**
+   * Obtiene los proximos hitos a alcanzar
+   */
+  getNextMilestones: async (): Promise<NextMilestone[]> => {
+    try {
+      return await apiCall('/users/me/achievements/next-milestones');
+    } catch (error) {
+      return MOCK_NEXT_MILESTONES;
+    }
+  }
+};
+
+// ===== HELPER FUNCTIONS =====
+export const getRarityConfig = (rarity: AchievementRarity) => {
+  return RARITY_CONFIG[rarity];
+};
+
+export const getAchievementTypeConfig = (type: AchievementType) => {
+  return ACHIEVEMENT_TYPE_CONFIG[type];
+};
+
+export const formatAchievementDate = (date: string): string => {
+  const d = new Date(date);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Hoy';
+  if (diffDays === 1) return 'Ayer';
+  if (diffDays < 7) return `Hace ${diffDays} dias`;
+  if (diffDays < 30) return `Hace ${Math.floor(diffDays / 7)} semanas`;
+
+  return d.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
+export const calculateTotalPoints = (achievements: AchievementsResponse): number => {
+  return achievements.total_points;
+};
+
+export const getAchievementCountByRarity = (achievements: AchievementsResponse): Record<AchievementRarity, number> => {
+  return {
+    [AchievementRarity.COMMON]: achievements.by_rarity.common.length,
+    [AchievementRarity.RARE]: achievements.by_rarity.rare.length,
+    [AchievementRarity.EPIC]: achievements.by_rarity.epic.length,
+    [AchievementRarity.LEGENDARY]: achievements.by_rarity.legendary.length
+  };
+};
