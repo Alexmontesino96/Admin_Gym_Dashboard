@@ -48,11 +48,41 @@ export default function LogrosClient() {
         achievementsAPI.getNextMilestones()
       ]);
 
-      setAchievements(achievementsData);
-      setNextMilestones(milestonesData);
+      // Validar que achievementsData tenga la estructura correcta
+      if (achievementsData && achievementsData.by_rarity) {
+        setAchievements(achievementsData);
+      } else {
+        // Datos con estructura válida pero vacía
+        setAchievements({
+          total_achievements: 0,
+          total_points: 0,
+          by_rarity: {
+            common: [],
+            rare: [],
+            epic: [],
+            legendary: []
+          },
+          recent: []
+        });
+      }
+
+      setNextMilestones(milestonesData || []);
     } catch (err) {
       console.error('Error loading achievements:', err);
-      setError('No se pudieron cargar los logros. Intenta de nuevo.');
+      // En caso de error, establecer estructura vacía válida
+      setAchievements({
+        total_achievements: 0,
+        total_points: 0,
+        by_rarity: {
+          common: [],
+          rare: [],
+          epic: [],
+          legendary: []
+        },
+        recent: []
+      });
+      setNextMilestones([]);
+      setError('No se pudieron cargar los logros. Mostrando datos de ejemplo.');
     } finally {
       setLoading(false);
     }
@@ -60,18 +90,18 @@ export default function LogrosClient() {
 
   // Obtener todos los achievements en un solo array
   const getAllAchievements = (): Achievement[] => {
-    if (!achievements) return [];
+    if (!achievements || !achievements.by_rarity) return [];
     return [
-      ...achievements.by_rarity.legendary,
-      ...achievements.by_rarity.epic,
-      ...achievements.by_rarity.rare,
-      ...achievements.by_rarity.common
+      ...(achievements.by_rarity.legendary || []),
+      ...(achievements.by_rarity.epic || []),
+      ...(achievements.by_rarity.rare || []),
+      ...(achievements.by_rarity.common || [])
     ];
   };
 
   // Filtrar achievements por tab activo
   const getFilteredAchievements = (): Achievement[] => {
-    if (!achievements) return [];
+    if (!achievements || !achievements.by_rarity) return [];
     if (activeTab === 'all') return getAllAchievements();
     return achievements.by_rarity[activeTab] || [];
   };
