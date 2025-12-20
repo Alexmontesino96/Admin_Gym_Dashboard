@@ -40,7 +40,8 @@ import {
   Activity,
   TrendingUp,
   Trophy,
-  Zap
+  Zap,
+  FlaskConical
 } from 'lucide-react';
 import GymSelector from './GymSelector';
 import { useTerminology } from '@/hooks/useTerminology';
@@ -177,6 +178,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
         { key: "activity-feed-main", label: "Feed Principal", href: "/activity-feed", icon: Zap },
         { key: "activity-realtime", label: "Tiempo Real", href: "/activity-feed/realtime", icon: TrendingUp },
         { key: "activity-rankings", label: "Rankings", href: "/activity-feed/rankings", icon: Trophy },
+        { key: "activity-admin", label: "Testing Admin", href: "/activity-feed/admin", icon: FlaskConical },
       ]
     },
     { key: "settings", label: "Configuracion", href: "/settings", icon: Settings },
