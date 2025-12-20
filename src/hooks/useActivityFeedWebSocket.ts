@@ -69,7 +69,7 @@ export function useActivityFeedWebSocket(
 
     setConnectionStatus('connecting');
 
-    const wsUrl = `${WS_BASE_URL}/api/v1/activity_feed/ws?gym_id=${gymId}`;
+    const wsUrl = `${WS_BASE_URL}/api/v1/activity-feed/ws?gym_id=${gymId}`;
 
     try {
       wsRef.current = new WebSocket(wsUrl);

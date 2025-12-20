@@ -3247,21 +3247,21 @@ export const activityFeedAPI = {
    * @param offset - Offset para paginacion (default 0)
    */
   getFeed: async (limit: number = 20, offset: number = 0): Promise<ActivityFeedResponse> => {
-    return apiCall(`/activity_feed/?limit=${limit}&offset=${offset}`);
+    return apiCall(`/activity-feed/?limit=${limit}&offset=${offset}`);
   },
 
   /**
    * Obtiene estadisticas en tiempo real del gimnasio
    */
   getRealtimeStats: async (): Promise<RealtimeStatsResponse> => {
-    return apiCall('/activity_feed/realtime');
+    return apiCall('/activity-feed/realtime');
   },
 
   /**
    * Obtiene insights motivacionales basados en actividad actual
    */
   getInsights: async (): Promise<InsightsResponse> => {
-    return apiCall('/activity_feed/insights');
+    return apiCall('/activity-feed/insights');
   },
 
   /**
@@ -3275,21 +3275,21 @@ export const activityFeedAPI = {
     period: RankingPeriod = RankingPeriod.WEEKLY,
     limit: number = 10
   ): Promise<RankingsResponse> => {
-    return apiCall(`/activity_feed/rankings/${rankingType}?period=${period}&limit=${limit}`);
+    return apiCall(`/activity-feed/rankings/${rankingType}?period=${period}&limit=${limit}`);
   },
 
   /**
    * Obtiene resumen de estadisticas del dia actual
    */
   getDailySummary: async (): Promise<DailySummaryResponse> => {
-    return apiCall('/activity_feed/stats/summary');
+    return apiCall('/activity-feed/stats/summary');
   },
 
   /**
    * Health check del sistema de Activity Feed
    */
   getHealth: async (): Promise<ActivityFeedHealth> => {
-    return apiCall('/activity_feed/health');
+    return apiCall('/activity-feed/health');
   },
 
   /**
@@ -3301,7 +3301,7 @@ export const activityFeedAPI = {
     activityType: ActivityType,
     count: number
   ): Promise<{ status: string; activity?: Activity; reason?: string }> => {
-    return apiCall(`/activity_feed/test/generate-activity?activity_type=${activityType}&count=${count}`, {
+    return apiCall(`/activity-feed/test/generate-activity?activity_type=${activityType}&count=${count}`, {
       method: 'POST'
     });
   }
