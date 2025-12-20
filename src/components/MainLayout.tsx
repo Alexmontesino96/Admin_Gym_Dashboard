@@ -35,7 +35,8 @@ import {
   CreditCard,
   BarChart3,
   ClipboardList,
-  Copy
+  Copy,
+  Sparkles
 } from 'lucide-react';
 import GymSelector from './GymSelector';
 import { useTerminology } from '@/hooks/useTerminology';
@@ -158,6 +159,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
       ]
     },
     { key: "notificaciones", label: "Notificaciones", href: "/notificaciones", icon: Bell },
+    { key: "features", label: "Más Características", href: "/features", icon: Sparkles },
     { key: "gimnasio", label: myWorkspace, href: "/gimnasio", icon: Building },
     { key: "chat", label: "Chat", href: "/chat", icon: MessageCircle },
     { key: "settings", label: "Configuración", href: "/settings", icon: Settings },

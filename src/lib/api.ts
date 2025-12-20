@@ -2782,6 +2782,74 @@ export const notificationsAPI = {
   },
 };
 
+// ===== MODULES API =====
+
+/**
+ * Módulo disponible en el sistema
+ */
+export interface Module {
+  code: string;
+  name: string;
+  active: boolean;
+  is_premium: boolean;
+  description?: string;
+  icon?: string;
+}
+
+/**
+ * Response de la API de módulos
+ */
+export interface ModulesResponse {
+  modules: Module[];
+}
+
+/**
+ * API para gestión de módulos del gimnasio
+ * Los módulos controlan qué funcionalidades están disponibles
+ */
+export const modulesAPI = {
+  /**
+   * Obtiene la lista de módulos y su estado de activación
+   * @returns Lista de módulos con su estado
+   */
+  getModules: async (): Promise<ModulesResponse> => {
+    return await apiCall('/modules');
+  },
+
+  /**
+   * Activa un módulo específico (requiere permisos de ADMIN/OWNER)
+   * @param moduleCode - Código del módulo a activar
+   * @returns Resultado de la activación
+   */
+  activateModule: async (moduleCode: string): Promise<{ status: string; message: string }> => {
+    return await apiCall(`/modules/${moduleCode}/activate`, {
+      method: 'PATCH',
+    });
+  },
+
+  /**
+   * Desactiva un módulo específico (requiere permisos de ADMIN/OWNER)
+   * @param moduleCode - Código del módulo a desactivar
+   * @returns Resultado de la desactivación
+   */
+  deactivateModule: async (moduleCode: string): Promise<{ status: string; message: string }> => {
+    return await apiCall(`/modules/${moduleCode}/deactivate`, {
+      method: 'PATCH',
+    });
+  },
+
+  /**
+   * Verifica si un módulo específico está activo
+   * @param moduleCode - Código del módulo a verificar
+   * @returns true si el módulo está activo
+   */
+  isModuleActive: async (moduleCode: string): Promise<boolean> => {
+    const { modules } = await modulesAPI.getModules();
+    const foundModule = modules.find(m => m.code === moduleCode);
+    return foundModule?.active || false;
+  },
+};
+
 // ===== HELPER FUNCTIONS =====
 export const getSurveyStatusConfig = (status: SurveyStatus) => {
   return SURVEY_STATUS_CONFIG[status];
