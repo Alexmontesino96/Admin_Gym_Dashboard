@@ -91,7 +91,7 @@ export default function LandingPage() {
 
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
                 Aumenta tu retención hasta un <span className="font-bold text-purple-600">60%</span> con
-                la única plataforma que combina <span className="font-bold text-pink-600">Stories</span>, <span className="font-bold text-green-600">Chat en Tiempo Real</span> y <span className="font-bold text-blue-600">Feed Social</span> - como Instagram, pero para fitness. Usada por <span className="font-bold text-indigo-600">1,200+ gimnasios</span> en Latinoamérica.
+                la única plataforma que combina <span className="font-bold text-pink-600">Stories</span>, <span className="font-bold text-green-600">Chat en Tiempo Real</span> y <span className="font-bold text-blue-600">Feed Social</span> - como <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Instagram</span>, pero para fitness. Usada por <span className="font-bold text-indigo-600">1,200+ gimnasios</span> en Latinoamérica.
               </p>
 
               {/* Métricas destacadas */}
@@ -260,7 +260,7 @@ export default function LandingPage() {
               Funcionalidades en Tiempo Real que Crean Adicción
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Las mismas features que Instagram, TikTok y WhatsApp usan para mantenerte enganchado.
+              Las mismas features que <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Instagram</span>, <span className="font-bold text-gray-900">TikTok</span> y <span className="font-bold text-green-600">WhatsApp</span> usan para mantenerte enganchado.
               Ahora para <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">tu</span> gimnasio.
             </p>
           </div>
@@ -275,13 +275,13 @@ export default function LandingPage() {
                 <h3 className="text-xl font-bold text-gray-900">Stories que Desaparecen en 24h</h3>
               </div>
               <p className="text-gray-600 mb-4 leading-relaxed">
-                Comparte WODs del día, transformaciones de clientes, tips de entrenamiento. Tus miembros revisan las stories cada mañana como revisan Instagram. <span className="font-bold text-purple-600">+300% más engagement</span> vs posts normales.
+                Comparte WODs del día, transformaciones de clientes, tips de entrenamiento. Tus miembros revisan las stories cada mañana como revisan <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Instagram</span>. <span className="font-bold text-purple-600">+300% más engagement</span> vs posts normales.
               </p>
               <div className="bg-purple-50 rounded-lg p-3 mb-4">
                 <div className="text-sm text-purple-700 font-semibold">892 gimnasios lo usan</div>
               </div>
               <div className="flex items-center text-purple-600 font-semibold text-sm hover:text-purple-700 transition-colors">
-                <span>Como Instagram, pero tuyo</span>
+                <span>Como <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Instagram</span>, pero tuyo</span>
                 <ArrowRight className="h-4 w-4 ml-2" />
               </div>
             </div>
@@ -295,7 +295,7 @@ export default function LandingPage() {
                 <h3 className="text-xl font-bold text-gray-900">Mensajería Instantánea con Encriptación E2E</h3>
               </div>
               <p className="text-gray-600 mb-4 leading-relaxed">
-                Tus miembros te escriben directamente. Entrenadores responden dudas al instante. Chats grupales para cada clase. Todo encriptado como WhatsApp. <span className="font-bold text-green-600">+40% mejor comunicación</span> vs email.
+                Tus miembros te escriben directamente. Entrenadores responden dudas al instante. Chats grupales para cada clase. Todo encriptado como <span className="font-bold text-green-600">WhatsApp</span>. <span className="font-bold text-green-600">+40% mejor comunicación</span> vs email.
               </p>
               <div className="flex flex-wrap gap-2 mb-4">
                 <div className="bg-green-50 rounded-lg px-3 py-1.5">
@@ -323,7 +323,7 @@ export default function LandingPage() {
                 <h3 className="text-xl font-bold text-gray-900">Tu Propia Red Social Fitness</h3>
               </div>
               <p className="text-gray-600 mb-4 leading-relaxed">
-                Feed personalizado con posts, fotos de progreso, logros. Likes, comentarios y menciones en tiempo real. Construye comunidad sin depender de Facebook o Instagram. <span className="font-bold text-blue-600">+250% interacción</span> vs redes externas.
+                Feed personalizado con posts, fotos de progreso, logros. Likes, comentarios y menciones en tiempo real. Construye comunidad sin depender de <span className="font-bold text-blue-600">Facebook</span> o <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Instagram</span>. <span className="font-bold text-blue-600">+250% interacción</span> vs redes externas.
               </p>
               <div className="bg-blue-50 rounded-lg p-3 mb-4">
                 <div className="text-sm text-blue-700 font-semibold">100K+ posts al mes</div>
@@ -424,7 +424,7 @@ export default function LandingPage() {
             </h2>
             <div className="max-w-3xl mx-auto space-y-3">
               <p className="text-2xl font-semibold text-indigo-200">
-                Instagram, WhatsApp, TikTok. ¿Qué tienen en común?
+                <span className="font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Instagram</span>, <span className="font-bold text-green-400">WhatsApp</span>, <span className="font-bold text-white">TikTok</span>. ¿Qué tienen en común?
               </p>
               <p className="text-xl text-indigo-300">
                 Actualizaciones <span className="font-bold text-cyan-400">EN TIEMPO REAL</span> que crean hábitos adictivos.
@@ -456,7 +456,7 @@ export default function LandingPage() {
               <h3 className="text-2xl font-bold mb-4">Actualización Constante</h3>
               <p className="text-indigo-200 text-lg leading-relaxed">
                 Feeds que cambian constantemente dan razón para volver cada día.
-                Como Instagram Stories: siempre hay algo nuevo que ver.
+                Como <span className="font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Instagram</span> Stories: siempre hay algo nuevo que ver.
               </p>
             </div>
 
@@ -544,7 +544,7 @@ export default function LandingPage() {
                 </div>
                 <p className="text-gray-700 mb-4 italic text-lg leading-relaxed">
                   "Mis clientes revisan las stories del gym <span className="font-bold text-orange-600">3-4 veces al día</span>.
-                  Es como su Instagram fitness personal. Creé una comunidad tan fuerte que se recomiendan entre ellos."
+                  Es como su <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Instagram</span> fitness personal. Creé una comunidad tan fuerte que se recomiendan entre ellos."
                 </p>
                 <div className="bg-gradient-to-r from-orange-100 to-amber-100 rounded-lg px-4 py-2 mb-4 inline-block">
                   <div className="text-sm font-bold text-orange-700">3-4 vistas diarias por miembro</div>
