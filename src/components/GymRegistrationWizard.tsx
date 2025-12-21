@@ -387,8 +387,8 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mb-4">
             <Building2 className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Tu negocio fitness, organizado al fin</h1>
-          <p className="text-gray-600">Clientes, agenda, cobros. Todo en un solo lugar.</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Deja de perseguir pagos. Empieza a crecer.</h1>
+          <p className="text-gray-600">Cobra sin perseguir, agenda sin conflictos, crece sin límite.</p>
 
           {/* Social Proof Badge - Dinámico según tipo seleccionado */}
           <div className="mt-4 inline-block">
@@ -397,18 +397,18 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
               <p className="text-sm text-gray-500">
                 {gymData.gym_type === 'gym' ? (
                   <>
-                    Más de <span className="font-bold text-blue-600">500 gimnasios</span> en México y LATAM confían en nosotros
+                    <span className="font-bold text-blue-600">523 gimnasios</span> en México ya automatizaron su negocio
                   </>
                 ) : (
                   <>
-                    Más de <span className="font-bold text-green-600">800 entrenadores personales</span> confían en nosotros
+                    <span className="font-bold text-green-600">847 entrenadores</span> en LATAM ya cobran en automático
                   </>
                 )}
               </p>
             ) : (
               // Antes de seleccionar, mostrar genérico
               <p className="text-sm text-gray-500">
-                Más de <span className="font-bold text-blue-600">500 negocios fitness</span> en México y LATAM confían en nosotros
+                El promedio de nuestros usuarios ahorra <span className="font-bold text-blue-600">12 horas a la semana</span> en admin
               </p>
             )}
           </div>
@@ -436,15 +436,15 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
         <div className="mb-6 flex items-center justify-center space-x-6 text-sm text-gray-600">
           <div className="flex items-center space-x-2">
             <CheckCircle className="h-4 w-4 text-green-500" />
-            <span>100% gratis, sin tarjeta</span>
+            <span>Prueba gratis, sin sorpresas</span>
           </div>
           <div className="flex items-center space-x-2">
             <CheckCircle className="h-4 w-4 text-green-500" />
-            <span>Listo en 5 minutos</span>
+            <span>Solo 2 pasos más</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Lock className="h-4 w-4 text-green-500" />
-            <span>Datos encriptados SSL</span>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <span>Importa tus clientes con un clic</span>
           </div>
         </div>
 
@@ -653,13 +653,13 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
 
                   <h2 className="text-xl font-semibold text-gray-900">
                     {gymData.gym_type === 'gym'
-                      ? 'Crea tu cuenta de administrador'
-                      : 'Crea tu cuenta profesional'}
+                      ? 'Último paso: activa tu gimnasio'
+                      : 'Último paso: lanza tu marca'}
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
                     {gymData.gym_type === 'gym'
-                      ? 'Con esta cuenta gestionarás todo tu gimnasio'
-                      : 'Con esta cuenta gestionarás tus clientes y sesiones'}
+                      ? 'En 30 segundos tendrás acceso a tu panel de control'
+                      : 'Tu app profesional estará lista en segundos'}
                   </p>
                 </div>
 
@@ -849,7 +849,7 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
                     ) : (
                       <>
                         <CheckCircle className="h-5 w-5" />
-                        <span>Activar mi cuenta gratis</span>
+                        <span>{gymData.gym_type === 'gym' ? 'Activar mi gimnasio ahora' : 'Activar mi negocio ahora'}</span>
                       </>
                     )}
                   </button>

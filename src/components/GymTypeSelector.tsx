@@ -21,10 +21,10 @@ export default function GymTypeSelector() {
             <Building2 className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            ¿Qué describe mejor tu negocio?
+            ¿Cómo quieres transformar tu negocio fitness?
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Personaliza tu experiencia desde el inicio. Elige la opción que mejor se adapte a tu forma de trabajar.
+            En 5 minutos tendrás tu gimnasio digital listo.
           </p>
         </div>
 
@@ -59,10 +59,10 @@ export default function GymTypeSelector() {
 
             {/* Title */}
             <h2 className="text-2xl font-bold text-gray-900 mb-3">
-              Tengo un local
+              Soy dueño de gimnasio
             </h2>
             <p className="text-gray-600 mb-6 leading-relaxed">
-              Administro un gimnasio, box de CrossFit, estudio de yoga/pilates, o centro deportivo con instalaciones físicas.
+              Para dueños que quieren menos Excel y más tiempo con sus miembros.
             </p>
 
             {/* Features */}
@@ -107,7 +107,7 @@ export default function GymTypeSelector() {
               <span className={`font-semibold transition-colors ${
                 hoveredType === 'gym' ? 'text-white' : 'text-gray-900'
               }`}>
-                Crear mi cuenta de gimnasio
+                Activar mi gimnasio gratis
               </span>
               <ArrowRight className={`h-5 w-5 transition-colors ${
                 hoveredType === 'gym' ? 'text-white' : 'text-gray-600'
@@ -144,10 +144,10 @@ export default function GymTypeSelector() {
 
             {/* Title */}
             <h2 className="text-2xl font-bold text-gray-900 mb-3">
-              Soy independiente
+              Soy entrenador personal
             </h2>
             <p className="text-gray-600 mb-6 leading-relaxed">
-              Entreno clientes en su casa, en un parque, o rento espacio por hora. Soy mi propio jefe y manejo mi negocio de forma independiente.
+              Para entrenadores que quieren menos WhatsApp y más transformaciones.
             </p>
 
             {/* Features */}
@@ -192,7 +192,7 @@ export default function GymTypeSelector() {
               <span className={`font-semibold transition-colors ${
                 hoveredType === 'personal_trainer' ? 'text-white' : 'text-gray-900'
               }`}>
-                Crear mi cuenta de entrenador
+                Activar mi negocio gratis
               </span>
               <ArrowRight className={`h-5 w-5 transition-colors ${
                 hoveredType === 'personal_trainer' ? 'text-white' : 'text-gray-600'
@@ -206,19 +206,19 @@ export default function GymTypeSelector() {
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-600">
             <div className="flex items-center space-x-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
-              <span>14 días gratis, sin tarjeta</span>
+              <span>100% gratis para empezar</span>
             </div>
             <div className="flex items-center space-x-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
-              <span>Listo en 5 minutos</span>
+              <span>Setup en 3 minutos</span>
             </div>
             <div className="flex items-center space-x-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
-              <span>Cancela cuando quieras</span>
+              <span>Sin compromisos, cancela con un clic</span>
             </div>
             <div className="flex items-center space-x-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
-              <span>Soporte en español 24/7</span>
+              <span>+500 negocios fitness en México confían en nosotros</span>
             </div>
           </div>
         </div>
