@@ -1169,6 +1169,41 @@ export const dashboardAPI = {
   getWorkspaceContext: async (): Promise<WorkspaceContext> => {
     return apiCall('/context/workspace');
   },
+
+  // Obtener estadísticas del dashboard de usuario
+  getStats: async (): Promise<any> => {
+    return apiCall('/user-dashboard/stats');
+  },
+
+  // Obtener estadísticas de membresías
+  getMembershipStats: async (): Promise<any> => {
+    return apiCall('/memberships/stats');
+  },
+
+  // Obtener actividad en tiempo real
+  getRealtimeActivity: async (): Promise<any> => {
+    return apiCall('/activity-feed/realtime');
+  },
+
+  // Obtener resumen de asistencia
+  getAttendanceSummary: async (params?: { start_date?: string; end_date?: string }): Promise<any> => {
+    const searchParams = new URLSearchParams();
+    if (params?.start_date) searchParams.append('start_date', params.start_date);
+    if (params?.end_date) searchParams.append('end_date', params.end_date);
+
+    const endpoint = `/schedule/participation/attendance-summary${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    return apiCall(endpoint);
+  },
+
+  // Obtener insights de actividad
+  getInsights: async (): Promise<any> => {
+    return apiCall('/activity-feed/insights');
+  },
+
+  // Obtener estadísticas de posts
+  getPostsStats: async (): Promise<any> => {
+    return apiCall('/posts/stats');
+  },
 };
 
 // Funciones específicas para endpoints de gimnasios

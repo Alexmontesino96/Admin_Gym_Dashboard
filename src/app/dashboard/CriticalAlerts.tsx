@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { AlertTriangle, CreditCard, UserX, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { useDashboardData } from '@/hooks/useDashboardData'
 
 interface Alert {
   type: 'expiring' | 'pending_payment' | 'inactive'
@@ -13,65 +13,39 @@ interface Alert {
 }
 
 export default function CriticalAlerts() {
-  const [alerts, setAlerts] = useState<Alert[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, loading } = useDashboardData()
 
-  useEffect(() => {
-    async function loadAlerts() {
-      try {
-        // TODO: Reemplazar con API call real cuando el backend esté listo
-        // const data = await dashboardAPI.getCriticalAlerts()
+  const alerts: Alert[] = []
 
-        // Mock data temporal
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        const mockData = {
-          expiring_memberships: 12,
-          pending_payments: 3,
-          pending_amount: 450,
-          inactive_members: 8
-        }
-
-        const alertsList: Alert[] = []
-
-        if (mockData.expiring_memberships > 0) {
-          alertsList.push({
-            type: 'expiring',
-            count: mockData.expiring_memberships,
-            action: 'Recordar pagos',
-            href: '/membership?filter=expiring'
-          })
-        }
-
-        if (mockData.pending_payments > 0) {
-          alertsList.push({
-            type: 'pending_payment',
-            count: mockData.pending_payments,
-            amount: mockData.pending_amount,
-            action: 'Enviar facturas',
-            href: '/membership?filter=pending'
-          })
-        }
-
-        if (mockData.inactive_members > 0) {
-          alertsList.push({
-            type: 'inactive',
-            count: mockData.inactive_members,
-            action: 'Re-engagement',
-            href: '/usuarios?filter=inactive'
-          })
-        }
-
-        setAlerts(alertsList)
-      } catch (error) {
-        console.error('Error loading alerts:', error)
-      } finally {
-        setLoading(false)
-      }
+  if (data?.alerts) {
+    if (data.alerts.expiring_memberships > 0) {
+      alerts.push({
+        type: 'expiring',
+        count: data.alerts.expiring_memberships,
+        action: 'Recordar pagos',
+        href: '/membership?filter=expiring'
+      })
     }
 
-    loadAlerts()
-  }, [])
+    if (data.alerts.pending_payments > 0) {
+      alerts.push({
+        type: 'pending_payment',
+        count: data.alerts.pending_payments,
+        amount: data.alerts.pending_amount,
+        action: 'Enviar facturas',
+        href: '/membership?filter=pending'
+      })
+    }
+
+    if (data.alerts.inactive_members > 0) {
+      alerts.push({
+        type: 'inactive',
+        count: data.alerts.inactive_members,
+        action: 'Re-engagement',
+        href: '/usuarios?filter=inactive'
+      })
+    }
+  }
 
   if (loading) {
     return (

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { membershipsAPI, eventsAPI, getUsersAPI, gymsAPI } from '@/lib/api'
+import { membershipsAPI, eventsAPI, getUsersAPI, gymsAPI, dashboardAPI } from '@/lib/api'
 
 export interface DashboardStats {
   totalMembers: number
@@ -62,12 +62,14 @@ export function useDashboardData(autoRefresh = false) {
       }
 
       // Hacer todas las llamadas en paralelo
-      const [membershipData, sessionsData, classesData, gymData] =
+      const [membershipData, sessionsData, classesData, gymData, dashStatsData, attendanceData] =
         await Promise.allSettled([
           membershipsAPI.getMembershipSummary(),
           eventsAPI.getSessions({ limit: 100 }),
           eventsAPI.getClasses(true, { limit: 50 }),
           gymsAPI.getGymInfo(),
+          dashboardAPI.getStats(),
+          dashboardAPI.getAttendanceSummary(),
         ])
 
       const membership =
@@ -77,6 +79,10 @@ export function useDashboardData(autoRefresh = false) {
       const classes =
         classesData.status === 'fulfilled' ? classesData.value : []
       const gym = gymData.status === 'fulfilled' ? gymData.value : null
+      const dashStats =
+        dashStatsData.status === 'fulfilled' ? dashStatsData.value : null
+      const attendance =
+        attendanceData.status === 'fulfilled' ? attendanceData.value : null
 
       // Calcular sesiones de hoy
       const today = new Date()
@@ -99,33 +105,33 @@ export function useDashboardData(autoRefresh = false) {
             )
           : 0
 
-      // TODO: Reemplazar datos mock de weeklyActivity con endpoint real
-      const weeklyActivity = [
-        { day: 'Lun', sessions: 8, members: 25 },
-        { day: 'Mar', sessions: 12, members: 32 },
-        { day: 'Mié', sessions: 15, members: 38 },
-        { day: 'Jue', sessions: 11, members: 30 },
-        { day: 'Vie', sessions: 18, members: 42 },
-        { day: 'Sáb', sessions: 22, members: 48 },
-        { day: 'Dom', sessions: 9, members: 22 },
+      // Obtener actividad semanal desde el backend
+      const weeklyActivity = attendance?.weekly_activity || dashStats?.weekly_activity || [
+        { day: 'Lun', sessions: 0, members: 0 },
+        { day: 'Mar', sessions: 0, members: 0 },
+        { day: 'Mié', sessions: 0, members: 0 },
+        { day: 'Jue', sessions: 0, members: 0 },
+        { day: 'Vie', sessions: 0, members: 0 },
+        { day: 'Sáb', sessions: 0, members: 0 },
+        { day: 'Dom', sessions: 0, members: 0 },
       ]
 
-      // TODO: Reemplazar datos mock de monthlyTrend con endpoint real
-      const monthlyTrend = [
-        { month: 'Ene', revenue: 4500, members: 42 },
-        { month: 'Feb', revenue: 5200, members: 48 },
-        { month: 'Mar', revenue: 5800, members: 52 },
-        { month: 'Abr', revenue: 6100, members: 55 },
-        { month: 'May', revenue: 6400, members: 58 },
-        { month: 'Jun', revenue: 6900, members: 62 },
+      // Obtener tendencia mensual desde el backend
+      const monthlyTrend = dashStats?.monthly_trend || membership?.monthly_trend || [
+        { month: 'Ene', revenue: 0, members: 0 },
+        { month: 'Feb', revenue: 0, members: 0 },
+        { month: 'Mar', revenue: 0, members: 0 },
+        { month: 'Abr', revenue: 0, members: 0 },
+        { month: 'May', revenue: 0, members: 0 },
+        { month: 'Jun', revenue: 0, members: 0 },
       ]
 
-      // TODO: Agregar endpoint real para critical alerts
-      const mockAlerts = {
-        expiring_memberships: 12,
-        pending_payments: 3,
-        pending_amount: 450,
-        inactive_members: 8,
+      // Obtener alertas críticas desde el backend
+      const criticalAlerts = dashStats?.critical_alerts || {
+        expiring_memberships: 0,
+        pending_payments: 0,
+        pending_amount: 0,
+        inactive_members: 0,
       }
 
       const dashboardData: DashboardData = {
@@ -167,12 +173,12 @@ export function useDashboardData(autoRefresh = false) {
           ],
           classPopularity: classes.slice(0, 6).map((cls: any) => ({
             name: cls.name,
-            sessions: cls.sessions_count || Math.floor(Math.random() * 20) + 5, // TODO: Reemplazar con datos reales
+            sessions: cls.sessions_count || 0,
             capacity: cls.max_capacity || 20,
           })),
           monthlyTrend,
         },
-        alerts: mockAlerts,
+        alerts: criticalAlerts,
       }
 
       // Guardar en cache

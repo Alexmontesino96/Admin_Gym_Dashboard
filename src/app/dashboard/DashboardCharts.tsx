@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import { eventsAPI, getUsersAPI, membershipsAPI } from '@/lib/api'
+import { useDashboardData } from '@/hooks/useDashboardData'
 
 // Dynamic imports para Recharts - solo se cargan cuando se necesitan
 const AreaChart = dynamic(() => import('recharts').then(mod => ({ default: mod.AreaChart })), { ssr: false })
@@ -44,100 +44,21 @@ interface ChartData {
 }
 
 export default function DashboardCharts() {
-  const [data, setData] = useState<ChartData>({
-    weeklyActivity: [],
-    membershipTypes: [],
-    classPopularity: [],
-    monthlyTrend: []
-  })
-  const [loading, setLoading] = useState(true)
+  const { data: dashboardData, loading } = useDashboardData()
   const [chartsLoaded, setChartsLoaded] = useState(false)
 
-  const loadChartData = async () => {
-    try {
-      setLoading(true)
-
-      const [sessionsData, membersData, membershipData, classesData] = await Promise.allSettled([
-        eventsAPI.getSessions({ limit: 100 }),
-        getUsersAPI.getGymParticipants({ limit: 100 }),
-        membershipsAPI.getMembershipSummary(),
-        eventsAPI.getClasses(true, { limit: 50 })
-      ])
-
-      // Datos de actividad semanal
-      const weeklyActivity = [
-        { day: 'Lun', sessions: Math.floor(Math.random() * 15) + 5, members: Math.floor(Math.random() * 30) + 20 },
-        { day: 'Mar', sessions: Math.floor(Math.random() * 15) + 8, members: Math.floor(Math.random() * 35) + 25 },
-        { day: 'Mié', sessions: Math.floor(Math.random() * 18) + 10, members: Math.floor(Math.random() * 40) + 30 },
-        { day: 'Jue', sessions: Math.floor(Math.random() * 16) + 9, members: Math.floor(Math.random() * 38) + 28 },
-        { day: 'Vie', sessions: Math.floor(Math.random() * 20) + 12, members: Math.floor(Math.random() * 45) + 35 },
-        { day: 'Sáb', sessions: Math.floor(Math.random() * 25) + 15, members: Math.floor(Math.random() * 50) + 40 },
-        { day: 'Dom', sessions: Math.floor(Math.random() * 12) + 6, members: Math.floor(Math.random() * 25) + 18 }
-      ]
-
-      // Datos de tipos de membresía
-      const membership = membershipData.status === 'fulfilled' ? membershipData.value : null
-      const membershipTypes = [
-        { 
-          name: 'Activos', 
-          value: membership?.active_members || 45, 
-          color: '#10B981' 
-        },
-        { 
-          name: 'Prueba', 
-          value: membership?.trial_members || 12, 
-          color: '#F59E0B' 
-        },
-        { 
-          name: 'Expirados', 
-          value: membership?.expired_members || 8, 
-          color: '#EF4444' 
-        },
-        { 
-          name: 'Pagados', 
-          value: membership?.paid_members || 38, 
-          color: '#8B5CF6' 
-        }
-      ]
-
-      // Datos de popularidad de clases
-      const classes = classesData.status === 'fulfilled' ? classesData.value : []
-      const classPopularity = classes.slice(0, 6).map((cls: any) => ({
-        name: cls.name || 'Clase',
-        sessions: Math.floor(Math.random() * 20) + 5,
-        capacity: cls.max_capacity || 20
-      }))
-
-      // Datos de tendencia mensual
-      const monthlyTrend = [
-        { month: 'Ene', revenue: 4500, members: 42 },
-        { month: 'Feb', revenue: 5200, members: 48 },
-        { month: 'Mar', revenue: 4800, members: 45 },
-        { month: 'Abr', revenue: 6100, members: 52 },
-        { month: 'May', revenue: 5800, members: 58 },
-        { month: 'Jun', revenue: 6500, members: 61 }
-      ]
-
-      setData({
-        weeklyActivity,
-        membershipTypes,
-        classPopularity,
-        monthlyTrend
-      })
-
-    } catch (error) {
-      console.error('Error cargando datos de gráficas:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
-    loadChartData()
     // Marcar charts como cargados después de un breve delay
     const timer = setTimeout(() => setChartsLoaded(true), 100)
     return () => clearTimeout(timer)
   }, [])
+
+  const chartData: ChartData = {
+    weeklyActivity: dashboardData?.charts.weeklyActivity || [],
+    membershipTypes: dashboardData?.charts.membershipTypes || [],
+    classPopularity: dashboardData?.charts.classPopularity || [],
+    monthlyTrend: dashboardData?.charts.monthlyTrend || []
+  }
 
   if (loading || !chartsLoaded) {
     return (
@@ -177,7 +98,7 @@ export default function DashboardCharts() {
           </div>
         </div>
         <ResponsiveContainer width="100%" height={250}>
-          <AreaChart data={data.weeklyActivity}>
+          <AreaChart data={chartData.weeklyActivity}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="day" stroke="#6b7280" fontSize={12} />
             <YAxis stroke="#6b7280" fontSize={12} />
@@ -224,7 +145,7 @@ export default function DashboardCharts() {
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
-                data={data.membershipTypes}
+                data={chartData.membershipTypes}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -232,7 +153,7 @@ export default function DashboardCharts() {
                 paddingAngle={5}
                 dataKey="value"
               >
-                {data.membershipTypes.map((entry, index) => (
+                {chartData.membershipTypes.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -248,7 +169,7 @@ export default function DashboardCharts() {
           </ResponsiveContainer>
         </div>
         <div className="grid grid-cols-2 gap-4 mt-4">
-          {data.membershipTypes.map((type, index) => (
+          {chartData.membershipTypes.map((type, index) => (
             <div key={index} className="flex items-center space-x-2">
               <div 
                 className="w-3 h-3 rounded-full" 
@@ -265,7 +186,7 @@ export default function DashboardCharts() {
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Clases Más Populares</h3>
         <ResponsiveContainer width="100%" height={250}>
-          <BarChart data={data.classPopularity} layout="horizontal">
+          <BarChart data={chartData.classPopularity} layout="horizontal">
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis type="number" stroke="#6b7280" fontSize={12} />
             <YAxis dataKey="name" type="category" stroke="#6b7280" fontSize={12} width={80} />
@@ -304,7 +225,7 @@ export default function DashboardCharts() {
           </div>
         </div>
         <ResponsiveContainer width="100%" height={250}>
-          <LineChart data={data.monthlyTrend}>
+          <LineChart data={chartData.monthlyTrend}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
             <YAxis yAxisId="left" stroke="#6b7280" fontSize={12} />
