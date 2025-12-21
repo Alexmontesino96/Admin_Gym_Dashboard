@@ -15,7 +15,9 @@ import {
   ArrowLeft,
   Loader2,
   Users,
-  Dumbbell
+  Dumbbell,
+  Eye,
+  EyeOff
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -23,7 +25,6 @@ import Link from 'next/link'
 interface OwnerData {
   email: string
   password: string
-  confirmPassword: string
   first_name: string
   last_name: string
   phone: string
@@ -71,11 +72,13 @@ export default function GymRegistrationWizard() {
   const [emailCheckLoading, setEmailCheckLoading] = useState(false)
   const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null)
 
+  // Estado para mostrar/ocultar contraseña
+  const [showPassword, setShowPassword] = useState(false)
+
   // Estados de los formularios
   const [ownerData, setOwnerData] = useState<OwnerData>({
     email: '',
     password: '',
-    confirmPassword: '',
     first_name: '',
     last_name: '',
     phone: ''
@@ -86,7 +89,9 @@ export default function GymRegistrationWizard() {
     gym_address: '',
     gym_phone: '',
     gym_email: '',
-    timezone: 'America/Mexico_City',
+    timezone: typeof window !== 'undefined'
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+      : 'America/Mexico_City',
     gym_type: 'gym'
   })
 
@@ -143,7 +148,7 @@ export default function GymRegistrationWizard() {
           setEmailAvailable(false)
           setFieldErrors(prev => ({
             ...prev,
-            email: data.message || 'Este email ya está registrado'
+            email: data.message || 'Este email ya tiene cuenta - Iniciar sesión'
           }))
         }
       } else {
@@ -193,40 +198,32 @@ export default function GymRegistrationWizard() {
     const errors: Record<string, string> = {}
 
     if (!ownerData.email) {
-      errors.email = 'El email es requerido'
+      errors.email = 'Necesitamos tu email para crear tu cuenta'
     } else if (!validateEmail(ownerData.email)) {
-      errors.email = 'Email inválido'
+      errors.email = 'Hmm, este email no parece correcto'
     }
 
     if (!ownerData.password) {
-      errors.password = 'La contraseña es requerida'
+      errors.password = 'Crea una contraseña para proteger tu cuenta'
     } else if (ownerData.password.length < 8) {
-      errors.password = 'Mínimo 8 caracteres'
+      errors.password = 'Agrega al menos 8 caracteres'
     } else if (!/[A-Z]/.test(ownerData.password)) {
-      errors.password = 'Debe contener al menos una mayúscula'
+      errors.password = 'Incluye una letra mayúscula'
     } else if (!/[a-z]/.test(ownerData.password)) {
-      errors.password = 'Debe contener al menos una minúscula'
+      errors.password = 'Incluye una letra minúscula'
     } else if (!/\d/.test(ownerData.password)) {
-      errors.password = 'Debe contener al menos un número'
+      errors.password = 'Incluye al menos un número'
     }
 
-    if (!ownerData.confirmPassword) {
-      errors.confirmPassword = 'Confirma tu contraseña'
-    } else if (ownerData.password !== ownerData.confirmPassword) {
-      errors.confirmPassword = 'Las contraseñas no coinciden'
-    }
 
     if (!ownerData.first_name || ownerData.first_name.length < 2) {
-      errors.first_name = 'El nombre debe tener al menos 2 caracteres'
+      errors.first_name = 'Tu nombre es muy corto'
     }
 
     if (!ownerData.last_name || ownerData.last_name.length < 2) {
-      errors.last_name = 'El apellido debe tener al menos 2 caracteres'
+      errors.last_name = 'Tu apellido es muy corto'
     }
 
-    if (ownerData.phone && !validatePhone(ownerData.phone)) {
-      errors.phone = 'Formato: +525512345678'
-    }
 
     setFieldErrors(errors)
     return Object.keys(errors).length === 0
@@ -237,15 +234,9 @@ export default function GymRegistrationWizard() {
     const errors: Record<string, string> = {}
 
     if (!gymData.gym_name || gymData.gym_name.length < 3) {
-      errors.gym_name = 'El nombre debe tener al menos 3 caracteres'
-    }
-
-    if (gymData.gym_email && !validateEmail(gymData.gym_email)) {
-      errors.gym_email = 'Email inválido'
-    }
-
-    if (gymData.gym_phone && !validatePhone(gymData.gym_phone)) {
-      errors.gym_phone = 'Formato: +525512345678'
+      errors.gym_name = gymData.gym_type === 'gym'
+        ? '¿Cómo se llama tu gimnasio? (mínimo 3 caracteres)'
+        : '¿Cómo te conocen? (mínimo 3 caracteres)'
     }
 
     setFieldErrors(errors)
@@ -353,20 +344,20 @@ export default function GymRegistrationWizard() {
             validationErrors[field] = err.msg
           })
           setFieldErrors(validationErrors)
-          setError('Por favor corrige los errores en el formulario')
+          setError('Hmm, hay algunos campos que necesitan corrección')
         } else if (response.status === 400) {
           // Email duplicado u otro error de negocio
           if (data.detail?.error_code === 'EMAIL_EXISTS') {
-            setError('Este email ya está registrado. ¿Quieres iniciar sesión?')
+            setError('Este email ya tiene cuenta. ¿Quieres iniciar sesión?')
             setStep(1) // Volver al paso 1
           } else {
-            setError(data.detail?.message || 'Error en los datos proporcionados')
+            setError(data.detail?.message || 'Algo salió mal. Verifica tus datos e intenta de nuevo.')
           }
         } else if (response.status === 429) {
           // Rate limit
-          setError('Demasiados intentos. Por favor espera un momento e intenta de nuevo.')
+          setError('Muchos intentos en poco tiempo. Espera un momento e intenta de nuevo.')
         } else {
-          setError('Error al crear el gimnasio. Por favor intenta de nuevo.')
+          setError('No pudimos conectar con el servidor. Verifica tu conexión e intenta de nuevo.')
         }
         return
       }
@@ -378,7 +369,7 @@ export default function GymRegistrationWizard() {
 
     } catch (err) {
       console.error('Registration error:', err)
-      setError('Error de conexión. Verifica tu internet e intenta de nuevo.')
+      setError('No pudimos conectar. Verifica tu internet e intenta de nuevo.')
     } finally {
       setLoading(false)
     }
@@ -394,8 +385,15 @@ export default function GymRegistrationWizard() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mb-4">
             <Building2 className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Crea tu Gimnasio</h1>
-          <p className="text-gray-600">Completa el registro en 2 simples pasos</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestiona tu gimnasio como un profesional</h1>
+          <p className="text-gray-600">Miembros, clases, pagos y más. Todo en un solo lugar.</p>
+
+          {/* Social Proof Badge */}
+          <div className="mt-4 inline-block">
+            <p className="text-sm text-gray-500">
+              Más de <span className="font-bold text-blue-600">500 gimnasios</span> en México y LATAM confían en nosotros
+            </p>
+          </div>
         </div>
 
         {/* Progress Indicator */}
@@ -405,7 +403,7 @@ export default function GymRegistrationWizard() {
               Paso {step} de 2
             </span>
             <span className="text-sm text-gray-500">
-              {step === 1 ? 'Acceso de la Cuenta' : 'Información del Gimnasio'}
+              {step === 1 ? 'Tu cuenta de administrador' : 'Sobre tu negocio'}
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
@@ -413,6 +411,22 @@ export default function GymRegistrationWizard() {
               className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all duration-300"
               style={{ width: `${(step / 2) * 100}%` }}
             />
+          </div>
+        </div>
+
+        {/* Trust Badges - Movido arriba */}
+        <div className="mb-6 flex items-center justify-center space-x-6 text-sm text-gray-600">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <span>100% gratis, sin tarjeta</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <span>Listo en 5 minutos</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Lock className="h-4 w-4 text-green-500" />
+            <span>Datos encriptados SSL</span>
           </div>
         </div>
 
@@ -439,16 +453,16 @@ export default function GymRegistrationWizard() {
               <div className="space-y-6">
                 <div className="text-center pb-4 border-b border-gray-200">
                   <User className="h-12 w-12 text-blue-600 mx-auto mb-2" />
-                  <h2 className="text-xl font-semibold text-gray-900">Crea tu Cuenta</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">Tu cuenta de administrador</h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Datos de acceso para administrar tu gimnasio
+                    Con este email accederás a tu panel de control
                   </p>
                 </div>
 
                 {/* Email */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email *
+                    Email de trabajo
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -467,7 +481,7 @@ export default function GymRegistrationWizard() {
                           ? 'border-green-300 bg-green-50'
                           : 'border-gray-300'
                       }`}
-                      placeholder="tu@email.com"
+                      placeholder="nombre@tugimnasio.com"
                     />
                     {/* Indicadores de estado */}
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -488,7 +502,7 @@ export default function GymRegistrationWizard() {
                   {!fieldErrors.email && emailAvailable === true && (
                     <p className="mt-1 text-sm text-green-600 flex items-center space-x-1">
                       <CheckCircle className="h-4 w-4" />
-                      <span>Email disponible</span>
+                      <span>Perfecto, este email está libre</span>
                     </p>
                   )}
                 </div>
@@ -497,7 +511,7 @@ export default function GymRegistrationWizard() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nombre *
+                      Tu nombre
                     </label>
                     <input
                       type="text"
@@ -506,7 +520,7 @@ export default function GymRegistrationWizard() {
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                         fieldErrors.first_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
                       }`}
-                      placeholder="Juan"
+                      placeholder=""
                     />
                     {fieldErrors.first_name && (
                       <p className="mt-1 text-sm text-red-600">{fieldErrors.first_name}</p>
@@ -515,7 +529,7 @@ export default function GymRegistrationWizard() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Apellido *
+                      Tu apellido
                     </label>
                     <input
                       type="text"
@@ -524,7 +538,7 @@ export default function GymRegistrationWizard() {
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                         fieldErrors.last_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
                       }`}
-                      placeholder="Pérez"
+                      placeholder=""
                     />
                     {fieldErrors.last_name && (
                       <p className="mt-1 text-sm text-red-600">{fieldErrors.last_name}</p>
@@ -535,19 +549,31 @@ export default function GymRegistrationWizard() {
                 {/* Contraseña */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Contraseña *
+                    Crea una contraseña
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       value={ownerData.password}
                       onChange={(e) => setOwnerData({ ...ownerData, password: e.target.value })}
-                      className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                      className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                         fieldErrors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
                       }`}
                       placeholder="••••••••"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
                   </div>
                   {ownerData.password && (
                     <div className="mt-2">
@@ -569,54 +595,7 @@ export default function GymRegistrationWizard() {
                     <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
                   )}
                   <p className="mt-1 text-xs text-gray-500">
-                    Mínimo 8 caracteres, incluye mayúscula, minúscula y número
-                  </p>
-                </div>
-
-                {/* Confirmar Contraseña */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirmar Contraseña *
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="password"
-                      value={ownerData.confirmPassword}
-                      onChange={(e) => setOwnerData({ ...ownerData, confirmPassword: e.target.value })}
-                      className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                        fieldErrors.confirmPassword ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                      }`}
-                      placeholder="••••••••"
-                    />
-                  </div>
-                  {fieldErrors.confirmPassword && (
-                    <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
-                  )}
-                </div>
-
-                {/* Teléfono (opcional) */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Teléfono (opcional)
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="tel"
-                      value={ownerData.phone}
-                      onChange={(e) => setOwnerData({ ...ownerData, phone: e.target.value })}
-                      className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                        fieldErrors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                      }`}
-                      placeholder="+525512345678"
-                    />
-                  </div>
-                  {fieldErrors.phone && (
-                    <p className="mt-1 text-sm text-red-600">{fieldErrors.phone}</p>
-                  )}
-                  <p className="mt-1 text-xs text-gray-500">
-                    Formato internacional con código de país
+                    8+ caracteres con mayúscula y número
                   </p>
                 </div>
 
@@ -626,9 +605,12 @@ export default function GymRegistrationWizard() {
                   onClick={handleNext}
                   className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
                 >
-                  <span>Siguiente</span>
+                  <span>Continuar</span>
                   <ArrowRight className="h-5 w-5" />
                 </button>
+                <p className="text-center text-xs text-gray-500 mt-2">
+                  En 30 segundos tendrás acceso completo
+                </p>
               </div>
             )}
 
@@ -642,17 +624,17 @@ export default function GymRegistrationWizard() {
                     <Dumbbell className="h-12 w-12 text-green-600 mx-auto mb-2" />
                   )}
                   <h2 className="text-xl font-semibold text-gray-900">
-                    {gymData.gym_type === 'gym' ? 'Datos del Gimnasio' : 'Datos del Espacio de Trabajo'}
+                    {gymData.gym_type === 'gym' ? 'Sobre tu negocio' : 'Sobre tu práctica profesional'}
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Información de tu negocio
+                    Esto es lo que verán tus {gymData.gym_type === 'gym' ? 'miembros' : 'clientes'}
                   </p>
                 </div>
 
                 {/* Selector de Tipo de Gimnasio */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Tipo de Negocio *
+                    ¿Qué tipo de negocio tienes?
                   </label>
                   <div className="grid grid-cols-2 gap-4">
                     {/* Opción: Gimnasio Tradicional */}
@@ -675,7 +657,7 @@ export default function GymRegistrationWizard() {
                           Gimnasio
                         </h3>
                         <p className="text-xs text-gray-600">
-                          Gimnasio tradicional con múltiples miembros y entrenadores
+                          Box, estudio o centro deportivo con equipo
                         </p>
                       </div>
                       {gymData.gym_type === 'gym' && (
@@ -705,7 +687,7 @@ export default function GymRegistrationWizard() {
                           Entrenador Personal
                         </h3>
                         <p className="text-xs text-gray-600">
-                          Entrenador independiente con clientes directos
+                          Trabajo solo o con asistente, clientes 1-a-1
                         </p>
                       </div>
                       {gymData.gym_type === 'personal_trainer' && (
@@ -720,7 +702,7 @@ export default function GymRegistrationWizard() {
                 {/* Nombre del Gimnasio */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {gymData.gym_type === 'gym' ? 'Nombre del Gimnasio *' : 'Tu Nombre Profesional *'}
+                    {gymData.gym_type === 'gym' ? '¿Cómo se llama tu gimnasio?' : '¿Cómo te conocen tus clientes?'}
                   </label>
                   <div className="relative">
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -745,87 +727,38 @@ export default function GymRegistrationWizard() {
                   </p>
                 </div>
 
-                {/* Dirección */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Dirección (opcional)
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value={gymData.gym_address}
-                      onChange={(e) => setGymData({ ...gymData, gym_address: e.target.value })}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      placeholder="Av. Reforma 123, Col. Centro, CDMX"
-                    />
-                  </div>
-                </div>
-
-                {/* Email y Teléfono del Gimnasio */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email del Gimnasio (opcional)
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="email"
-                        value={gymData.gym_email}
-                        onChange={(e) => setGymData({ ...gymData, gym_email: e.target.value })}
-                        className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                          fieldErrors.gym_email ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        }`}
-                        placeholder="contacto@gym.com"
-                      />
-                    </div>
-                    {fieldErrors.gym_email && (
-                      <p className="mt-1 text-sm text-red-600">{fieldErrors.gym_email}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Teléfono (opcional)
-                    </label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="tel"
-                        value={gymData.gym_phone}
-                        onChange={(e) => setGymData({ ...gymData, gym_phone: e.target.value })}
-                        className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                          fieldErrors.gym_phone ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        }`}
-                        placeholder="+525587654321"
-                      />
-                    </div>
-                    {fieldErrors.gym_phone && (
-                      <p className="mt-1 text-sm text-red-600">{fieldErrors.gym_phone}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Zona Horaria */}
+                {/* Zona Horaria - Auto-detectada con opción de cambiar */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Zona Horaria
                   </label>
-                  <div className="relative">
-                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <select
-                      value={gymData.timezone}
-                      onChange={(e) => setGymData({ ...gymData, timezone: e.target.value })}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors appearance-none bg-white"
-                    >
-                      {TIMEZONES.map((tz) => (
-                        <option key={tz.value} value={tz.value}>
-                          {tz.label}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
+                    <div className="flex items-center space-x-2 text-sm">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span className="text-gray-700">
+                        Detectamos tu zona horaria: <span className="font-semibold text-gray-900">{TIMEZONES.find(tz => tz.value === gymData.timezone)?.label || 'Ciudad de México (GMT-6)'}</span>
+                      </span>
+                    </div>
                   </div>
+                  <details className="cursor-pointer">
+                    <summary className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                      Cambiar zona horaria
+                    </summary>
+                    <div className="relative mt-2">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                      <select
+                        value={gymData.timezone}
+                        onChange={(e) => setGymData({ ...gymData, timezone: e.target.value })}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors appearance-none bg-white"
+                      >
+                        {TIMEZONES.map((tz) => (
+                          <option key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </details>
                 </div>
 
                 {/* Botones de navegación */}
@@ -852,7 +785,7 @@ export default function GymRegistrationWizard() {
                     ) : (
                       <>
                         <CheckCircle className="h-5 w-5" />
-                        <span>Crear Gimnasio</span>
+                        <span>Activar mi cuenta gratis</span>
                       </>
                     )}
                   </button>
@@ -869,22 +802,6 @@ export default function GymRegistrationWizard() {
                 Inicia sesión
               </Link>
             </p>
-          </div>
-        </div>
-
-        {/* Trust Indicators */}
-        <div className="mt-6 flex items-center justify-center space-x-6 text-sm text-gray-500">
-          <div className="flex items-center space-x-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            <span>Sin tarjeta de crédito</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            <span>Setup en 5 minutos</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            <span>100% seguro</span>
           </div>
         </div>
       </div>
