@@ -45,6 +45,10 @@ interface PasswordStrength {
   color: string
 }
 
+interface GymRegistrationWizardProps {
+  preSelectedType?: 'gym' | 'personal_trainer'
+}
+
 const TIMEZONES = [
   { value: 'America/Mexico_City', label: 'Ciudad de México (GMT-6)' },
   { value: 'America/Cancun', label: 'Cancún (GMT-5)' },
@@ -62,7 +66,7 @@ const TIMEZONES = [
   { value: 'Europe/London', label: 'Londres (GMT+0)' }
 ]
 
-export default function GymRegistrationWizard() {
+export default function GymRegistrationWizard({ preSelectedType }: GymRegistrationWizardProps) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -92,7 +96,7 @@ export default function GymRegistrationWizard() {
     timezone: typeof window !== 'undefined'
       ? Intl.DateTimeFormat().resolvedOptions().timeZone
       : 'America/Mexico_City',
-    gym_type: 'gym'
+    gym_type: preSelectedType || 'gym'
   })
 
   // Validación de email
@@ -473,13 +477,22 @@ export default function GymRegistrationWizard() {
                   ) : (
                     <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
                   )}
-                  <h2 className="text-xl font-semibold text-gray-900">Cuéntanos sobre tu negocio</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {preSelectedType
+                      ? (gymData.gym_type === 'gym' ? 'Cuéntanos sobre tu gimnasio' : 'Cuéntanos sobre ti')
+                      : 'Cuéntanos sobre tu negocio'
+                    }
+                  </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Esto nos ayuda a personalizar tu experiencia
+                    {preSelectedType
+                      ? 'Empecemos con la información básica'
+                      : 'Esto nos ayuda a personalizar tu experiencia'
+                    }
                   </p>
                 </div>
 
-                {/* Selector de Tipo de Negocio */}
+                {/* Selector de Tipo de Negocio - Solo si NO viene pre-seleccionado */}
+                {!preSelectedType && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     ¿Cómo trabajas?
@@ -549,6 +562,28 @@ export default function GymRegistrationWizard() {
                     Puedes cambiar esto después en configuración
                   </p>
                 </div>
+                )}
+
+                {/* Badge de tipo pre-seleccionado */}
+                {preSelectedType && (
+                  <div className="flex items-center justify-center mb-4">
+                    <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full ${
+                      gymData.gym_type === 'gym' ? 'bg-blue-100' : 'bg-green-100'
+                    }`}>
+                      {gymData.gym_type === 'gym' ? (
+                        <>
+                          <Building2 className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-700">Gimnasio con local</span>
+                        </>
+                      ) : (
+                        <>
+                          <Dumbbell className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-700">Entrenador independiente</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Nombre del Negocio */}
                 <div>
