@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Building2,
@@ -30,7 +30,11 @@ import {
   TrendingDown,
   XCircle,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  UserPlus,
+  Rocket,
+  DollarSign
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -39,6 +43,8 @@ import LanguageSelector from './LanguageSelector'
 
 export default function LandingPage() {
   const { t } = useTranslation()
+  const [segment, setSegment] = useState<'gym' | 'trainer'>('gym')
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
@@ -78,13 +84,39 @@ export default function LandingPage() {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl"></div>
 
         <div className="max-w-7xl mx-auto relative z-10">
+          {/* Toggle de Segmento */}
+          <div className="flex justify-center mb-8">
+            <div className="inline-flex items-center bg-white/80 backdrop-blur-md rounded-full p-1 shadow-lg border border-gray-200">
+              <button
+                onClick={() => setSegment('gym')}
+                className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-200 ${
+                  segment === 'gym'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {t('segment.gym')}
+              </button>
+              <button
+                onClick={() => setSegment('trainer')}
+                className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-200 ${
+                  segment === 'trainer'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {t('segment.trainer')}
+              </button>
+            </div>
+          </div>
+
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Contenido */}
             <div>
-              {/* Badge de urgencia */}
-              <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-orange-100 to-red-100 text-orange-700 px-4 py-2 rounded-full mb-6 animate-pulse">
-                <Flame className="h-4 w-4" />
-                <span className="text-sm font-semibold">235 {t('hero.badge')}</span>
+              {/* Badge de social proof */}
+              <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-4 py-2 rounded-full mb-6">
+                <CheckCircle className="h-4 w-4" />
+                <span className="text-sm font-semibold">{t(segment === 'gym' ? 'hero.socialProofGym' : 'hero.socialProofTrainer')}</span>
               </div>
 
               <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
@@ -257,8 +289,110 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* How It Works Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full mb-6">
+              <Sparkles className="h-8 w-8 text-blue-600" />
+            </div>
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+              {t('howItWorks.title')}{' '}
+              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                {t('howItWorks.titleHighlight')}
+              </span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              {t('howItWorks.subtitle')}
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 mb-12">
+            {/* Paso 1: Crear Espacio */}
+            <div className="relative">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 border-2 border-blue-200 h-full">
+                <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                  1
+                </div>
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center mb-6 mt-2">
+                  <Rocket className="h-7 w-7 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{t('howItWorks.step1Title')}</h3>
+                <p className="text-gray-600 mb-4 leading-relaxed">
+                  {t('howItWorks.step1Desc')}
+                </p>
+                <div className="bg-blue-100 rounded-lg px-4 py-2 inline-block">
+                  <div className="flex items-center gap-2 text-sm text-blue-700 font-semibold">
+                    <Clock className="h-4 w-4" />
+                    <span>{t('howItWorks.step1Time')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Paso 2: Invitar Miembros */}
+            <div className="relative">
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8 border-2 border-purple-200 h-full">
+                <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                  2
+                </div>
+                <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center mb-6 mt-2">
+                  <UserPlus className="h-7 w-7 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{t('howItWorks.step2Title')}</h3>
+                <p className="text-gray-600 mb-4 leading-relaxed">
+                  {t('howItWorks.step2Desc')}
+                </p>
+                <div className="bg-purple-100 rounded-lg px-4 py-2 inline-block">
+                  <div className="flex items-center gap-2 text-sm text-purple-700 font-semibold">
+                    <Users className="h-4 w-4" />
+                    <span>{t('howItWorks.step2Feature')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Paso 3: Publicar Primera Story */}
+            <div className="relative">
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-8 border-2 border-green-200 h-full">
+                <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-green-600 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                  3
+                </div>
+                <div className="w-14 h-14 bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl flex items-center justify-center mb-6 mt-2">
+                  <Camera className="h-7 w-7 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{t('howItWorks.step3Title')}</h3>
+                <p className="text-gray-600 mb-4 leading-relaxed">
+                  {t('howItWorks.step3Desc')}
+                </p>
+                <div className="bg-green-100 rounded-lg px-4 py-2 inline-block">
+                  <div className="flex items-center gap-2 text-sm text-green-700 font-semibold">
+                    <Zap className="h-4 w-4" />
+                    <span>{t('howItWorks.step3Impact')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="text-center">
+            <Link
+              href="/register"
+              className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:scale-105"
+            >
+              <span>{t('howItWorks.cta')}</span>
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+            <p className="text-sm text-gray-500 mt-4">
+              {t('howItWorks.ctaSubtext')}
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
@@ -498,7 +632,7 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+      <section id="testimonials" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
@@ -661,10 +795,10 @@ export default function LandingPage() {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-pink-400/20 rounded-full blur-3xl"></div>
 
         <div className="max-w-4xl mx-auto text-center relative z-10">
-          {/* Badge de urgencia mejorado */}
-          <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-red-100 to-orange-100 text-red-700 px-5 py-3 rounded-full mb-6 border-2 border-red-200 shadow-lg animate-pulse">
-            <Flame className="h-5 w-5" />
-            <span className="text-sm font-bold">Solo quedan 47 espacios este mes para el setup gratuito</span>
+          {/* Badge de social proof real */}
+          <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 px-5 py-3 rounded-full mb-6 border-2 border-blue-200 shadow-lg">
+            <TrendingUp className="h-5 w-5" />
+            <span className="text-sm font-bold">{t('cta.realSocialProof')}</span>
           </div>
 
           {/* Headline emocional */}
@@ -745,9 +879,9 @@ export default function LandingPage() {
             <div>
               <h4 className="text-white font-semibold mb-4">Producto</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Características</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Precios</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Casos de Éxito</a></li>
+                <li><a href="#features" className="hover:text-white transition-colors">Características</a></li>
+                <li><Link href="/precios" className="hover:text-white transition-colors">Precios</Link></li>
+                <li><a href="#testimonials" className="hover:text-white transition-colors">Casos de Éxito</a></li>
               </ul>
             </div>
 

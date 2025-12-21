@@ -3,7 +3,13 @@
     "login": "Sign In",
     "createGym": "Create My Gym"
   },
+  "segment": {
+    "gym": "I Own a Gym",
+    "trainer": "I'm a Personal Trainer"
+  },
   "hero": {
+    "socialProofGym": "1,200+ gyms already trust us",
+    "socialProofTrainer": "500+ active personal trainers",
     "badge": "gyms activated Stories this week",
     "headline": "Transform Your Gym into a",
     "headlineHighlight": "Community",
@@ -36,6 +42,22 @@
     "title": "Trusted by leading gyms across Latin America",
     "rating": "4.9/5.0",
     "reviews": "347 reviews"
+  },
+  "howItWorks": {
+    "title": "Activate Your Community in",
+    "titleHighlight": "3 Steps",
+    "subtitle": "No complications. No complex installations. Ready in less than 5 minutes.",
+    "step1Title": "Create Your Space",
+    "step1Desc": "Register your gym, customize colors and logo, invite your team. No credit card. No sales calls.",
+    "step1Time": "5 minutes",
+    "step2Title": "Invite Your Members",
+    "step2Desc": "Share a link. They download the app. Automatic migration from Excel if you already have a database.",
+    "step2Feature": "Easy migration",
+    "step3Title": "Post Your First Story",
+    "step3Desc": "Upload the WOD of the day, a team photo, or a nutrition tip. Watch your community come alive.",
+    "step3Impact": "Instant engagement",
+    "cta": "Start My Free Trial",
+    "ctaSubtext": "No credit card • Cancel anytime"
   },
   "problem": {
     "title": "The Hidden Problem That's",
@@ -184,6 +206,7 @@
     "stat4Subtext": "Notifications that work"
   },
   "cta": {
+    "realSocialProof": "235 gyms joined this week",
     "badge": "Only 47 spots left this month for free setup",
     "title": "Stop Losing Members.",
     "titleHighlight": "Create a Community",

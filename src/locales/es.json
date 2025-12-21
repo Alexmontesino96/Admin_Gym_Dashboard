@@ -3,7 +3,13 @@
     "login": "Iniciar Sesión",
     "createGym": "Crear mi Gimnasio"
   },
+  "segment": {
+    "gym": "Soy Dueño de Gimnasio",
+    "trainer": "Soy Entrenador Personal"
+  },
   "hero": {
+    "socialProofGym": "1,200+ gimnasios ya confían en nosotros",
+    "socialProofTrainer": "500+ entrenadores personales activos",
     "badge": "gimnasios activaron Stories esta semana",
     "headline": "Transforma tu Gimnasio en una",
     "headlineHighlight": "Comunidad",
@@ -36,6 +42,22 @@
     "title": "Confiado por gimnasios líderes en toda Latinoamérica",
     "rating": "4.9/5.0",
     "reviews": "347 reseñas"
+  },
+  "howItWorks": {
+    "title": "Activa tu Comunidad en",
+    "titleHighlight": "3 Pasos",
+    "subtitle": "Sin complicaciones. Sin instalaciones complejas. Listo en menos de 5 minutos.",
+    "step1Title": "Crea tu Espacio",
+    "step1Desc": "Registra tu gimnasio, personaliza colores y logo, invita a tu equipo. Sin tarjeta de crédito. Sin llamadas de venta.",
+    "step1Time": "5 minutos",
+    "step2Title": "Invita a tus Miembros",
+    "step2Desc": "Comparte un link. Ellos descargan la app. Migración automática desde Excel si ya tienes base de datos.",
+    "step2Feature": "Migración fácil",
+    "step3Title": "Publica tu Primera Story",
+    "step3Desc": "Sube el WOD del día, una foto del equipo, o un tip nutricional. Observa cómo tu comunidad cobra vida.",
+    "step3Impact": "Engagement instantáneo",
+    "cta": "Empezar mi Prueba Gratis",
+    "ctaSubtext": "Sin tarjeta de crédito • Cancela cuando quieras"
   },
   "problem": {
     "title": "El Problema Oculto que Está",
@@ -184,6 +206,7 @@
     "stat4Subtext": "Notificaciones que funcionan"
   },
   "cta": {
+    "realSocialProof": "235 gimnasios se unieron esta semana",
     "badge": "Solo quedan 47 espacios este mes para el setup gratuito",
     "title": "Deja de Perder Miembros.",
     "titleHighlight": "Crea una Comunidad",
