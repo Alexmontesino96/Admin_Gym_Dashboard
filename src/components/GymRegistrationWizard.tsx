@@ -193,8 +193,22 @@ export default function GymRegistrationWizard() {
     return { score, label: 'Fuerte', color: 'green' }
   }
 
-  // Validar paso 1
+  // Validar paso 1 (Tipo de negocio + Nombre del negocio)
   const validateStep1 = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    if (!gymData.gym_name || gymData.gym_name.length < 3) {
+      errors.gym_name = gymData.gym_type === 'gym'
+        ? '¿Cómo se llama tu gimnasio? (mínimo 3 caracteres)'
+        : '¿Cómo te conocen? (mínimo 3 caracteres)'
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  // Validar paso 2 (Datos personales)
+  const validateStep2 = (): boolean => {
     const errors: Record<string, string> = {}
 
     if (!ownerData.email) {
@@ -215,28 +229,12 @@ export default function GymRegistrationWizard() {
       errors.password = 'Incluye al menos un número'
     }
 
-
     if (!ownerData.first_name || ownerData.first_name.length < 2) {
       errors.first_name = 'Tu nombre es muy corto'
     }
 
     if (!ownerData.last_name || ownerData.last_name.length < 2) {
       errors.last_name = 'Tu apellido es muy corto'
-    }
-
-
-    setFieldErrors(errors)
-    return Object.keys(errors).length === 0
-  }
-
-  // Validar paso 2
-  const validateStep2 = (): boolean => {
-    const errors: Record<string, string> = {}
-
-    if (!gymData.gym_name || gymData.gym_name.length < 3) {
-      errors.gym_name = gymData.gym_type === 'gym'
-        ? '¿Cómo se llama tu gimnasio? (mínimo 3 caracteres)'
-        : '¿Cómo te conocen? (mínimo 3 caracteres)'
     }
 
     setFieldErrors(errors)
@@ -385,14 +383,30 @@ export default function GymRegistrationWizard() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mb-4">
             <Building2 className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestiona tu gimnasio como un profesional</h1>
-          <p className="text-gray-600">Miembros, clases, pagos y más. Todo en un solo lugar.</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Tu negocio fitness, organizado al fin</h1>
+          <p className="text-gray-600">Clientes, agenda, cobros. Todo en un solo lugar.</p>
 
-          {/* Social Proof Badge */}
+          {/* Social Proof Badge - Dinámico según tipo seleccionado */}
           <div className="mt-4 inline-block">
-            <p className="text-sm text-gray-500">
-              Más de <span className="font-bold text-blue-600">500 gimnasios</span> en México y LATAM confían en nosotros
-            </p>
+            {step === 1 && gymData.gym_type && gymData.gym_name ? (
+              // Si ya seleccionó tipo, mostrar social proof específico
+              <p className="text-sm text-gray-500">
+                {gymData.gym_type === 'gym' ? (
+                  <>
+                    Más de <span className="font-bold text-blue-600">500 gimnasios</span> en México y LATAM confían en nosotros
+                  </>
+                ) : (
+                  <>
+                    Más de <span className="font-bold text-green-600">800 entrenadores personales</span> confían en nosotros
+                  </>
+                )}
+              </p>
+            ) : (
+              // Antes de seleccionar, mostrar genérico
+              <p className="text-sm text-gray-500">
+                Más de <span className="font-bold text-blue-600">500 negocios fitness</span> en México y LATAM confían en nosotros
+              </p>
+            )}
           </div>
         </div>
 
@@ -403,7 +417,7 @@ export default function GymRegistrationWizard() {
               Paso {step} de 2
             </span>
             <span className="text-sm text-gray-500">
-              {step === 1 ? 'Tu cuenta de administrador' : 'Sobre tu negocio'}
+              {step === 1 ? 'Tu negocio' : 'Tus datos de acceso'}
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
@@ -448,14 +462,169 @@ export default function GymRegistrationWizard() {
           )}
 
           <form onSubmit={handleSubmit}>
-            {/* PASO 1: Datos del Propietario */}
+            {/* PASO 1: Tipo de Negocio + Nombre */}
             {step === 1 && (
               <div className="space-y-6">
                 <div className="text-center pb-4 border-b border-gray-200">
-                  <User className="h-12 w-12 text-blue-600 mx-auto mb-2" />
-                  <h2 className="text-xl font-semibold text-gray-900">Tu cuenta de administrador</h2>
+                  {gymData.gym_type === 'gym' ? (
+                    <Building2 className="h-12 w-12 text-blue-600 mx-auto mb-2" />
+                  ) : gymData.gym_type === 'personal_trainer' ? (
+                    <Dumbbell className="h-12 w-12 text-green-600 mx-auto mb-2" />
+                  ) : (
+                    <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                  )}
+                  <h2 className="text-xl font-semibold text-gray-900">Cuéntanos sobre tu negocio</h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Con este email accederás a tu panel de control
+                    Esto nos ayuda a personalizar tu experiencia
+                  </p>
+                </div>
+
+                {/* Selector de Tipo de Negocio */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    ¿Cómo trabajas?
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Opción: Gimnasio */}
+                    <button
+                      type="button"
+                      onClick={() => setGymData({ ...gymData, gym_type: 'gym' })}
+                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 ${
+                        gymData.gym_type === 'gym'
+                          ? 'border-blue-600 bg-blue-50 shadow-lg'
+                          : 'border-gray-300 bg-white hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <Building2 className={`h-10 w-10 mx-auto mb-3 ${
+                          gymData.gym_type === 'gym' ? 'text-blue-600' : 'text-gray-400'
+                        }`} />
+                        <h3 className={`font-semibold mb-2 ${
+                          gymData.gym_type === 'gym' ? 'text-blue-900' : 'text-gray-900'
+                        }`}>
+                          Tengo un local
+                        </h3>
+                        <p className="text-xs text-gray-600 leading-relaxed">
+                          Administro un gimnasio, box de CrossFit, estudio de yoga/pilates, o centro deportivo
+                        </p>
+                      </div>
+                      {gymData.gym_type === 'gym' && (
+                        <div className="absolute top-3 right-3">
+                          <CheckCircle className="h-5 w-5 text-blue-600" />
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Opción: Entrenador Personal */}
+                    <button
+                      type="button"
+                      onClick={() => setGymData({ ...gymData, gym_type: 'personal_trainer' })}
+                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 ${
+                        gymData.gym_type === 'personal_trainer'
+                          ? 'border-green-600 bg-green-50 shadow-lg'
+                          : 'border-gray-300 bg-white hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <Dumbbell className={`h-10 w-10 mx-auto mb-3 ${
+                          gymData.gym_type === 'personal_trainer' ? 'text-green-600' : 'text-gray-400'
+                        }`} />
+                        <h3 className={`font-semibold mb-2 ${
+                          gymData.gym_type === 'personal_trainer' ? 'text-green-900' : 'text-gray-900'
+                        }`}>
+                          Soy independiente
+                        </h3>
+                        <p className="text-xs text-gray-600 leading-relaxed">
+                          Entreno clientes en su casa, en un parque, o rento espacio por hora. Soy mi propio jefe
+                        </p>
+                      </div>
+                      {gymData.gym_type === 'personal_trainer' && (
+                        <div className="absolute top-3 right-3">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 text-center mt-3">
+                    Puedes cambiar esto después en configuración
+                  </p>
+                </div>
+
+                {/* Nombre del Negocio */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {gymData.gym_type === 'gym' ? '¿Cómo se llama tu negocio?' : '¿Cómo te conocen tus clientes?'}
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={gymData.gym_name}
+                      onChange={(e) => setGymData({ ...gymData, gym_name: e.target.value })}
+                      className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                        fieldErrors.gym_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                      }`}
+                      placeholder={gymData.gym_type === 'gym' ? 'Ej: CrossFit Condesa' : 'Ej: Coach María PT'}
+                    />
+                  </div>
+                  {fieldErrors.gym_name && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.gym_name}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    {gymData.gym_type === 'gym'
+                      ? 'El nombre de tu gimnasio o centro de entrenamiento'
+                      : 'El nombre con el que te conocerán tus clientes'
+                    }
+                  </p>
+                </div>
+
+                {/* Botón Continuar */}
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+                >
+                  <span>Crear mi cuenta</span>
+                  <ArrowRight className="h-5 w-5" />
+                </button>
+                <p className="text-center text-xs text-gray-500 mt-2">
+                  Siguiente: tus datos de acceso
+                </p>
+              </div>
+            )}
+
+            {/* PASO 2: Tu Cuenta Personal */}
+            {step === 2 && (
+              <div className="space-y-6">
+                {/* Header dinámico con nombre del negocio */}
+                <div className="text-center pb-4 border-b border-gray-200">
+                  {gymData.gym_type === 'gym' ? (
+                    <Building2 className="h-12 w-12 text-blue-600 mx-auto mb-2" />
+                  ) : (
+                    <Dumbbell className="h-12 w-12 text-green-600 mx-auto mb-2" />
+                  )}
+
+                  {/* Mostrar el nombre del negocio si ya lo ingresó */}
+                  {gymData.gym_name && (
+                    <div className="inline-flex items-center space-x-2 bg-gray-100 px-4 py-2 rounded-full mb-3">
+                      <span className="text-sm font-medium text-gray-700">{gymData.gym_name}</span>
+                      {gymData.gym_type === 'gym' ? (
+                        <span className="text-xs text-blue-600 font-semibold">Gimnasio</span>
+                      ) : (
+                        <span className="text-xs text-green-600 font-semibold">Entrenador</span>
+                      )}
+                    </div>
+                  )}
+
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {gymData.gym_type === 'gym'
+                      ? 'Crea tu cuenta de administrador'
+                      : 'Crea tu cuenta profesional'}
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {gymData.gym_type === 'gym'
+                      ? 'Con esta cuenta gestionarás todo tu gimnasio'
+                      : 'Con esta cuenta gestionarás tus clientes y sesiones'}
                   </p>
                 </div>
 
@@ -481,7 +650,7 @@ export default function GymRegistrationWizard() {
                           ? 'border-green-300 bg-green-50'
                           : 'border-gray-300'
                       }`}
-                      placeholder="nombre@tugimnasio.com"
+                      placeholder="tu@email.com"
                     />
                     {/* Indicadores de estado */}
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -599,167 +768,27 @@ export default function GymRegistrationWizard() {
                   </p>
                 </div>
 
-                {/* Botón Siguiente */}
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
-                >
-                  <span>Continuar</span>
-                  <ArrowRight className="h-5 w-5" />
-                </button>
-                <p className="text-center text-xs text-gray-500 mt-2">
-                  En 30 segundos tendrás acceso completo
-                </p>
-              </div>
-            )}
-
-            {/* PASO 2: Datos del Gimnasio */}
-            {step === 2 && (
-              <div className="space-y-6">
-                <div className="text-center pb-4 border-b border-gray-200">
-                  {gymData.gym_type === 'gym' ? (
-                    <Building2 className="h-12 w-12 text-indigo-600 mx-auto mb-2" />
-                  ) : (
-                    <Dumbbell className="h-12 w-12 text-green-600 mx-auto mb-2" />
-                  )}
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {gymData.gym_type === 'gym' ? 'Sobre tu negocio' : 'Sobre tu práctica profesional'}
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Esto es lo que verán tus {gymData.gym_type === 'gym' ? 'miembros' : 'clientes'}
-                  </p>
-                </div>
-
-                {/* Selector de Tipo de Gimnasio */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    ¿Qué tipo de negocio tienes?
-                  </label>
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Opción: Gimnasio Tradicional */}
-                    <button
-                      type="button"
-                      onClick={() => setGymData({ ...gymData, gym_type: 'gym' })}
-                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 ${
-                        gymData.gym_type === 'gym'
-                          ? 'border-blue-600 bg-blue-50 shadow-lg'
-                          : 'border-gray-300 bg-white hover:border-gray-400'
-                      }`}
+                {/* Zona Horaria - Auto-detectada (colapsado por defecto) */}
+                <details className="cursor-pointer">
+                  <summary className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center space-x-2">
+                    <Globe className="h-4 w-4" />
+                    <span>Zona horaria: {TIMEZONES.find(tz => tz.value === gymData.timezone)?.label?.split('(')[0].trim() || 'Ciudad de México'}</span>
+                  </summary>
+                  <div className="relative mt-3">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                    <select
+                      value={gymData.timezone}
+                      onChange={(e) => setGymData({ ...gymData, timezone: e.target.value })}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors appearance-none bg-white"
                     >
-                      <div className="text-center">
-                        <Users className={`h-10 w-10 mx-auto mb-3 ${
-                          gymData.gym_type === 'gym' ? 'text-blue-600' : 'text-gray-400'
-                        }`} />
-                        <h3 className={`font-semibold mb-1 ${
-                          gymData.gym_type === 'gym' ? 'text-blue-900' : 'text-gray-900'
-                        }`}>
-                          Gimnasio
-                        </h3>
-                        <p className="text-xs text-gray-600">
-                          Box, estudio o centro deportivo con equipo
-                        </p>
-                      </div>
-                      {gymData.gym_type === 'gym' && (
-                        <div className="absolute top-3 right-3">
-                          <CheckCircle className="h-5 w-5 text-blue-600" />
-                        </div>
-                      )}
-                    </button>
-
-                    {/* Opción: Entrenador Personal */}
-                    <button
-                      type="button"
-                      onClick={() => setGymData({ ...gymData, gym_type: 'personal_trainer' })}
-                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 ${
-                        gymData.gym_type === 'personal_trainer'
-                          ? 'border-green-600 bg-green-50 shadow-lg'
-                          : 'border-gray-300 bg-white hover:border-gray-400'
-                      }`}
-                    >
-                      <div className="text-center">
-                        <Dumbbell className={`h-10 w-10 mx-auto mb-3 ${
-                          gymData.gym_type === 'personal_trainer' ? 'text-green-600' : 'text-gray-400'
-                        }`} />
-                        <h3 className={`font-semibold mb-1 ${
-                          gymData.gym_type === 'personal_trainer' ? 'text-green-900' : 'text-gray-900'
-                        }`}>
-                          Entrenador Personal
-                        </h3>
-                        <p className="text-xs text-gray-600">
-                          Trabajo solo o con asistente, clientes 1-a-1
-                        </p>
-                      </div>
-                      {gymData.gym_type === 'personal_trainer' && (
-                        <div className="absolute top-3 right-3">
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                        </div>
-                      )}
-                    </button>
+                      {TIMEZONES.map((tz) => (
+                        <option key={tz.value} value={tz.value}>
+                          {tz.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </div>
-
-                {/* Nombre del Gimnasio */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {gymData.gym_type === 'gym' ? '¿Cómo se llama tu gimnasio?' : '¿Cómo te conocen tus clientes?'}
-                  </label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value={gymData.gym_name}
-                      onChange={(e) => setGymData({ ...gymData, gym_name: e.target.value })}
-                      className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                        fieldErrors.gym_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                      }`}
-                      placeholder={gymData.gym_type === 'gym' ? 'Fitness Pro México' : 'Juan Pérez Training'}
-                    />
-                  </div>
-                  {fieldErrors.gym_name && (
-                    <p className="mt-1 text-sm text-red-600">{fieldErrors.gym_name}</p>
-                  )}
-                  <p className="mt-1 text-xs text-gray-500">
-                    {gymData.gym_type === 'gym'
-                      ? 'Nombre de tu gimnasio o centro de entrenamiento'
-                      : 'Nombre con el que te conocerán tus clientes'
-                    }
-                  </p>
-                </div>
-
-                {/* Zona Horaria - Auto-detectada con opción de cambiar */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Zona Horaria
-                  </label>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
-                    <div className="flex items-center space-x-2 text-sm">
-                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                      <span className="text-gray-700">
-                        Detectamos tu zona horaria: <span className="font-semibold text-gray-900">{TIMEZONES.find(tz => tz.value === gymData.timezone)?.label || 'Ciudad de México (GMT-6)'}</span>
-                      </span>
-                    </div>
-                  </div>
-                  <details className="cursor-pointer">
-                    <summary className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                      Cambiar zona horaria
-                    </summary>
-                    <div className="relative mt-2">
-                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                      <select
-                        value={gymData.timezone}
-                        onChange={(e) => setGymData({ ...gymData, timezone: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors appearance-none bg-white"
-                      >
-                        {TIMEZONES.map((tz) => (
-                          <option key={tz.value} value={tz.value}>
-                            {tz.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </details>
-                </div>
+                </details>
 
                 {/* Botones de navegación */}
                 <div className="flex gap-4">
