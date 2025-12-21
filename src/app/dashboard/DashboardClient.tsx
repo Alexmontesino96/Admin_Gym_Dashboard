@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import DashboardStats from './DashboardStats';
+import CriticalAlerts from './CriticalAlerts';
 
 // Dynamic import para DashboardCharts - componente pesado con Recharts
 const DashboardCharts = dynamic(() => import('./DashboardCharts'), {
@@ -30,11 +31,14 @@ export default function DashboardClient() {
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-600 mt-2">Resumen general de tu gimnasio</p>
       </div>
-      
+
       <div className="space-y-8">
         {/* Stats se cargan inmediatamente - son ligeros */}
         <DashboardStats />
-        
+
+        {/* Alertas críticas - accionables */}
+        <CriticalAlerts />
+
         {/* Charts se cargan dinámicamente - son pesados */}
         <DashboardCharts />
       </div>

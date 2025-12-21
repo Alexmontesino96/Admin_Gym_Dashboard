@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { membershipsAPI, eventsAPI, getUsersAPI, gymsAPI } from '@/lib/api'
 import { useTerminology } from '@/hooks/useTerminology'
 import { useWorkspace } from '@/hooks/useWorkspace'
+import { Users, Calendar, Target, DollarSign } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 interface DashboardStats {
   totalMembers: number
@@ -68,8 +70,16 @@ export default function DashboardStats() {
         return sessionDate >= today && sessionDate < tomorrow
       }).length
 
-      // Calcular crecimiento estimado (usando trial members como proxy)
-      const memberGrowth = membership && membership.total_members > 0 
+      // TODO: IMPORTANTE - Este cálculo de Member Growth es INCORRECTO
+      // Actualmente calcula: (trial_members / total_members) * 100
+      // Esto NO es crecimiento, es el porcentaje de miembros en prueba
+      //
+      // El cálculo correcto debería ser:
+      // memberGrowth = ((miembros_mes_actual - miembros_mes_anterior) / miembros_mes_anterior) * 100
+      //
+      // Requiere cambio en backend para agregar campo "member_growth" al endpoint
+      // /memberships/summary que calcule el crecimiento real comparando con mes anterior
+      const memberGrowth = membership && membership.total_members > 0
         ? Math.round((membership.trial_members / membership.total_members) * 100)
         : 0
 
@@ -120,24 +130,22 @@ export default function DashboardStats() {
     subtitle: `Capacidad: ${stats.maxClients}`,
     trend: `${Math.round(((stats.activeClients || stats.totalMembers) / stats.maxClients) * 100)}%`,
     trendColor: ((stats.activeClients || stats.totalMembers) / stats.maxClients) < 0.8 ? 'text-emerald-600' : 'text-orange-600',
-    icon: '👥',
-    bgGradient: 'bg-gradient-to-br from-blue-500 to-blue-600',
-    iconBg: 'bg-blue-100',
+    Icon: Users,
+    iconBg: 'bg-blue-50',
     iconColor: 'text-blue-600',
-    borderColor: 'border-blue-200',
-    hoverShadow: 'hover:shadow-blue-100'
+    borderColor: 'border-blue-100',
+    hoverBorder: 'hover:border-blue-300'
   } : {
     label: `${userPlural.charAt(0).toUpperCase() + userPlural.slice(1)} Totales`,
     value: stats.totalMembers,
     subtitle: `${stats.activeMembers} activos`,
     trend: stats.memberGrowth > 0 ? `+${stats.memberGrowth}%` : `${stats.memberGrowth}%`,
     trendColor: stats.memberGrowth > 0 ? 'text-emerald-600' : 'text-gray-500',
-    icon: '👥',
-    bgGradient: 'bg-gradient-to-br from-blue-500 to-blue-600',
-    iconBg: 'bg-blue-100',
+    Icon: Users,
+    iconBg: 'bg-blue-50',
     iconColor: 'text-blue-600',
-    borderColor: 'border-blue-200',
-    hoverShadow: 'hover:shadow-blue-100'
+    borderColor: 'border-blue-100',
+    hoverBorder: 'hover:border-blue-300'
   }
 
   const statCards = [
@@ -146,14 +154,13 @@ export default function DashboardStats() {
       label: 'Sesiones Hoy',
       value: stats.sessionsToday,
       subtitle: `${stats.totalSessions} total`,
-      trend: 'Programadas',
+      trend: 'Hoy',
       trendColor: 'text-purple-600',
-      icon: '📅',
-      bgGradient: 'bg-gradient-to-br from-purple-500 to-purple-600',
-      iconBg: 'bg-purple-100',
+      Icon: Calendar,
+      iconBg: 'bg-purple-50',
       iconColor: 'text-purple-600',
-      borderColor: 'border-purple-200',
-      hoverShadow: 'hover:shadow-purple-100'
+      borderColor: 'border-purple-100',
+      hoverBorder: 'hover:border-purple-300'
     },
     {
       label: 'Clases Activas',
@@ -161,65 +168,56 @@ export default function DashboardStats() {
       subtitle: 'Disponibles',
       trend: 'Activas',
       trendColor: 'text-orange-600',
-      icon: '🎯',
-      bgGradient: 'bg-gradient-to-br from-orange-500 to-orange-600',
-      iconBg: 'bg-orange-100',
+      Icon: Target,
+      iconBg: 'bg-orange-50',
       iconColor: 'text-orange-600',
-      borderColor: 'border-orange-200',
-      hoverShadow: 'hover:shadow-orange-100'
+      borderColor: 'border-orange-100',
+      hoverBorder: 'hover:border-orange-300'
     },
     {
       label: 'Ingresos Mes',
       value: `$${stats.monthlyRevenue.toLocaleString()}`,
       subtitle: `${stats.trialMembers} en prueba`,
-      trend: 'Mensual',
+      trend: 'MRR',
       trendColor: 'text-emerald-600',
-      icon: '💰',
-      bgGradient: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
-      iconBg: 'bg-emerald-100',
+      Icon: DollarSign,
+      iconBg: 'bg-emerald-50',
       iconColor: 'text-emerald-600',
-      borderColor: 'border-emerald-200',
-      hoverShadow: 'hover:shadow-emerald-100'
+      borderColor: 'border-emerald-100',
+      hoverBorder: 'hover:border-emerald-300'
     }
   ]
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-      {statCards.map((card, index) => (
-        <div 
-          key={index} 
-          className={`bg-white rounded-2xl p-6 shadow-sm border ${card.borderColor} hover:shadow-lg ${card.hoverShadow} transition-all duration-300 hover:scale-105 group cursor-pointer`}
-        >
-          {/* Header con icono y badge */}
-          <div className="flex items-center justify-between mb-4">
-            <div className={`w-12 h-12 ${card.iconBg} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200`}>
-              <span className={`text-2xl ${card.iconColor}`}>{card.icon}</span>
+      {statCards.map((card, index) => {
+        const Icon = card.Icon as LucideIcon
+        return (
+          <div
+            key={index}
+            className={`bg-white rounded-xl p-6 shadow-sm border-2 ${card.borderColor} ${card.hoverBorder} transition-all duration-200`}
+          >
+            {/* Header con icono */}
+            <div className="flex items-center justify-between mb-4">
+              <div className={`w-12 h-12 ${card.iconBg} rounded-lg flex items-center justify-center`}>
+                <Icon className={`w-6 h-6 ${card.iconColor}`} />
+              </div>
+              <span className={`text-xs font-semibold ${card.trendColor} px-2 py-1 rounded-md`}>
+                {card.trend}
+              </span>
             </div>
-            <span className={`text-xs font-semibold ${card.trendColor} bg-white px-3 py-1 rounded-full border ${card.borderColor} shadow-sm`}>
-              {card.trend}
-            </span>
-          </div>
 
-          {/* Contenido principal */}
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-600">{card.label}</p>
-            <p className="text-3xl font-bold text-gray-900 group-hover:text-gray-700 transition-colors duration-200">
-              {card.value}
-            </p>
-            <p className="text-xs text-gray-500">{card.subtitle}</p>
+            {/* Contenido principal */}
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-gray-600">{card.label}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {card.value}
+              </p>
+              <p className="text-xs text-gray-500">{card.subtitle}</p>
+            </div>
           </div>
-
-          {/* Barra de progreso decorativa */}
-          <div className="mt-4 h-1 bg-gray-100 rounded-full overflow-hidden">
-            <div 
-              className={`h-full ${card.bgGradient} rounded-full transition-all duration-1000 ease-out`}
-              style={{ 
-                width: loading ? '0%' : `${Math.min(100, (typeof card.value === 'number' ? card.value : 50))}%` 
-              }}
-            ></div>
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 } 
