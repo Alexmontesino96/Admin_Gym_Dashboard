@@ -325,7 +325,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                           <span>Configuración</span>
                         </Link>
                         <a
-                          href="/auth/logout"
+                          href="/logout"
                           className="flex items-center space-x-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                         >
                           <ArrowLeft className="h-4 w-4" />

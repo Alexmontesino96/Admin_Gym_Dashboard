@@ -39,7 +39,7 @@ export default function GymSelector({ onGymChange, compact = false }: GymSelecto
         const errorData = await response.json();
         if (errorData.action === 'logout_required') {
           // Redirigir a logout para obtener un nuevo token con el audience correcto
-          window.location.href = '/auth/logout?returnTo=' + encodeURIComponent(window.location.href);
+          window.location.href = '/logout';
           return null;
         }
         throw new Error(errorData.error || 'Error obteniendo token');

@@ -16,7 +16,7 @@ export default async function SelectGymPage() {
       {/* Header con logout */}
       <div className="absolute top-4 right-4">
         <a
-          href="/auth/logout"
+          href="/logout"
           className="flex items-center gap-2 bg-white text-gray-700 px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200 hover:bg-gray-50"
         >
           <LogOut className="h-4 w-4" />

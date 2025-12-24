@@ -20,7 +20,7 @@ export function useGymGuard() {
         }
 
         // Rutas que no requieren gimnasio seleccionado
-        const exemptRoutes = ['/select-gym', '/auth/login', '/auth/logout', '/auth/callback']
+        const exemptRoutes = ['/select-gym', '/auth/login', '/auth/logout', '/auth/callback', '/logout']
         
         if (exemptRoutes.some(route => pathname.startsWith(route))) {
           setIsGymSelected(true)

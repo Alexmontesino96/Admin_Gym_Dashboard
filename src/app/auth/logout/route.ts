@@ -1,7 +1,18 @@
-import { NextRequest } from 'next/server'
-import { auth0 } from '@/lib/auth0'
+import { NextRequest, NextResponse } from 'next/server'
 
-export function GET(req: NextRequest) {
-  // delega al SDK; reconocerá la ruta '/auth/logout' y ejecutará su logout
-  return auth0.middleware(req)
+export async function GET(req: NextRequest) {
+  // Limpiar la cookie selectedGymId antes de hacer logout
+  const response = NextResponse.redirect(
+    new URL('/api/auth/logout', req.url),
+    { status: 302 }
+  );
+
+  // Eliminar la cookie selectedGymId
+  response.cookies.set('selectedGymId', '', {
+    path: '/',
+    expires: new Date(0), // Fecha en el pasado para eliminar
+    maxAge: 0,
+  });
+
+  return response;
 } 

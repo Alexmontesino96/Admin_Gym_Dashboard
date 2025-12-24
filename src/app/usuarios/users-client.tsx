@@ -191,7 +191,7 @@ export default function UsersClient() {
       if (!response.ok) {
         const errorData = await response.json();
         if (errorData.action === 'logout_required') {
-          window.location.href = '/auth/logout?returnTo=' + encodeURIComponent(window.location.href);
+          window.location.href = '/logout';
           return null;
         }
         throw new Error(errorData.error || 'Error obteniendo token');
