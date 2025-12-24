@@ -216,29 +216,21 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
     const errors: Record<string, string> = {}
 
     if (!ownerData.email) {
-      errors.email = 'Necesitamos tu email para crear tu cuenta'
+      errors.email = 'Email is required to create your account'
     } else if (!validateEmail(ownerData.email)) {
-      errors.email = 'Hmm, este email no parece correcto'
+      errors.email = 'Please enter a valid email address'
     }
 
     if (!ownerData.password) {
-      errors.password = 'Crea una contraseña para proteger tu cuenta'
+      errors.password = 'Create a password to secure your account'
     } else if (ownerData.password.length < 8) {
-      errors.password = 'Agrega al menos 8 caracteres'
+      errors.password = 'Password must be at least 8 characters'
     } else if (!/[A-Z]/.test(ownerData.password)) {
-      errors.password = 'Incluye una letra mayúscula'
+      errors.password = 'Include at least one uppercase letter'
     } else if (!/[a-z]/.test(ownerData.password)) {
-      errors.password = 'Incluye una letra minúscula'
+      errors.password = 'Include at least one lowercase letter'
     } else if (!/\d/.test(ownerData.password)) {
-      errors.password = 'Incluye al menos un número'
-    }
-
-    if (!ownerData.first_name || ownerData.first_name.length < 2) {
-      errors.first_name = 'Tu nombre es muy corto'
-    }
-
-    if (!ownerData.last_name || ownerData.last_name.length < 2) {
-      errors.last_name = 'Tu apellido es muy corto'
+      errors.password = 'Include at least one number'
     }
 
     setFieldErrors(errors)
@@ -261,24 +253,39 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
     setFieldErrors({})
   }
 
-  // Submit final
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle step 2 completion - go to step 3
+  const handleStep2Complete = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!validateStep2()) {
       return
     }
 
+    // Move to step 3 for Stripe onboarding
+    setStep(3)
+    setError(null)
+    setFieldErrors({})
+  }
+
+  // Submit final - actually create the account
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
     setLoading(true)
     setError(null)
 
     try {
+      // Auto-generate first_name and last_name from email if not provided
+      const emailUsername = ownerData.email.split('@')[0]
+      const autoFirstName = ownerData.first_name || emailUsername
+      const autoLastName = ownerData.last_name || 'Owner'
+
       const payload = {
         // Datos del owner
         email: ownerData.email,
         password: ownerData.password,
-        first_name: ownerData.first_name,
-        last_name: ownerData.last_name,
+        first_name: autoFirstName,
+        last_name: autoLastName,
         phone: ownerData.phone || undefined,
         // Datos del gimnasio
         gym_name: gymData.gym_name,
@@ -387,30 +394,24 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mb-4">
             <Building2 className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Deja de perseguir pagos. Empieza a crecer.</h1>
-          <p className="text-gray-600">Cobra sin perseguir, agenda sin conflictos, crece sin límite.</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">The gym management platform Miami gyms choose</h1>
+          <p className="text-gray-600">Automated payments, scheduling, and growth tools. Starting at $77/month.</p>
 
-          {/* Social Proof Badge - Dinámico según tipo seleccionado */}
-          <div className="mt-4 inline-block">
-            {step === 1 && gymData.gym_type && gymData.gym_name ? (
-              // Si ya seleccionó tipo, mostrar social proof específico
-              <p className="text-sm text-gray-500">
-                {gymData.gym_type === 'gym' ? (
-                  <>
-                    <span className="font-bold text-blue-600">523 gimnasios</span> en México ya automatizaron su negocio
-                  </>
-                ) : (
-                  <>
-                    <span className="font-bold text-green-600">847 entrenadores</span> en LATAM ya cobran en automático
-                  </>
-                )}
-              </p>
-            ) : (
-              // Antes de seleccionar, mostrar genérico
-              <p className="text-sm text-gray-500">
-                El promedio de nuestros usuarios ahorra <span className="font-bold text-blue-600">12 horas a la semana</span> en admin
-              </p>
-            )}
+          {/* Founding Gyms Program Badge */}
+          <div className="mt-4 inline-flex items-center gap-2 bg-gradient-to-r from-orange-100 to-red-100 border-2 border-orange-300 px-4 py-2 rounded-full">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
+            </span>
+            <span className="text-sm font-bold text-orange-900">Founding Gyms Program: 50% off first 3 months</span>
+            <span className="bg-white px-2 py-0.5 rounded-full text-xs font-bold text-orange-600">6 spots left</span>
+          </div>
+
+          {/* Social Proof Badge - Miami market */}
+          <div className="mt-3 inline-block">
+            <p className="text-sm text-gray-500">
+              Join <span className="font-bold text-blue-600">50+ Miami fitness businesses</span> already automating with GymFlow
+            </p>
           </div>
         </div>
 
@@ -418,16 +419,16 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700">
-              Paso {step} de 2
+              Step {step} of 3
             </span>
             <span className="text-sm text-gray-500">
-              {step === 1 ? 'Tu negocio' : 'Tus datos de acceso'}
+              {step === 1 ? 'Business info' : step === 2 ? 'Account setup' : 'Payment setup'}
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
               className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(step / 2) * 100}%` }}
+              style={{ width: `${(step / 3) * 100}%` }}
             />
           </div>
         </div>
@@ -465,7 +466,7 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={step === 2 ? handleStep2Complete : handleSubmit}>
             {/* PASO 1: Tipo de Negocio + Nombre */}
             {step === 1 && (
               <div className="space-y-6">
@@ -613,13 +614,53 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
                   </p>
                 </div>
 
+                {/* Pricing Preview Card */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-200">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1 uppercase tracking-wide font-semibold">Your pricing</p>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-4xl font-bold text-gray-900">$77</span>
+                        <span className="text-gray-600 text-lg">/month</span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">Up to 150 members</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="inline-flex items-center bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-xs font-bold mb-2">
+                        61% cheaper than Mindbody
+                      </div>
+                      <p className="text-xs text-gray-500">Save ~$1,400/year</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-blue-200 pt-4 space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span className="font-medium">Stripe Standard Account</span>
+                      <span className="text-gray-500">- payments go directly to your bank</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span>No transaction fees from us, only Stripe's 2.9%</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span>Cancel anytime, no contracts</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 bg-white/60 rounded-lg px-3 py-2 text-xs text-gray-600">
+                    <strong className="text-gray-900">Founding Gyms:</strong> Pay $38.50/month for 3 months, then $77/month
+                  </div>
+                </div>
+
                 {/* Botón Continuar */}
                 <button
                   type="button"
                   onClick={handleNext}
                   className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
                 >
-                  <span>Crear mi cuenta</span>
+                  <span>Continue to account setup</span>
                   <ArrowRight className="h-5 w-5" />
                 </button>
                 <p className="text-center text-xs text-gray-500 mt-2">
@@ -652,21 +693,61 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
                   )}
 
                   <h2 className="text-xl font-semibold text-gray-900">
-                    {gymData.gym_type === 'gym'
-                      ? 'Último paso: activa tu gimnasio'
-                      : 'Último paso: lanza tu marca'}
+                    Create your account
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    {gymData.gym_type === 'gym'
-                      ? 'En 30 segundos tendrás acceso a tu panel de control'
-                      : 'Tu app profesional estará lista en segundos'}
+                    You'll have access to your dashboard in 30 seconds
                   </p>
+                </div>
+
+                {/* OAuth Options */}
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // TODO: Implement Google OAuth
+                      console.log('Google OAuth not implemented yet')
+                    }}
+                    className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200"
+                  >
+                    <svg className="h-5 w-5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span>Continue with Google</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // TODO: Implement Apple OAuth
+                      console.log('Apple OAuth not implemented yet')
+                    }}
+                    className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-gray-900 bg-gray-900 rounded-xl font-semibold text-white hover:bg-gray-800 transition-all duration-200"
+                  >
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                    </svg>
+                    <span>Continue with Apple</span>
+                  </button>
+                </div>
+
+                {/* Divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-4 bg-white text-gray-500">Or continue with email</span>
+                  </div>
                 </div>
 
                 {/* Email */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email de trabajo
+                    Work email
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -706,54 +787,15 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
                   {!fieldErrors.email && emailAvailable === true && (
                     <p className="mt-1 text-sm text-green-600 flex items-center space-x-1">
                       <CheckCircle className="h-4 w-4" />
-                      <span>Perfecto, este email está libre</span>
+                      <span>Great! This email is available</span>
                     </p>
                   )}
-                </div>
-
-                {/* Nombre y Apellido */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tu nombre
-                    </label>
-                    <input
-                      type="text"
-                      value={ownerData.first_name}
-                      onChange={(e) => setOwnerData({ ...ownerData, first_name: e.target.value })}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                        fieldErrors.first_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                      }`}
-                      placeholder=""
-                    />
-                    {fieldErrors.first_name && (
-                      <p className="mt-1 text-sm text-red-600">{fieldErrors.first_name}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tu apellido
-                    </label>
-                    <input
-                      type="text"
-                      value={ownerData.last_name}
-                      onChange={(e) => setOwnerData({ ...ownerData, last_name: e.target.value })}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                        fieldErrors.last_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                      }`}
-                      placeholder=""
-                    />
-                    {fieldErrors.last_name && (
-                      <p className="mt-1 text-sm text-red-600">{fieldErrors.last_name}</p>
-                    )}
-                  </div>
                 </div>
 
                 {/* Contraseña */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Crea una contraseña
+                    Create a password
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -782,7 +824,7 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
                   {ownerData.password && (
                     <div className="mt-2">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-600">Fortaleza:</span>
+                        <span className="text-xs text-gray-600">Strength:</span>
                         <span className={`text-xs font-medium text-${passwordStrength.color}-600`}>
                           {passwordStrength.label}
                         </span>
@@ -799,31 +841,9 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
                     <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
                   )}
                   <p className="mt-1 text-xs text-gray-500">
-                    8+ caracteres con mayúscula y número
+                    8+ characters with uppercase and number
                   </p>
                 </div>
-
-                {/* Zona Horaria - Auto-detectada (colapsado por defecto) */}
-                <details className="cursor-pointer">
-                  <summary className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center space-x-2">
-                    <Globe className="h-4 w-4" />
-                    <span>Zona horaria: {TIMEZONES.find(tz => tz.value === gymData.timezone)?.label?.split('(')[0].trim() || 'Ciudad de México'}</span>
-                  </summary>
-                  <div className="relative mt-3">
-                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                    <select
-                      value={gymData.timezone}
-                      onChange={(e) => setGymData({ ...gymData, timezone: e.target.value })}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors appearance-none bg-white"
-                    >
-                      {TIMEZONES.map((tz) => (
-                        <option key={tz.value} value={tz.value}>
-                          {tz.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </details>
 
                 {/* Botones de navegación */}
                 <div className="flex gap-4">
@@ -833,26 +853,120 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
                     className="flex-1 bg-gray-100 text-gray-700 py-4 rounded-xl font-semibold text-lg hover:bg-gray-200 transition-all duration-200 flex items-center justify-center space-x-2"
                   >
                     <ArrowLeft className="h-5 w-5" />
-                    <span>Atrás</span>
+                    <span>Back</span>
                   </button>
 
                   <button
                     type="submit"
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+                  >
+                    <span>Continue to payment setup</span>
+                    <ArrowRight className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* PASO 3: Stripe Connect Onboarding */}
+            {step === 3 && (
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="text-center pb-4 border-b border-gray-200">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-600 to-emerald-600 rounded-2xl mb-4 mx-auto">
+                    <CheckCircle className="h-8 w-8 text-white" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Setup your payment account
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Connect Stripe to start receiving payments directly to your bank
+                  </p>
+                </div>
+
+                {/* Why Stripe Section */}
+                <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-blue-600" />
+                    Why we use Stripe
+                  </h3>
+                  <div className="space-y-2 text-sm text-gray-700">
+                    <div className="flex gap-2">
+                      <span className="text-blue-600 font-bold">•</span>
+                      <span><strong>Direct deposits:</strong> Payments go straight to your bank account (not ours)</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="text-blue-600 font-bold">•</span>
+                      <span><strong>Only 2.9% fee:</strong> Standard Stripe rate, no markup from us</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="text-blue-600 font-bold">•</span>
+                      <span><strong>Full transparency:</strong> You control everything in your Stripe dashboard</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="text-blue-600 font-bold">•</span>
+                      <span><strong>Next-day transfers:</strong> Money hits your account in 1-2 business days</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* What You'll Need */}
+                <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-3">What you'll need (takes 3 minutes)</h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm text-gray-700">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span>Business EIN or SSN</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span>Bank account info</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span>Business address</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span>Phone number</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CTA Buttons */}
+                <div className="space-y-4">
+                  <button
+                    type="submit"
                     disabled={loading}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        <span>Creando...</span>
+                        <span>Setting up...</span>
                       </>
                     ) : (
                       <>
                         <CheckCircle className="h-5 w-5" />
-                        <span>{gymData.gym_type === 'gym' ? 'Activar mi gimnasio ahora' : 'Activar mi negocio ahora'}</span>
+                        <span>Connect Stripe & Complete Setup</span>
                       </>
                     )}
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-all duration-200 flex items-center justify-center space-x-2"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    <span>Back to account setup</span>
+                  </button>
+                </div>
+
+                {/* Trust Footer */}
+                <div className="text-center pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500">
+                    🔒 Secure connection • Stripe handles all sensitive data • We never see your bank info
+                  </p>
                 </div>
               </div>
             )}
