@@ -6,8 +6,9 @@ export async function GET(request: NextRequest) {
   // En local, resuelve a http://localhost:3000
   const baseUrl = request.nextUrl.origin
 
-  // Usar baseUrl para returnTo (siempre volver a la raíz)
-  const returnTo = request.nextUrl.searchParams.get('returnTo') || baseUrl
+  // Después del logout, siempre redirigir a /login para forzar un flujo limpio
+  // Esto evita que el usuario vaya al dashboard sin selectedGymId
+  const returnTo = `${baseUrl}/login`
 
   const auth0Domain = process.env.AUTH0_ISSUER_BASE_URL || process.env.NEXT_PUBLIC_AUTH0_DOMAIN
   const clientId = process.env.AUTH0_CLIENT_ID || process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID

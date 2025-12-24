@@ -1,13 +1,22 @@
 import { auth0 } from '@/lib/auth0'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { Users, Zap } from 'lucide-react'
 
 export default async function LoginPage() {
   const session = await auth0.getSession()
 
-  // Si ya está autenticado, redirigir al dashboard
-  // El middleware manejará la redirección a /select-gym si no hay gimnasio seleccionado
+  // Si ya está autenticado, verificar si tiene gimnasio seleccionado
   if (session) {
+    const cookieStore = await cookies()
+    const selectedGymId = cookieStore.get('selectedGymId')?.value
+
+    // Si no tiene gimnasio seleccionado, ir a select-gym
+    if (!selectedGymId || selectedGymId === 'null' || selectedGymId === 'undefined') {
+      redirect('/select-gym')
+    }
+
+    // Si tiene gimnasio seleccionado, ir al dashboard
     redirect('/dashboard')
   }
 

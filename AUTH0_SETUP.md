@@ -49,11 +49,13 @@ https://admin-gym-dashboard.vercel.app/api/auth/callback
 ```
 
 #### Allowed Logout URLs
-**MUY IMPORTANTE**: Agrega ambas URLs base:
+**MUY IMPORTANTE**: Agrega las URLs de login (no la raíz):
 ```
-http://localhost:3000,
-https://admin-gym-dashboard.vercel.app
+http://localhost:3000/login,
+https://admin-gym-dashboard.vercel.app/login
 ```
+
+> **Nota**: Usamos `/login` como returnTo para forzar un flujo limpio después del logout y evitar que usuarios sin `selectedGymId` accedan al dashboard.
 
 #### Allowed Web Origins
 ```
