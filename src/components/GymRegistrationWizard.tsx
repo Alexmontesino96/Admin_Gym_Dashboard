@@ -17,9 +17,11 @@ import {
   Users,
   Dumbbell,
   Eye,
-  EyeOff
+  EyeOff,
+  CreditCard
 } from 'lucide-react'
 import Link from 'next/link'
+import { useStripeConnect } from '@/hooks/useStripeConnect'
 
 // Tipos
 interface OwnerData {
@@ -78,6 +80,9 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
 
   // Estado para mostrar/ocultar contraseña
   const [showPassword, setShowPassword] = useState(false)
+
+  // Estado para el gym ID creado (para Stripe Connect)
+  const [createdGymId, setCreatedGymId] = useState<string | null>(null)
 
   // Estados de los formularios
   const [ownerData, setOwnerData] = useState<OwnerData>({
@@ -253,23 +258,13 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
     setFieldErrors({})
   }
 
-  // Handle step 2 completion - go to step 3
+  // Handle step 2 completion - create gym account and go to step 3
   const handleStep2Complete = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!validateStep2()) {
       return
     }
-
-    // Move to step 3 for Stripe onboarding
-    setStep(3)
-    setError(null)
-    setFieldErrors({})
-  }
-
-  // Submit final - actually create the account
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
 
     setLoading(true)
     setError(null)
@@ -299,38 +294,23 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
       const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/register-gym-owner`
       console.log('🚀 Registering gym:', {
         url,
-        payload: { ...payload, password: '***' },
-        passwordLength: payload.password?.length,
-        passwordExists: !!payload.password,
-        allFields: Object.keys(payload).map(key => `${key}: ${key === 'password' ? '***' : payload[key as keyof typeof payload]}`),
-        apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL
+        payload: { ...payload, password: '***' }
       })
-
-      const bodyToSend = JSON.stringify(payload)
-      console.log('📤 Request body (string):', bodyToSend.substring(0, 200) + '...')
 
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: bodyToSend
+        body: JSON.stringify(payload)
       })
 
-      console.log('📥 Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        contentType: response.headers.get('content-type')
-      })
-
-      // Verificar content-type antes de parsear
       const contentType = response.headers.get('content-type')
       let data = null
 
       if (contentType && contentType.includes('application/json')) {
         data = await response.json()
       } else {
-        // Si no es JSON, crear un objeto de error genérico
         data = {
           detail: {
             message: 'Error en el servidor. Por favor intenta de nuevo.'
@@ -346,7 +326,6 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
 
         // Manejar errores específicos
         if (response.status === 422) {
-          // Errores de validación de Pydantic
           const validationErrors: Record<string, string> = {}
           data.detail.forEach((err: { loc: string[]; msg: string }) => {
             const field = err.loc[err.loc.length - 1]
@@ -355,15 +334,13 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
           setFieldErrors(validationErrors)
           setError('Hmm, hay algunos campos que necesitan corrección')
         } else if (response.status === 400) {
-          // Email duplicado u otro error de negocio
           if (data.detail?.error_code === 'EMAIL_EXISTS') {
             setError('Este email ya tiene cuenta. ¿Quieres iniciar sesión?')
-            setStep(1) // Volver al paso 1
+            setStep(1)
           } else {
             setError(data.detail?.message || 'Algo salió mal. Verifica tus datos e intenta de nuevo.')
           }
         } else if (response.status === 429) {
-          // Rate limit
           setError('Muchos intentos en poco tiempo. Espera un momento e intenta de nuevo.')
         } else {
           setError('No pudimos conectar con el servidor. Verifica tu conexión e intenta de nuevo.')
@@ -373,8 +350,11 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
 
       console.log('✅ Registration successful:', data)
 
-      // Éxito - Redirigir a página de verificación
-      window.location.href = `/verify-email?email=${encodeURIComponent(data.user.email)}&gym=${encodeURIComponent(data.gym.name)}&type=${encodeURIComponent(gymData.gym_type)}`
+      // Guardar gym ID y pasar al Step 3
+      setCreatedGymId(data.gym.id.toString())
+      setStep(3)
+      setError(null)
+      setFieldErrors({})
 
     } catch (err) {
       console.error('Registration error:', err)
@@ -382,6 +362,12 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
     } finally {
       setLoading(false)
     }
+  }
+
+  // Handle Stripe onboarding completion
+  const handleStripeComplete = () => {
+    // Redirect to verify-email page
+    window.location.href = `/verify-email?email=${encodeURIComponent(ownerData.email)}&gym=${encodeURIComponent(gymData.gym_name)}&type=${encodeURIComponent(gymData.gym_type)}`
   }
 
   const passwordStrength = getPasswordStrength(ownerData.password)
@@ -466,7 +452,7 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
             </div>
           )}
 
-          <form onSubmit={step === 2 ? handleStep2Complete : handleSubmit}>
+          <form onSubmit={handleStep2Complete}>
             {/* PASO 1: Tipo de Negocio + Nombre */}
             {step === 1 && (
               <div className="space-y-6">
@@ -868,107 +854,14 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
             )}
 
             {/* PASO 3: Stripe Connect Onboarding */}
-            {step === 3 && (
-              <div className="space-y-6">
-                {/* Header */}
-                <div className="text-center pb-4 border-b border-gray-200">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-600 to-emerald-600 rounded-2xl mb-4 mx-auto">
-                    <CheckCircle className="h-8 w-8 text-white" />
-                  </div>
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Setup your payment account
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Connect Stripe to start receiving payments directly to your bank
-                  </p>
-                </div>
-
-                {/* Why Stripe Section */}
-                <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
-                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-blue-600" />
-                    Why we use Stripe
-                  </h3>
-                  <div className="space-y-2 text-sm text-gray-700">
-                    <div className="flex gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
-                      <span><strong>Direct deposits:</strong> Payments go straight to your bank account (not ours)</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
-                      <span><strong>Only 2.9% fee:</strong> Standard Stripe rate, no markup from us</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
-                      <span><strong>Full transparency:</strong> You control everything in your Stripe dashboard</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
-                      <span><strong>Next-day transfers:</strong> Money hits your account in 1-2 business days</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* What You'll Need */}
-                <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-                  <h3 className="font-semibold text-gray-900 mb-3">What you'll need (takes 3 minutes)</h3>
-                  <div className="grid grid-cols-2 gap-3 text-sm text-gray-700">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                      <span>Business EIN or SSN</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                      <span>Bank account info</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                      <span>Business address</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                      <span>Phone number</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* CTA Buttons */}
-                <div className="space-y-4">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        <span>Setting up...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="h-5 w-5" />
-                        <span>Connect Stripe & Complete Setup</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setStep(2)}
-                    className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-all duration-200 flex items-center justify-center space-x-2"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    <span>Back to account setup</span>
-                  </button>
-                </div>
-
-                {/* Trust Footer */}
-                <div className="text-center pt-4 border-t border-gray-200">
-                  <p className="text-xs text-gray-500">
-                    🔒 Secure connection • Stripe handles all sensitive data • We never see your bank info
-                  </p>
-                </div>
-              </div>
+            {step === 3 && createdGymId && (
+              <StripeConnectStep
+                gymId={createdGymId}
+                userEmail={ownerData.email}
+                gymName={gymData.gym_name}
+                onComplete={handleStripeComplete}
+                onBack={() => setStep(2)}
+              />
             )}
           </form>
 
@@ -983,6 +876,276 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Componente para Step 3: Stripe Connect
+interface StripeConnectStepProps {
+  gymId: string
+  userEmail: string
+  gymName: string
+  onComplete: () => void
+  onBack: () => void
+}
+
+function StripeConnectStep({ gymId, userEmail, gymName, onComplete, onBack }: StripeConnectStepProps) {
+  const {
+    status,
+    isLoading,
+    error,
+    createAccount,
+    getOnboardingLink,
+    startPolling,
+    stopPolling
+  } = useStripeConnect(gymId)
+
+  const [accountCreated, setAccountCreated] = useState(false)
+  const [onboardingStarted, setOnboardingStarted] = useState(false)
+
+  // Detectar si cuenta ya existe (reconectar) o crear nueva
+  useEffect(() => {
+    if (status?.is_connected && !accountCreated) {
+      // Cuenta ya existe - modo reconexión
+      console.log('Stripe account already exists, enabling reconnect mode')
+      setAccountCreated(true)
+    } else if (!status?.is_connected && !accountCreated && !isLoading) {
+      // Crear nueva cuenta
+      handleCreateAccount()
+    }
+  }, [status, accountCreated, isLoading])
+
+  // Iniciar polling si hay cuenta pero onboarding no completado
+  useEffect(() => {
+    if (onboardingStarted && status?.is_connected && !status.onboarding_completed) {
+      startPolling()
+    }
+    return () => stopPolling()
+  }, [onboardingStarted, status, startPolling, stopPolling])
+
+  const handleCreateAccount = async () => {
+    try {
+      await createAccount({
+        country: 'US',
+        email: userEmail,
+        business_type: 'company'
+      })
+      setAccountCreated(true)
+    } catch (err) {
+      console.error('Error creando cuenta Stripe:', err)
+    }
+  }
+
+  const handleStartOnboarding = async () => {
+    try {
+      const link = await getOnboardingLink()
+      setOnboardingStarted(true)
+      // Abrir en nueva ventana
+      window.open(link.url, '_blank', 'width=800,height=900')
+      // Iniciar polling para detectar cuando complete
+      startPolling()
+    } catch (err) {
+      console.error('Error obteniendo onboarding link:', err)
+    }
+  }
+
+  // Si onboarding completado, mostrar éxito
+  if (status?.onboarding_completed) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
+            <CheckCircle className="h-12 w-12 text-green-600" />
+          </div>
+          <h3 className="text-2xl font-bold mb-2 text-gray-900">Stripe Configured Successfully!</h3>
+          <p className="text-gray-600 mb-2">
+            Your payment account is ready to receive payments directly to your bank.
+          </p>
+          <p className="text-sm text-gray-500">
+            {gymName} is all set up!
+          </p>
+        </div>
+
+        <div className="bg-green-50 rounded-xl p-5 border border-green-200">
+          <h4 className="font-semibold text-gray-900 mb-3">What's next?</h4>
+          <div className="space-y-2 text-sm text-gray-700">
+            <div className="flex gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+              <span>Payments from members go directly to your bank account</span>
+            </div>
+            <div className="flex gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+              <span>You can view all transactions in your Stripe dashboard</span>
+            </div>
+            <div className="flex gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+              <span>Funds are transferred in 1-2 business days</span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={onComplete}
+          className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+        >
+          Complete Setup & Go to Dashboard
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="text-center pb-4 border-b border-gray-200">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mb-4 mx-auto">
+          <CreditCard className="h-8 w-8 text-white" />
+        </div>
+        <h2 className="text-xl font-semibold text-gray-900">
+          Setup your payment account
+        </h2>
+        <p className="text-sm text-gray-600 mt-1">
+          Connect Stripe to start receiving payments directly to your bank
+        </p>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
+          <AlertCircle className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-red-800 font-semibold">Error</p>
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoading && !accountCreated && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <span className="ml-3 text-gray-600">Setting up your Stripe account...</span>
+        </div>
+      )}
+
+      {/* Account Created - Ready for Onboarding */}
+      {accountCreated && !status?.onboarding_completed && !isLoading && (
+        <>
+          {/* Reconnect Info Banner (si la cuenta ya existía) */}
+          {status?.is_connected && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start">
+                <AlertCircle className="h-5 w-5 text-yellow-600 mr-3 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-yellow-800 font-semibold text-sm">Continue your Stripe setup</p>
+                  <p className="text-yellow-700 text-xs mt-1">
+                    You started connecting your Stripe account but didn't finish. Click below to continue where you left off.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Why Stripe Section */}
+          <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
+            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-blue-600" />
+              Why we use Stripe
+            </h3>
+            <div className="space-y-2 text-sm text-gray-700">
+              <div className="flex gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <span><strong>Direct deposits:</strong> Payments go straight to your bank account (not ours)</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <span><strong>Only 2.9% fee:</strong> Standard Stripe rate, no markup from us</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <span><strong>Full transparency:</strong> You control everything in your Stripe dashboard</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <span><strong>Next-day transfers:</strong> Money hits your account in 1-2 business days</span>
+              </div>
+            </div>
+          </div>
+
+          {/* What You'll Need */}
+          <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+            <h3 className="font-semibold text-gray-900 mb-3">What you'll need (takes 3 minutes)</h3>
+            <div className="grid grid-cols-2 gap-3 text-sm text-gray-700">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                <span>Business EIN or SSN</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                <span>Bank account info</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                <span>Business address</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                <span>Phone number</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Polling Status */}
+          {onboardingStarted && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <Loader2 className="h-5 w-5 text-yellow-600 animate-spin mr-3" />
+                <div>
+                  <p className="text-yellow-800 font-semibold text-sm">Waiting for Stripe verification...</p>
+                  <p className="text-yellow-600 text-xs mt-1">
+                    We'll automatically detect when you complete the process in the popup window
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CTA Buttons */}
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={handleStartOnboarding}
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <CreditCard className="h-5 w-5" />
+              <span>
+                {onboardingStarted
+                  ? 'Reopen Stripe Verification'
+                  : status?.is_connected
+                  ? 'Continue Stripe Setup'
+                  : 'Connect Stripe Account'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onBack}
+              className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-all duration-200 flex items-center justify-center space-x-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to account setup</span>
+            </button>
+          </div>
+
+          {/* Trust Footer */}
+          <div className="text-center pt-4 border-t border-gray-200">
+            <p className="text-xs text-gray-500">
+              🔒 Secure connection • Stripe handles all sensitive data • We never see your bank info
+            </p>
+          </div>
+        </>
+      )}
     </div>
   )
 }
