@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useStripeConnect } from '@/hooks/useStripeConnect'
+import { StripeConnectStatus } from '@/lib/api'
 
 // Tipos
 interface OwnerData {
@@ -892,65 +893,16 @@ interface StripeConnectStepProps {
 function StripeConnectStep({ gymId, userEmail, gymName, onComplete, onBack }: StripeConnectStepProps) {
   const {
     status,
+    accountStatus,
     isLoading,
     error,
-    createAccount,
-    getOnboardingLink,
-    startPolling,
+    isPolling,
+    startOnboarding,
     stopPolling
-  } = useStripeConnect(gymId)
+  } = useStripeConnect()
 
-  const [accountCreated, setAccountCreated] = useState(false)
-  const [onboardingStarted, setOnboardingStarted] = useState(false)
-
-  // Detectar si cuenta ya existe (reconectar) o crear nueva
-  useEffect(() => {
-    if (status?.is_connected && !accountCreated) {
-      // Cuenta ya existe - modo reconexión
-      console.log('Stripe account already exists, enabling reconnect mode')
-      setAccountCreated(true)
-    } else if (!status?.is_connected && !accountCreated && !isLoading) {
-      // Crear nueva cuenta
-      handleCreateAccount()
-    }
-  }, [status, accountCreated, isLoading])
-
-  // Iniciar polling si hay cuenta pero onboarding no completado
-  useEffect(() => {
-    if (onboardingStarted && status?.is_connected && !status.onboarding_completed) {
-      startPolling()
-    }
-    return () => stopPolling()
-  }, [onboardingStarted, status, startPolling, stopPolling])
-
-  const handleCreateAccount = async () => {
-    try {
-      await createAccount({
-        country: 'US',
-        email: userEmail,
-        business_type: 'company'
-      })
-      setAccountCreated(true)
-    } catch (err) {
-      console.error('Error creando cuenta Stripe:', err)
-    }
-  }
-
-  const handleStartOnboarding = async () => {
-    try {
-      const link = await getOnboardingLink()
-      setOnboardingStarted(true)
-      // Abrir en nueva ventana
-      window.open(link.url, '_blank', 'width=800,height=900')
-      // Iniciar polling para detectar cuando complete
-      startPolling()
-    } catch (err) {
-      console.error('Error obteniendo onboarding link:', err)
-    }
-  }
-
-  // Si onboarding completado, mostrar éxito
-  if (status?.onboarding_completed) {
+  // Si onboarding completado, mostrar exito
+  if (status === StripeConnectStatus.CONNECTED) {
     return (
       <div className="space-y-6">
         <div className="text-center py-12">
@@ -994,6 +946,9 @@ function StripeConnectStep({ gymId, userEmail, gymName, onComplete, onBack }: St
     )
   }
 
+  const isOnboarding = status === StripeConnectStatus.ONBOARDING
+  const isNotConfigured = status === StripeConnectStatus.NOT_CONFIGURED
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -1021,18 +976,18 @@ function StripeConnectStep({ gymId, userEmail, gymName, onComplete, onBack }: St
       )}
 
       {/* Loading State */}
-      {isLoading && !accountCreated && (
+      {isLoading && !isPolling && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           <span className="ml-3 text-gray-600">Setting up your Stripe account...</span>
         </div>
       )}
 
-      {/* Account Created - Ready for Onboarding */}
-      {accountCreated && !status?.onboarding_completed && !isLoading && (
+      {/* Main Content */}
+      {!isLoading && (
         <>
-          {/* Reconnect Info Banner (si la cuenta ya existía) */}
-          {status?.is_connected && (
+          {/* Reconnect Info Banner (si la cuenta ya existia) */}
+          {isOnboarding && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
               <div className="flex items-start">
                 <AlertCircle className="h-5 w-5 text-yellow-600 mr-3 flex-shrink-0 mt-0.5" />
@@ -1096,7 +1051,7 @@ function StripeConnectStep({ gymId, userEmail, gymName, onComplete, onBack }: St
           </div>
 
           {/* Polling Status */}
-          {onboardingStarted && (
+          {isPolling && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="flex items-center">
                 <Loader2 className="h-5 w-5 text-yellow-600 animate-spin mr-3" />
@@ -1114,15 +1069,15 @@ function StripeConnectStep({ gymId, userEmail, gymName, onComplete, onBack }: St
           <div className="space-y-4">
             <button
               type="button"
-              onClick={handleStartOnboarding}
+              onClick={startOnboarding}
               disabled={isLoading}
               className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CreditCard className="h-5 w-5" />
               <span>
-                {onboardingStarted
+                {isPolling
                   ? 'Reopen Stripe Verification'
-                  : status?.is_connected
+                  : isOnboarding
                   ? 'Continue Stripe Setup'
                   : 'Connect Stripe Account'}
               </span>
@@ -1141,7 +1096,7 @@ function StripeConnectStep({ gymId, userEmail, gymName, onComplete, onBack }: St
           {/* Trust Footer */}
           <div className="text-center pt-4 border-t border-gray-200">
             <p className="text-xs text-gray-500">
-              🔒 Secure connection • Stripe handles all sensitive data • We never see your bank info
+              Secure connection - Stripe handles all sensitive data - We never see your bank info
             </p>
           </div>
         </>

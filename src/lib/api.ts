@@ -3937,3 +3937,153 @@ export const getAchievementCountByRarity = (achievements: AchievementsResponse):
     [AchievementRarity.LEGENDARY]: achievements.by_rarity.legendary.length
   };
 };
+
+// ========================================
+// STRIPE CONNECT - TIPOS Y API
+// ========================================
+
+// ===== ENUMS =====
+export enum StripeAccountType {
+  STANDARD = 'standard',
+  EXPRESS = 'express'
+}
+
+export enum StripeConnectStatus {
+  NOT_CONFIGURED = 'not_configured',
+  ONBOARDING = 'onboarding',
+  CONNECTED = 'connected',
+  DISCONNECTED = 'disconnected'
+}
+
+// ===== INTERFACES =====
+export interface StripeAccountStatus {
+  stripe_account_id: string;
+  onboarding_completed: boolean;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  account_type: StripeAccountType;
+  details_submitted?: boolean;
+  requirements?: {
+    currently_due: string[];
+    eventually_due: string[];
+    past_due: string[];
+  };
+}
+
+export interface StripeConnectionStatus {
+  connected: boolean;
+  account_type: StripeAccountType | null;
+  stripe_account_id: string | null;
+  can_reconnect: boolean;
+}
+
+export interface StripeOnboardingLink {
+  url: string;
+  expires_at: string;
+}
+
+export interface StripeAccountCreateRequest {
+  country: string;
+  account_type: StripeAccountType;
+}
+
+export interface StripeAccountCreateResponse {
+  stripe_account_id: string;
+  account_type: StripeAccountType;
+  message: string;
+}
+
+// ===== API CLIENT =====
+export const stripeConnectAPI = {
+  /**
+   * Verifica el estado actual de la cuenta Stripe Connect del gimnasio
+   * @returns Estado de la cuenta o null si no existe (404)
+   */
+  getAccountStatus: async (): Promise<StripeAccountStatus | null> => {
+    try {
+      return await apiCall('/stripe-connect/accounts/status');
+    } catch (error) {
+      if (isAPIError(error) && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Crea una nueva cuenta Stripe Connect para el gimnasio
+   * @param country - Codigo de pais ISO (default: 'US')
+   * @param accountType - Tipo de cuenta (standard o express)
+   */
+  createAccount: async (
+    country: string = 'US',
+    accountType: StripeAccountType = StripeAccountType.STANDARD
+  ): Promise<StripeAccountCreateResponse> => {
+    return apiCall('/stripe-connect/accounts', {
+      method: 'POST',
+      body: JSON.stringify({
+        country,
+        account_type: accountType
+      })
+    });
+  },
+
+  /**
+   * Obtiene el link de onboarding para configurar la cuenta en Stripe
+   * El link expira en 1 hora
+   */
+  getOnboardingLink: async (): Promise<StripeOnboardingLink> => {
+    return apiCall('/stripe-connect/accounts/onboarding-link', {
+      method: 'POST'
+    });
+  },
+
+  /**
+   * Verifica si la cuenta sigue conectada (para Standard Accounts)
+   * Las cuentas Standard pueden desconectarse desde el dashboard de Stripe
+   */
+  getConnectionStatus: async (): Promise<StripeConnectionStatus> => {
+    return apiCall('/stripe-connect/accounts/connection-status');
+  },
+
+  /**
+   * Obtiene el link al dashboard de Stripe para la cuenta conectada
+   */
+  getDashboardLink: async (): Promise<{ url: string }> => {
+    return apiCall('/stripe-connect/accounts/dashboard-link', {
+      method: 'POST'
+    });
+  }
+};
+
+// ===== HELPER FUNCTIONS =====
+/**
+ * Determina el estado de conexion de Stripe basado en la respuesta de la API
+ */
+export const getStripeConnectStatus = (
+  accountStatus: StripeAccountStatus | null
+): StripeConnectStatus => {
+  if (!accountStatus) {
+    return StripeConnectStatus.NOT_CONFIGURED;
+  }
+
+  if (accountStatus.onboarding_completed && accountStatus.charges_enabled) {
+    return StripeConnectStatus.CONNECTED;
+  }
+
+  return StripeConnectStatus.ONBOARDING;
+};
+
+/**
+ * Verifica si la cuenta puede procesar pagos
+ */
+export const canProcessPayments = (accountStatus: StripeAccountStatus | null): boolean => {
+  return accountStatus?.charges_enabled === true;
+};
+
+/**
+ * Verifica si la cuenta puede recibir pagos (payouts)
+ */
+export const canReceivePayouts = (accountStatus: StripeAccountStatus | null): boolean => {
+  return accountStatus?.payouts_enabled === true;
+};

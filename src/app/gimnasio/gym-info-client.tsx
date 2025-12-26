@@ -29,6 +29,7 @@ import {
   Target,
   Award
 } from 'lucide-react';
+import StripeConnectCard from '@/components/StripeConnectCard';
 import { useTerminology } from '@/hooks/useTerminology';
 
 export default function GymInfoClient() {
@@ -753,6 +754,9 @@ export default function GymInfoClient() {
                 </div>
               </div>
             </div>
+
+            {/* Stripe Connect Configuration */}
+            <StripeConnectCard />
           </div>
         )}
       </div>

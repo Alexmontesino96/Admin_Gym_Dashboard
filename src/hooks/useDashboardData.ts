@@ -117,7 +117,7 @@ export function useDashboardData(autoRefresh = false) {
       ]
 
       // Obtener tendencia mensual desde el backend
-      const monthlyTrend = dashStats?.monthly_trend || membership?.monthly_trend || [
+      const monthlyTrend = dashStats?.monthly_trend || [
         { month: 'Ene', revenue: 0, members: 0 },
         { month: 'Feb', revenue: 0, members: 0 },
         { month: 'Mar', revenue: 0, members: 0 },
