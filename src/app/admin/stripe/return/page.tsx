@@ -1,13 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { stripeConnectAPI, getStripeConnectStatus, StripeConnectStatus } from '@/lib/api';
 import { CheckCircle2, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
 
 export default function StripeReturnPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'pending' | 'error'>('loading');
   const [message, setMessage] = useState('');
 
