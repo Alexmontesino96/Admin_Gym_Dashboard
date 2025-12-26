@@ -381,7 +381,7 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mb-4">
             <Building2 className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">The gym management platform Miami gyms choose</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">The gym management platform Miami gyms choose</h1>
           <p className="text-gray-600">Automated payments, scheduling, and growth tools. Starting at $77/month.</p>
 
           {/* Founding Gyms Program Badge */}
@@ -421,23 +421,23 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
         </div>
 
         {/* Trust Badges - Movido arriba */}
-        <div className="mb-6 flex items-center justify-center space-x-6 text-sm text-gray-600">
+        <div className="mb-6 flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-6 text-sm text-gray-600">
           <div className="flex items-center space-x-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
             <span>Prueba gratis, sin sorpresas</span>
           </div>
           <div className="flex items-center space-x-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
             <span>Solo 2 pasos más</span>
           </div>
           <div className="flex items-center space-x-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            <span>Importa tus clientes con un clic</span>
+            <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+            <span>Importa clientes con un clic</span>
           </div>
         </div>
 
         {/* Card Principal */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 md:p-8">
           {/* Error Global */}
           {error && (
             <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
@@ -485,12 +485,12 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     ¿Cómo trabajas?
                   </label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Opción: Gimnasio */}
                     <button
                       type="button"
                       onClick={() => setGymData({ ...gymData, gym_type: 'gym' })}
-                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 ${
+                      className={`relative p-4 sm:p-6 rounded-xl border-2 transition-all duration-200 ${
                         gymData.gym_type === 'gym'
                           ? 'border-blue-600 bg-blue-50 shadow-lg'
                           : 'border-gray-300 bg-white hover:border-gray-400'
@@ -520,7 +520,7 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
                     <button
                       type="button"
                       onClick={() => setGymData({ ...gymData, gym_type: 'personal_trainer' })}
-                      className={`relative p-6 rounded-xl border-2 transition-all duration-200 ${
+                      className={`relative p-4 sm:p-6 rounded-xl border-2 transition-all duration-200 ${
                         gymData.gym_type === 'personal_trainer'
                           ? 'border-green-600 bg-green-50 shadow-lg'
                           : 'border-gray-300 bg-white hover:border-gray-400'
@@ -602,17 +602,17 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
                 </div>
 
                 {/* Pricing Preview Card */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-200">
-                  <div className="flex items-start justify-between mb-4">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 border-2 border-blue-200">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
                     <div>
                       <p className="text-xs text-gray-600 mb-1 uppercase tracking-wide font-semibold">Your pricing</p>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-4xl font-bold text-gray-900">$77</span>
-                        <span className="text-gray-600 text-lg">/month</span>
+                        <span className="text-3xl sm:text-4xl font-bold text-gray-900">$77</span>
+                        <span className="text-gray-600 text-base sm:text-lg">/month</span>
                       </div>
                       <p className="text-sm text-gray-600 mt-1">Up to 150 members</p>
                     </div>
-                    <div className="text-right">
+                    <div className="sm:text-right">
                       <div className="inline-flex items-center bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-xs font-bold mb-2">
                         61% cheaper than Mindbody
                       </div>
@@ -812,13 +812,19 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
                     <div className="mt-2">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs text-gray-600">Strength:</span>
-                        <span className={`text-xs font-medium text-${passwordStrength.color}-600`}>
+                        <span className={`text-xs font-medium ${
+                          passwordStrength.color === 'red' ? 'text-red-600' :
+                          passwordStrength.color === 'orange' ? 'text-orange-600' : 'text-green-600'
+                        }`}>
                           {passwordStrength.label}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-1.5">
                         <div
-                          className={`bg-${passwordStrength.color}-500 h-1.5 rounded-full transition-all duration-300`}
+                          className={`h-1.5 rounded-full transition-all duration-300 ${
+                            passwordStrength.color === 'red' ? 'bg-red-500' :
+                            passwordStrength.color === 'orange' ? 'bg-orange-500' : 'bg-green-500'
+                          }`}
                           style={{ width: `${(passwordStrength.score / 6) * 100}%` }}
                         />
                       </div>
@@ -833,11 +839,11 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
                 </div>
 
                 {/* Botones de navegación */}
-                <div className="flex gap-4">
+                <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4">
                   <button
                     type="button"
                     onClick={handleBack}
-                    className="flex-1 bg-gray-100 text-gray-700 py-4 rounded-xl font-semibold text-lg hover:bg-gray-200 transition-all duration-200 flex items-center justify-center space-x-2"
+                    className="sm:flex-1 bg-gray-100 text-gray-700 py-3 sm:py-4 rounded-xl font-semibold text-base sm:text-lg hover:bg-gray-200 transition-all duration-200 flex items-center justify-center space-x-2"
                   >
                     <ArrowLeft className="h-5 w-5" />
                     <span>Back</span>
@@ -845,9 +851,10 @@ export default function GymRegistrationWizard({ preSelectedType }: GymRegistrati
 
                   <button
                     type="submit"
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 sm:py-4 rounded-xl font-semibold text-base sm:text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
                   >
-                    <span>Continue to payment setup</span>
+                    <span className="hidden sm:inline">Continue to payment setup</span>
+                    <span className="sm:hidden">Continue</span>
                     <ArrowRight className="h-5 w-5" />
                   </button>
                 </div>
@@ -1028,9 +1035,9 @@ function StripeConnectStep({ gymId, userEmail, gymName, onComplete, onBack }: St
           </div>
 
           {/* What You'll Need */}
-          <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-            <h3 className="font-semibold text-gray-900 mb-3">What you'll need (takes 3 minutes)</h3>
-            <div className="grid grid-cols-2 gap-3 text-sm text-gray-700">
+          <div className="bg-gray-50 rounded-xl p-4 sm:p-5 border border-gray-200">
+            <h3 className="font-semibold text-gray-900 mb-3 text-sm sm:text-base">What you'll need (takes 3 minutes)</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm text-gray-700">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
                 <span>Business EIN or SSN</span>
