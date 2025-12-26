@@ -53,25 +53,28 @@ export default function LandingPage() {
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-gray-200 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
-                <Building2 className="h-6 w-6 text-white" />
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">GymFlow</span>
+              <span className="text-lg sm:text-xl font-bold text-gray-900">GymFlow</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <LanguageSelector />
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="hidden sm:block">
+                <LanguageSelector />
+              </div>
               <Link
                 href="/login"
-                className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                className="text-gray-600 hover:text-gray-900 font-medium transition-colors text-sm sm:text-base"
               >
                 {t('nav.login')}
               </Link>
               <Link
                 href="/register"
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-2 sm:px-6 sm:py-2.5 rounded-lg font-semibold text-sm sm:text-base hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl whitespace-nowrap"
               >
-                {t(segment === 'gym' ? 'nav.createGym' : 'nav.createWorkspace')}
+                <span className="hidden sm:inline">{t(segment === 'gym' ? 'nav.createGym' : 'nav.createWorkspace')}</span>
+                <span className="sm:hidden">Crear</span>
               </Link>
             </div>
           </div>
