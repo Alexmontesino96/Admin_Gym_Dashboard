@@ -45,6 +45,7 @@ import {
   Award
 } from 'lucide-react';
 import GymSelector from './GymSelector';
+import StripeStatusIndicator from './StripeStatusIndicator';
 import { useTerminology } from '@/hooks/useTerminology';
 
 interface MainLayoutProps {
@@ -255,6 +256,9 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
 
           {user && (
             <>
+              {/* Estado de Stripe */}
+              <StripeStatusIndicator />
+
               {/* Notificaciones */}
               <button className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-indigo-100 rounded-full transition-colors">
                 <Bell className="h-5 w-5" />
