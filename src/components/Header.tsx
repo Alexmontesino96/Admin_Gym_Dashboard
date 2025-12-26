@@ -17,6 +17,7 @@ import {
   CalendarDaysIcon
 } from '@heroicons/react/24/outline';
 import GymSelector from './GymSelector';
+import StripeStatusIndicator from './StripeStatusIndicator';
 
 interface HeaderProps {
   title?: string;
@@ -155,6 +156,9 @@ export default function Header({
 
             {user && (
               <>
+                {/* Estado de Stripe */}
+                <StripeStatusIndicator />
+
                 {/* Notificaciones */}
                 <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                   <BellIcon className="h-5 w-5" />
