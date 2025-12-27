@@ -746,6 +746,65 @@ export interface MealIngredient {
   created_at?: string;
 }
 
+// ===== INTERFACES PARA GENERACIÓN DE INGREDIENTES CON IA =====
+
+export type DietaryRestriction =
+  | 'vegetarian'
+  | 'vegan'
+  | 'gluten_free'
+  | 'dairy_free'
+  | 'nut_free'
+  | 'keto'
+  | 'paleo'
+  | 'low_carb'
+  | 'high_protein'
+  | 'halal'
+  | 'kosher';
+
+export type AIDifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
+
+export interface AIIngredientGenerationRequest {
+  dietary_restrictions?: DietaryRestriction[];
+  preferences?: string[];
+  servings?: number;
+  language?: 'es' | 'en' | 'pt';
+}
+
+export interface AIGeneratedIngredient {
+  id: number;
+  name: string;
+  quantity: number;
+  unit: string;
+  calories_per_unit: number;
+  protein_g_per_unit: number;
+  carbs_g_per_unit: number;
+  fat_g_per_unit: number;
+  fiber_g_per_unit: number;
+  notes: string;
+  order: number;
+}
+
+export interface AIIngredientGenerationResponse {
+  status: 'success';
+  message: string;
+  data: {
+    meal_id: number;
+    ingredients: AIGeneratedIngredient[];
+    recipe_instructions: string;
+    total_nutrition: {
+      calories: number;
+      protein_g: number;
+      carbs_g: number;
+      fat_g: number;
+      fiber_g: number;
+    };
+    estimated_prep_time: number;
+    difficulty_level: AIDifficultyLevel;
+    ai_confidence_score: number;
+    generated_at: string;
+  };
+}
+
 export interface NutritionPlanCreateData {
   title: string;
   description: string;
@@ -1866,6 +1925,37 @@ export const nutritionAPI = {
   // Desmarcar comida como completada
   incompleteMeal: async (mealId: number): Promise<{ message: string }> => {
     return apiCall(`/nutrition/meals/${mealId}/complete`, {
+      method: 'DELETE',
+    });
+  },
+
+  // ===== ENDPOINTS DE INGREDIENTES CON IA =====
+
+  // Generar ingredientes con IA para una comida
+  generateIngredientsWithAI: async (
+    mealId: number,
+    options: AIIngredientGenerationRequest = {}
+  ): Promise<AIIngredientGenerationResponse> => {
+    return apiCall(`/nutrition/meals/${mealId}/generate-ingredients`, {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  },
+
+  // Agregar ingrediente manualmente a una comida
+  addIngredient: async (
+    mealId: number,
+    ingredient: Omit<MealIngredient, 'id' | 'meal_id' | 'created_at'>
+  ): Promise<MealIngredient> => {
+    return apiCall(`/nutrition/meals/${mealId}/ingredients`, {
+      method: 'POST',
+      body: JSON.stringify(ingredient),
+    });
+  },
+
+  // Eliminar todos los ingredientes de una comida
+  deleteAllIngredients: async (mealId: number): Promise<{ message: string }> => {
+    return apiCall(`/nutrition/meals/${mealId}/ingredients`, {
       method: 'DELETE',
     });
   },

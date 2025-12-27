@@ -10,21 +10,25 @@ import {
   getMealTypeLabel, 
   getMealTypeIcon 
 } from '@/lib/api';
-import { 
-  Plus, 
-  Clock, 
-  Utensils, 
-  X, 
-  Edit3, 
-  Trash2, 
-  Save, 
+import {
+  Plus,
+  Clock,
+  Utensils,
+  X,
+  Edit3,
+  Trash2,
+  Save,
   AlertCircle,
   CheckCircle,
   Flame,
   Zap,
   Target,
-  TrendingUp
+  TrendingUp,
+  Sparkles,
+  ChefHat
 } from 'lucide-react';
+import AIIngredientGenerator from '@/components/AIIngredientGenerator';
+import { AIIngredientGenerationResponse } from '@/lib/api';
 
 interface MealManagerClientProps {
   dailyPlanId: number;
@@ -46,6 +50,7 @@ export default function MealManagerClient({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
+  const [aiGeneratorMeal, setAiGeneratorMeal] = useState<Meal | null>(null);
 
   // Formulario para nueva comida
   const [mealForm, setMealForm] = useState<MealCreateData>({
@@ -226,6 +231,33 @@ export default function MealManagerClient({
     setShowAddForm(false);
     setEditingMeal(null);
     resetForm();
+  };
+
+  const handleAIGenerationSuccess = (data: AIIngredientGenerationResponse['data']) => {
+    // Actualizar la comida con los ingredientes generados
+    setMeals(prev => prev.map(meal =>
+      meal.id === data.meal_id
+        ? {
+            ...meal,
+            ingredients: data.ingredients.map(ing => ({
+              id: ing.id,
+              name: ing.name,
+              quantity: ing.quantity,
+              unit: ing.unit,
+              is_optional: false,
+              calories_per_serving: ing.calories_per_unit * ing.quantity,
+              protein_per_serving: ing.protein_g_per_unit * ing.quantity,
+              carbs_per_serving: ing.carbs_g_per_unit * ing.quantity,
+              fat_per_serving: ing.fat_g_per_unit * ing.quantity,
+              meal_id: data.meal_id
+            })),
+            cooking_instructions: data.recipe_instructions || meal.cooking_instructions,
+            preparation_time_minutes: data.estimated_prep_time || meal.preparation_time_minutes
+          }
+        : meal
+    ));
+    setSuccessMessage(`Ingredientes generados con IA para "${aiGeneratorMeal?.name}"`);
+    setAiGeneratorMeal(null);
   };
 
   const getTotalNutrients = () => {
@@ -666,12 +698,44 @@ export default function MealManagerClient({
                             <p className="text-sm text-slate-600">{meal.cooking_instructions}</p>
                           </div>
                         )}
+
+                        {/* Ingredientes */}
+                        {meal.ingredients && meal.ingredients.length > 0 && (
+                          <div className="mt-3 p-3 bg-violet-50 rounded-lg border border-violet-200">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <ChefHat size={14} className="text-violet-600" />
+                              <p className="text-sm text-violet-700 font-medium">
+                                {meal.ingredients.length} ingrediente{meal.ingredients.length !== 1 ? 's' : ''}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {meal.ingredients.slice(0, 5).map((ing, idx) => (
+                                <span key={idx} className="text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded-full">
+                                  {ing.name}
+                                </span>
+                              ))}
+                              {meal.ingredients.length > 5 && (
+                                <span className="text-xs bg-violet-200 text-violet-800 px-2 py-1 rounded-full">
+                                  +{meal.ingredients.length - 5} más
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="flex space-x-2 flex-shrink-0">
+                    <div className="flex flex-col space-y-2 flex-shrink-0">
+                      <button
+                        onClick={() => setAiGeneratorMeal(meal)}
+                        className="p-2 text-violet-500 hover:text-violet-700 hover:bg-violet-50 rounded-lg transition-colors"
+                        title="Generar ingredientes con IA"
+                      >
+                        <Sparkles size={16} />
+                      </button>
                       <button
                         onClick={() => handleEditMeal(meal)}
                         className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Editar comida"
                       >
                         <Edit3 size={16} />
                       </button>
@@ -679,6 +743,7 @@ export default function MealManagerClient({
                         onClick={() => handleDeleteMeal(meal)}
                         disabled={actionLoading}
                         className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        title="Eliminar comida"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -689,6 +754,16 @@ export default function MealManagerClient({
           </div>
         )}
       </div>
+
+      {/* AI Ingredient Generator Modal */}
+      {aiGeneratorMeal && (
+        <AIIngredientGenerator
+          meal={aiGeneratorMeal}
+          isOpen={!!aiGeneratorMeal}
+          onClose={() => setAiGeneratorMeal(null)}
+          onSuccess={handleAIGenerationSuccess}
+        />
+      )}
     </div>
   );
 } 
