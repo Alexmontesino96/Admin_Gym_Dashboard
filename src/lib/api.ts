@@ -1880,15 +1880,15 @@ export const nutritionAPI = {
   },
 
   // ===== ENDPOINTS DE COMIDAS (CORREGIDOS SEGÚN BACKEND) =====
-  
+
   // Obtener un día específico con sus comidas incluidas
   getDailyPlan: async (dailyPlanId: number): Promise<DailyPlan> => {
-    return apiCall(`/nutrition/daily-plans/${dailyPlanId}`);
+    return apiCall(`/nutrition/days/${dailyPlanId}`);
   },
 
   // Crear una comida en un día específico (usando endpoint correcto del backend)
   createMeal: async (dailyPlanId: number, mealData: MealCreateData): Promise<Meal> => {
-    return apiCall(`/nutrition/daily-plans/${dailyPlanId}/meals`, {
+    return apiCall(`/nutrition/days/${dailyPlanId}/meals`, {
       method: 'POST',
       body: JSON.stringify(mealData),
     });
@@ -2060,7 +2060,7 @@ export const NUTRITION_ENDPOINTS = {
   ARCHIVE: (id: number) => `/nutrition/plans/${id}/archive`,
   
   // Endpoints de comidas
-  DAILY_PLAN: (dayId: number) => `/nutrition/daily-plans/${dayId}`,
+  DAILY_PLAN: (dayId: number) => `/nutrition/days/${dayId}`,
   MEAL_DETAIL: (mealId: number) => `/nutrition/meals/${mealId}`,
   MEAL_COMPLETE: (mealId: number) => `/nutrition/meals/${mealId}/complete`,
   
