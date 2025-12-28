@@ -49,7 +49,6 @@ export default function MealManagerClient({
   const [actionLoading, setActionLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [aiGeneratorMeal, setAiGeneratorMeal] = useState<Meal | null>(null);
 
   // Formulario para nueva comida
@@ -162,74 +161,16 @@ export default function MealManagerClient({
     }
   };
 
-  const handleEditMeal = (meal: Meal) => {
-    setEditingMeal(meal);
-    setMealForm({
-      meal_type: meal.meal_type,
-      name: meal.name,
-      description: meal.description,
-      preparation_time_minutes: meal.preparation_time_minutes,
-      cooking_instructions: meal.cooking_instructions,
-      calories: meal.calories,
-      protein_g: meal.protein_g,
-      carbs_g: meal.carbs_g,
-      fat_g: meal.fat_g,
-      fiber_g: meal.fiber_g || 0,
-      image_url: meal.image_url || '',
-      video_url: meal.video_url || '',
-      order_in_day: meal.order_in_day,
-      daily_plan_id: dailyPlanId
-    });
-    setShowAddForm(true);
-  };
+  // ⚠️ NOTA: Las funciones handleEditMeal, handleUpdateMeal, handleDeleteMeal
+  // fueron removidas porque los endpoints PUT/DELETE /nutrition/meals/{id}
+  // NO EXISTEN en el backend. Ver FRONTEND_404_ERRORS_FIX.md para más detalles.
+  //
+  // Alternativas disponibles:
+  // - Para "actualizar" una comida: usar generateIngredientsWithAI() + applyAIIngredients()
+  // - Para modificar ingredientes: usar nutritionAPI.deleteIngredient() + nutritionAPI.addIngredient()
 
-  const handleUpdateMeal = async () => {
-    if (!editingMeal || !mealForm.name.trim()) {
-      setError('El nombre de la comida es obligatorio');
-      return;
-    }
-
-    setActionLoading(true);
-    setError(null);
-
-    try {
-      const updatedMeal = await nutritionAPI.updateMeal(editingMeal.id!, mealForm);
-      setMeals(prev => prev.map(meal => 
-        meal.id === editingMeal.id ? updatedMeal : meal
-      ));
-      setShowAddForm(false);
-      setEditingMeal(null);
-      resetForm();
-      setSuccessMessage(`Comida "${updatedMeal.name}" actualizada exitosamente`);
-    } catch (err) {
-      console.error('Error updating meal:', err);
-      setError(err instanceof Error ? err.message : 'Error al actualizar la comida');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleDeleteMeal = async (meal: Meal) => {
-    if (!meal.id || !confirm(`¿Estás seguro de que quieres eliminar "${meal.name}"?`)) return;
-
-    setActionLoading(true);
-    setError(null);
-
-    try {
-      await nutritionAPI.deleteMeal(meal.id);
-      setMeals(prev => prev.filter(m => m.id !== meal.id));
-      setSuccessMessage(`Comida "${meal.name}" eliminada exitosamente`);
-    } catch (err) {
-      console.error('Error deleting meal:', err);
-      setError(err instanceof Error ? err.message : 'Error al eliminar la comida');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const cancelEdit = () => {
+  const cancelForm = () => {
     setShowAddForm(false);
-    setEditingMeal(null);
     resetForm();
   };
 
@@ -382,13 +323,13 @@ export default function MealManagerClient({
         </div>
       )}
 
-      {/* Formulario para agregar/editar comida */}
+      {/* Formulario para agregar comida */}
       {showAddForm && (
         <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-slate-900 flex items-center">
-              {editingMeal ? <Edit3 size={20} className="text-blue-600 mr-3" /> : <Plus size={20} className="text-orange-600 mr-3" />}
-              {editingMeal ? 'Editar Comida' : 'Agregar Nueva Comida'}
+              <Plus size={20} className="text-orange-600 mr-3" />
+              Agregar Nueva Comida
             </h3>
           </div>
 
@@ -589,24 +530,24 @@ export default function MealManagerClient({
             {/* Botones */}
             <div className="flex space-x-3">
               <button
-                onClick={editingMeal ? handleUpdateMeal : handleAddMeal}
+                onClick={handleAddMeal}
                 disabled={actionLoading}
                 className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-300 text-white py-3 px-4 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2"
               >
                 {actionLoading ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    <span>{editingMeal ? 'Actualizando...' : 'Agregando...'}</span>
+                    <span>Agregando...</span>
                   </>
                 ) : (
                   <>
                     <Save size={18} />
-                    <span>{editingMeal ? 'Actualizar Comida' : 'Agregar Comida'}</span>
+                    <span>Agregar Comida</span>
                   </>
                 )}
               </button>
               <button
-                onClick={cancelEdit}
+                onClick={cancelForm}
                 className="px-6 py-3 border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors"
               >
                 Cancelar
@@ -732,18 +673,19 @@ export default function MealManagerClient({
                       >
                         <Sparkles size={16} />
                       </button>
+                      {/* Botón de editar deshabilitado - endpoint no existe en backend */}
                       <button
-                        onClick={() => handleEditMeal(meal)}
-                        className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Editar comida"
+                        disabled
+                        className="p-2 text-gray-300 cursor-not-allowed rounded-lg"
+                        title="Edición no disponible - usa IA para regenerar"
                       >
                         <Edit3 size={16} />
                       </button>
+                      {/* Botón de eliminar deshabilitado - endpoint no existe en backend */}
                       <button
-                        onClick={() => handleDeleteMeal(meal)}
-                        disabled={actionLoading}
-                        className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                        title="Eliminar comida"
+                        disabled
+                        className="p-2 text-gray-300 cursor-not-allowed rounded-lg"
+                        title="Eliminación no disponible"
                       >
                         <Trash2 size={16} />
                       </button>

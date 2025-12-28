@@ -1894,25 +1894,12 @@ export const nutritionAPI = {
     });
   },
 
-  // Obtener una comida específica
-  getMeal: async (mealId: number): Promise<Meal> => {
-    return apiCall(`/nutrition/meals/${mealId}`);
-  },
-
-  // Actualizar una comida específica
-  updateMeal: async (mealId: number, mealData: MealUpdateData): Promise<Meal> => {
-    return apiCall(`/nutrition/meals/${mealId}`, {
-      method: 'PUT',
-      body: JSON.stringify(mealData),
-    });
-  },
-
-  // Eliminar una comida específica
-  deleteMeal: async (mealId: number): Promise<{ message: string }> => {
-    return apiCall(`/nutrition/meals/${mealId}`, {
-      method: 'DELETE',
-    });
-  },
+  // ⚠️ NOTA: Los siguientes endpoints NO EXISTEN en el backend
+  // - GET /nutrition/meals/{id} - No existe
+  // - PUT /nutrition/meals/{id} - No existe
+  // - DELETE /nutrition/meals/{id} - No existe
+  // Para obtener info de comidas, usar getPlan() y extraer del plan completo
+  // Para "actualizar", usar generateIngredientsWithAI() + applyAIIngredients()
 
   // Marcar comida como completada
   completeMeal: async (mealId: number, notes?: string): Promise<{ message: string }> => {
@@ -1936,9 +1923,20 @@ export const nutritionAPI = {
     mealId: number,
     options: AIIngredientGenerationRequest = {}
   ): Promise<AIIngredientGenerationResponse> => {
-    return apiCall(`/nutrition/meals/${mealId}/generate-ingredients`, {
+    return apiCall(`/nutrition/meals/${mealId}/ingredients/ai-generate`, {
       method: 'POST',
       body: JSON.stringify(options),
+    });
+  },
+
+  // Aplicar ingredientes generados por IA a una comida
+  applyAIIngredients: async (
+    mealId: number,
+    data: { ingredients: any[]; recipe?: string }
+  ): Promise<{ message: string }> => {
+    return apiCall(`/nutrition/meals/${mealId}/ingredients/ai-apply`, {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   },
 
@@ -1953,9 +1951,9 @@ export const nutritionAPI = {
     });
   },
 
-  // Eliminar todos los ingredientes de una comida
-  deleteAllIngredients: async (mealId: number): Promise<{ message: string }> => {
-    return apiCall(`/nutrition/meals/${mealId}/ingredients`, {
+  // Eliminar un ingrediente específico
+  deleteIngredient: async (ingredientId: number): Promise<{ message: string }> => {
+    return apiCall(`/nutrition/ingredients/${ingredientId}`, {
       method: 'DELETE',
     });
   },

@@ -99,12 +99,7 @@ export default function AIIngredientGenerator({
     }, 3000);
 
     try {
-      // Si tiene ingredientes, eliminarlos primero
-      if (hasExistingIngredients && meal.id) {
-        await nutritionAPI.deleteAllIngredients(meal.id);
-      }
-
-      // Generar nuevos ingredientes
+      // Generar nuevos ingredientes con IA (el backend maneja el reemplazo)
       const response = await nutritionAPI.generateIngredientsWithAI(meal.id!, options);
       setResult(response.data);
     } catch (err: any) {
@@ -127,10 +122,23 @@ export default function AIIngredientGenerator({
     }
   };
 
-  const handleConfirm = () => {
-    if (result) {
-      onSuccess(result);
-      handleClose();
+  const handleConfirm = async () => {
+    if (result && meal.id) {
+      try {
+        setLoading(true);
+        // Aplicar los ingredientes generados al backend
+        await nutritionAPI.applyAIIngredients(meal.id, {
+          ingredients: result.ingredients,
+          recipe: result.recipe_instructions
+        });
+        onSuccess(result);
+        handleClose();
+      } catch (err: any) {
+        console.error('Error applying ingredients:', err);
+        setError(err.message || 'Error al guardar los ingredientes');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
