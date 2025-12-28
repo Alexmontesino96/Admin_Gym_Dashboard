@@ -1886,6 +1886,21 @@ export const nutritionAPI = {
     return apiCall(`/nutrition/days/${dailyPlanId}`);
   },
 
+  // Actualizar un día del plan (nombre, descripción)
+  updateDailyPlan: async (dailyPlanId: number, data: { day_name?: string; description?: string }): Promise<DailyPlan> => {
+    return apiCall(`/nutrition/days/${dailyPlanId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Eliminar un día del plan (cascada a comidas e ingredientes, renumera días posteriores)
+  deleteDailyPlan: async (dailyPlanId: number): Promise<void> => {
+    return apiCall(`/nutrition/days/${dailyPlanId}`, {
+      method: 'DELETE',
+    });
+  },
+
   // Crear una comida en un día específico (usando endpoint correcto del backend)
   createMeal: async (dailyPlanId: number, mealData: MealCreateData): Promise<Meal> => {
     return apiCall(`/nutrition/days/${dailyPlanId}/meals`, {
@@ -1894,12 +1909,27 @@ export const nutritionAPI = {
     });
   },
 
-  // ⚠️ NOTA: Los siguientes endpoints NO EXISTEN en el backend
-  // - GET /nutrition/meals/{id} - No existe
-  // - PUT /nutrition/meals/{id} - No existe
-  // - DELETE /nutrition/meals/{id} - No existe
-  // Para obtener info de comidas, usar getPlan() y extraer del plan completo
-  // Para "actualizar", usar generateIngredientsWithAI() + applyAIIngredients()
+  // ===== CRUD DE COMIDAS (NUEVOS ENDPOINTS - Diciembre 2024) =====
+
+  // Obtener una comida específica con todos sus ingredientes
+  getMeal: async (mealId: number): Promise<Meal> => {
+    return apiCall(`/nutrition/meals/${mealId}`);
+  },
+
+  // Actualizar una comida existente
+  updateMeal: async (mealId: number, mealData: MealUpdateData): Promise<Meal> => {
+    return apiCall(`/nutrition/meals/${mealId}`, {
+      method: 'PUT',
+      body: JSON.stringify(mealData),
+    });
+  },
+
+  // Eliminar una comida (cascada a ingredientes y registros de completado)
+  deleteMeal: async (mealId: number): Promise<void> => {
+    return apiCall(`/nutrition/meals/${mealId}`, {
+      method: 'DELETE',
+    });
+  },
 
   // Marcar comida como completada
   completeMeal: async (mealId: number, notes?: string): Promise<{ message: string }> => {
@@ -1948,6 +1978,25 @@ export const nutritionAPI = {
     return apiCall(`/nutrition/meals/${mealId}/ingredients`, {
       method: 'POST',
       body: JSON.stringify(ingredient),
+    });
+  },
+
+  // Actualizar un ingrediente específico
+  updateIngredient: async (
+    ingredientId: number,
+    data: {
+      name?: string;
+      quantity?: number;
+      unit?: string;
+      calories?: number;
+      proteins?: number;
+      carbs?: number;
+      fats?: number;
+    }
+  ): Promise<MealIngredient> => {
+    return apiCall(`/nutrition/ingredients/${ingredientId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   },
 

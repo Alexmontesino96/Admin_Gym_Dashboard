@@ -49,6 +49,7 @@ export default function MealManagerClient({
   const [actionLoading, setActionLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [aiGeneratorMeal, setAiGeneratorMeal] = useState<Meal | null>(null);
 
   // Formulario para nueva comida
@@ -161,16 +162,90 @@ export default function MealManagerClient({
     }
   };
 
-  // ⚠️ NOTA: Las funciones handleEditMeal, handleUpdateMeal, handleDeleteMeal
-  // fueron removidas porque los endpoints PUT/DELETE /nutrition/meals/{id}
-  // NO EXISTEN en el backend. Ver FRONTEND_404_ERRORS_FIX.md para más detalles.
-  //
-  // Alternativas disponibles:
-  // - Para "actualizar" una comida: usar generateIngredientsWithAI() + applyAIIngredients()
-  // - Para modificar ingredientes: usar nutritionAPI.deleteIngredient() + nutritionAPI.addIngredient()
+  // ===== CRUD DE COMIDAS (Endpoints disponibles desde Diciembre 2024) =====
+
+  const handleEditMeal = (meal: Meal) => {
+    setEditingMeal(meal);
+    setMealForm({
+      meal_type: meal.meal_type,
+      name: meal.name,
+      description: meal.description || '',
+      preparation_time_minutes: meal.preparation_time_minutes || 15,
+      cooking_instructions: meal.cooking_instructions || '',
+      calories: meal.calories,
+      protein_g: meal.protein_g,
+      carbs_g: meal.carbs_g,
+      fat_g: meal.fat_g,
+      fiber_g: meal.fiber_g || 0,
+      image_url: meal.image_url || '',
+      video_url: meal.video_url || '',
+      order_in_day: meal.order_in_day,
+      daily_plan_id: dailyPlanId
+    });
+    setShowAddForm(true);
+  };
+
+  const handleUpdateMeal = async () => {
+    if (!editingMeal || !mealForm.name.trim()) {
+      setError('El nombre de la comida es obligatorio');
+      return;
+    }
+
+    setActionLoading(true);
+    setError(null);
+
+    try {
+      const updatedMeal = await nutritionAPI.updateMeal(editingMeal.id!, {
+        meal_type: mealForm.meal_type,
+        name: mealForm.name,
+        description: mealForm.description,
+        preparation_time_minutes: mealForm.preparation_time_minutes,
+        cooking_instructions: mealForm.cooking_instructions,
+        calories: mealForm.calories,
+        protein_g: mealForm.protein_g,
+        carbs_g: mealForm.carbs_g,
+        fat_g: mealForm.fat_g,
+        fiber_g: mealForm.fiber_g,
+        image_url: mealForm.image_url || null,
+        video_url: mealForm.video_url || null,
+        order_in_day: mealForm.order_in_day
+      });
+      setMeals(prev => prev.map(meal =>
+        meal.id === editingMeal.id ? updatedMeal : meal
+      ));
+      setShowAddForm(false);
+      setEditingMeal(null);
+      resetForm();
+      setSuccessMessage(`Comida "${updatedMeal.name}" actualizada exitosamente`);
+    } catch (err) {
+      console.error('Error updating meal:', err);
+      setError(err instanceof Error ? err.message : 'Error al actualizar la comida');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteMeal = async (meal: Meal) => {
+    if (!meal.id || !confirm(`¿Estás seguro de que quieres eliminar "${meal.name}"?`)) return;
+
+    setActionLoading(true);
+    setError(null);
+
+    try {
+      await nutritionAPI.deleteMeal(meal.id);
+      setMeals(prev => prev.filter(m => m.id !== meal.id));
+      setSuccessMessage(`Comida "${meal.name}" eliminada exitosamente`);
+    } catch (err) {
+      console.error('Error deleting meal:', err);
+      setError(err instanceof Error ? err.message : 'Error al eliminar la comida');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const cancelForm = () => {
     setShowAddForm(false);
+    setEditingMeal(null);
     resetForm();
   };
 
@@ -323,13 +398,22 @@ export default function MealManagerClient({
         </div>
       )}
 
-      {/* Formulario para agregar comida */}
+      {/* Formulario para agregar/editar comida */}
       {showAddForm && (
         <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-slate-900 flex items-center">
-              <Plus size={20} className="text-orange-600 mr-3" />
-              Agregar Nueva Comida
+              {editingMeal ? (
+                <>
+                  <Edit3 size={20} className="text-blue-600 mr-3" />
+                  Editar Comida
+                </>
+              ) : (
+                <>
+                  <Plus size={20} className="text-orange-600 mr-3" />
+                  Agregar Nueva Comida
+                </>
+              )}
             </h3>
           </div>
 
@@ -530,19 +614,19 @@ export default function MealManagerClient({
             {/* Botones */}
             <div className="flex space-x-3">
               <button
-                onClick={handleAddMeal}
+                onClick={editingMeal ? handleUpdateMeal : handleAddMeal}
                 disabled={actionLoading}
-                className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-300 text-white py-3 px-4 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2"
+                className={`flex-1 ${editingMeal ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'} disabled:bg-slate-300 text-white py-3 px-4 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2`}
               >
                 {actionLoading ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    <span>Agregando...</span>
+                    <span>{editingMeal ? 'Actualizando...' : 'Agregando...'}</span>
                   </>
                 ) : (
                   <>
                     <Save size={18} />
-                    <span>Agregar Comida</span>
+                    <span>{editingMeal ? 'Actualizar Comida' : 'Agregar Comida'}</span>
                   </>
                 )}
               </button>
@@ -673,19 +757,19 @@ export default function MealManagerClient({
                       >
                         <Sparkles size={16} />
                       </button>
-                      {/* Botón de editar deshabilitado - endpoint no existe en backend */}
+                      {/* Botón de editar */}
                       <button
-                        disabled
-                        className="p-2 text-gray-300 cursor-not-allowed rounded-lg"
-                        title="Edición no disponible - usa IA para regenerar"
+                        onClick={() => handleEditMeal(meal)}
+                        className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Editar comida"
                       >
                         <Edit3 size={16} />
                       </button>
-                      {/* Botón de eliminar deshabilitado - endpoint no existe en backend */}
+                      {/* Botón de eliminar */}
                       <button
-                        disabled
-                        className="p-2 text-gray-300 cursor-not-allowed rounded-lg"
-                        title="Eliminación no disponible"
+                        onClick={() => handleDeleteMeal(meal)}
+                        className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Eliminar comida"
                       >
                         <Trash2 size={16} />
                       </button>
