@@ -764,10 +764,12 @@ export type DietaryRestriction =
 export type AIDifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
 
 export interface AIIngredientGenerationRequest {
-  dietary_restrictions?: DietaryRestriction[];
-  preferences?: string[];
-  servings?: number;
-  language?: 'es' | 'en' | 'pt';
+  recipe_name: string;  // Obligatorio: min 3, max 200 caracteres
+  servings?: number;    // Opcional: default 4, min 1, max 20
+  dietary_restrictions?: DietaryRestriction[];  // Opcional
+  cuisine_type?: string;  // Opcional: tipo de cocina (ej: española, italiana)
+  target_calories?: number;  // Opcional: min 100, max 2000
+  notes?: string;  // Opcional: notas adicionales, max 500 caracteres
 }
 
 export interface AIGeneratedIngredient {
@@ -1951,7 +1953,7 @@ export const nutritionAPI = {
   // Generar ingredientes con IA para una comida
   generateIngredientsWithAI: async (
     mealId: number,
-    options: AIIngredientGenerationRequest = {}
+    options: AIIngredientGenerationRequest
   ): Promise<AIIngredientGenerationResponse> => {
     return apiCall(`/nutrition/meals/${mealId}/ingredients/ai-generate`, {
       method: 'POST',

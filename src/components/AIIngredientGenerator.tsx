@@ -63,11 +63,10 @@ export default function AIIngredientGenerator({
   const [result, setResult] = useState<AIIngredientGenerationResponse['data'] | null>(null);
   const [showConfirmReplace, setShowConfirmReplace] = useState(false);
 
-  const [options, setOptions] = useState<AIIngredientGenerationRequest>({
+  // recipe_name se obtiene de meal.name, servings usa el valor por defecto del backend (4)
+  const [options, setOptions] = useState<Omit<AIIngredientGenerationRequest, 'recipe_name'>>({
     dietary_restrictions: [],
-    preferences: [],
-    servings: 1,
-    language: 'es'
+    servings: 4,
   });
 
   const hasExistingIngredients = meal.ingredients && meal.ingredients.length > 0;
@@ -100,7 +99,11 @@ export default function AIIngredientGenerator({
 
     try {
       // Generar nuevos ingredientes con IA (el backend maneja el reemplazo)
-      const response = await nutritionAPI.generateIngredientsWithAI(meal.id!, options);
+      // recipe_name es obligatorio y se toma del nombre de la comida
+      const response = await nutritionAPI.generateIngredientsWithAI(meal.id!, {
+        recipe_name: meal.name,  // Campo obligatorio
+        ...options,
+      });
       setResult(response.data);
     } catch (err: any) {
       console.error('Error generating ingredients:', err);
@@ -148,9 +151,7 @@ export default function AIIngredientGenerator({
     setShowConfirmReplace(false);
     setOptions({
       dietary_restrictions: [],
-      preferences: [],
-      servings: 1,
-      language: 'es'
+      servings: 4,
     });
     onClose();
   };
