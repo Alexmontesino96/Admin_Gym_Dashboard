@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { nutritionAPI, NutritionPlanCreateData, DailyPlanCreateData, CreateNutritionPlanRequestHybrid, PlanType } from '@/lib/api';
-import { 
-  PlusCircle, 
-  Save, 
-  ArrowLeft, 
-  Target, 
-  Clock, 
+import { nutritionAPI, DailyPlanCreateData, CreateNutritionPlanRequestHybrid, PlanType } from '@/lib/api';
+import {
+  PlusCircle,
+  Save,
+  ArrowLeft,
+  Target,
+  Clock,
   DollarSign,
   Users,
   Tag,
@@ -23,8 +23,18 @@ import {
   Check,
   Edit,
   PlayCircle,
-  FileText
+  FileText,
+  Sparkles,
+  Copy,
+  Upload
 } from 'lucide-react';
+import AIFullPlanGenerator from '@/components/nutrition/AIFullPlanGenerator';
+import PlanCreationWizard from '@/components/nutrition/PlanCreationWizard';
+import TemplateLibrary from '@/components/nutrition/TemplateLibrary';
+import { AIFullPlanResponse } from '@/lib/api';
+
+// Tipo para los métodos de creación
+type CreationMethod = 'ai' | 'manual' | 'template' | 'import';
 
 interface CreatePlanForm {
   title: string;
@@ -81,10 +91,14 @@ export default function CreatePlanClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
-  const [currentStep, setCurrentStep] = useState<'plan' | 'days'>('plan');
+  const [currentStep, setCurrentStep] = useState<'wizard' | 'plan' | 'days'>('wizard');
   const [createdPlan, setCreatedPlan] = useState<CreatedPlan | null>(null);
   const [dailyPlans, setDailyPlans] = useState<DailyPlan[]>([]);
   const [editingDay, setEditingDay] = useState<number | null>(null);
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
+  const [showWizard, setShowWizard] = useState(true);
+  const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
+  const [creationMethod, setCreationMethod] = useState<CreationMethod | null>(null);
   
   const [formData, setFormData] = useState<CreatePlanForm>({
     title: '',
@@ -166,6 +180,101 @@ export default function CreatePlanClient() {
       ...prev,
       tags: prev.tags.filter(tag => tag !== tagToRemove)
     }));
+  };
+
+  // Handler para selección de método en el wizard
+  const handleMethodSelected = (method: CreationMethod) => {
+    setCreationMethod(method);
+    setShowWizard(false);
+
+    switch (method) {
+      case 'ai':
+        setShowAIGenerator(true);
+        break;
+      case 'manual':
+        setCurrentStep('plan');
+        break;
+      case 'template':
+        setShowTemplateLibrary(true);
+        break;
+      case 'import':
+        // Por ahora redirigir a manual con un mensaje
+        setCurrentStep('plan');
+        setError('La importación de planes estará disponible próximamente. Usa la creación manual por ahora.');
+        break;
+    }
+  };
+
+  // Handler para template seleccionado
+  const handleTemplateSelected = async (templateId: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Duplicar el template
+      const newPlan = await nutritionAPI.duplicatePlan(templateId, `Copia - ${new Date().toLocaleDateString()}`);
+      // Redirigir a edición del nuevo plan
+      router.push(`/nutricion/planes/${newPlan.id}/editar-dias`);
+    } catch (err) {
+      console.error('Error duplicating template:', err);
+      setError('Error al crear el plan desde el template. Por favor, intenta de nuevo.');
+      setShowTemplateLibrary(false);
+      setCurrentStep('plan');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handler para plan generado con IA
+  const handleAIPlanGenerated = async (response: AIFullPlanResponse) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Crear el plan base con los datos del plan generado
+      const planData: CreateNutritionPlanRequestHybrid = {
+        title: response.plan.title,
+        description: response.plan.description,
+        goal: formData.goal,
+        difficulty_level: formData.difficulty_level,
+        budget_level: formData.budget_level,
+        dietary_restrictions: formData.dietary_restrictions,
+        duration_days: response.plan.daily_plans.length,
+        is_recurring: false,
+        target_calories: response.plan.total_avg_calories,
+        target_protein_g: Math.round(response.plan.daily_plans[0]?.total_protein_g || 150),
+        target_carbs_g: Math.round(response.plan.daily_plans[0]?.total_carbs_g || 250),
+        target_fat_g: Math.round(response.plan.daily_plans[0]?.total_fat_g || 67),
+        is_public: true,
+        tags: ['generado-con-ia'],
+        plan_type: PlanType.TEMPLATE
+      };
+
+      const newPlan = await nutritionAPI.createPlan(planData);
+
+      // Crear los días con las comidas generadas
+      for (const day of response.plan.daily_plans) {
+        const dayData: DailyPlanCreateData = {
+          day_number: day.day_number,
+          planned_date: new Date().toISOString().split('T')[0],
+          total_calories: day.total_calories,
+          total_protein_g: day.total_protein_g,
+          total_carbs_g: day.total_carbs_g,
+          total_fat_g: day.total_fat_g,
+          notes: day.notes || `Día ${day.day_number} generado con IA`,
+          nutrition_plan_id: newPlan.id
+        };
+
+        await nutritionAPI.createPlanDay(newPlan.id, dayData);
+      }
+
+      // Redirigir a la página de edición del plan
+      router.push(`/nutricion/planes/${newPlan.id}/editar-dias`);
+    } catch (err) {
+      console.error('Error creating AI-generated plan:', err);
+      setError('Error al crear el plan generado. Por favor, intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Función para crear el plan base
@@ -328,6 +437,35 @@ export default function CreatePlanClient() {
       }));
     }
   };
+
+  // Mostrar wizard inicial
+  if (currentStep === 'wizard' && showWizard) {
+    return (
+      <>
+        <PlanCreationWizard
+          isOpen={showWizard}
+          onClose={() => router.back()}
+          onMethodSelected={handleMethodSelected}
+        />
+        <TemplateLibrary
+          isOpen={showTemplateLibrary}
+          onClose={() => {
+            setShowTemplateLibrary(false);
+            setShowWizard(true);
+          }}
+          onTemplateSelected={handleTemplateSelected}
+        />
+        <AIFullPlanGenerator
+          isOpen={showAIGenerator}
+          onClose={() => {
+            setShowAIGenerator(false);
+            setShowWizard(true);
+          }}
+          onPlanGenerated={handleAIPlanGenerated}
+        />
+      </>
+    );
+  }
 
   if (currentStep === 'days' && createdPlan) {
     return (
@@ -557,7 +695,10 @@ export default function CreatePlanClient() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              setCurrentStep('wizard');
+              setShowWizard(true);
+            }}
             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           >
             <ArrowLeft size={20} />
@@ -566,9 +707,29 @@ export default function CreatePlanClient() {
             <PlusCircle size={24} className="text-green-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Crear Plan Nutricional</h1>
+            <h1 className="text-2xl font-bold text-slate-900">
+              {creationMethod === 'manual' ? 'Crear Plan Manual' : 'Crear Plan Nutricional'}
+            </h1>
             <p className="text-slate-600">Diseña un plan personalizado para tus miembros</p>
           </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            onClick={() => setShowTemplateLibrary(true)}
+            className="flex items-center space-x-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-all"
+          >
+            <Copy size={18} />
+            <span>Usar Template</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAIGenerator(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all shadow-sm"
+          >
+            <Sparkles size={18} />
+            <span>Generar con IA</span>
+          </button>
         </div>
       </div>
 
@@ -928,6 +1089,20 @@ export default function CreatePlanClient() {
           </button>
         </div>
       </form>
+
+      {/* Modal de Generador con IA */}
+      <AIFullPlanGenerator
+        isOpen={showAIGenerator}
+        onClose={() => setShowAIGenerator(false)}
+        onPlanGenerated={handleAIPlanGenerated}
+      />
+
+      {/* Modal de Biblioteca de Templates */}
+      <TemplateLibrary
+        isOpen={showTemplateLibrary}
+        onClose={() => setShowTemplateLibrary(false)}
+        onTemplateSelected={handleTemplateSelected}
+      />
     </div>
   );
 } 

@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { getUsersAPI, nutritionAPI, NutritionPlan, DailyPlan, GymParticipant, PlanType, ArchivePlanRequest, PlanStatus } from '@/lib/api';
+import { getUsersAPI, nutritionAPI, NutritionPlan, DailyPlan, GymParticipant, PlanType, ArchivePlanRequest, PlanStatus, CategorizedPlansResponse } from '@/lib/api';
 import PlanTypeIndicator from '@/components/ui/plan-type-indicator';
 import LivePlanStatus from '@/components/ui/live-plan-status';
+import PlanCategoryTabs, { TabType } from '@/components/nutrition/PlanCategoryTabs';
+import PlanCard from '@/components/nutrition/PlanCard';
 
 // Importaciones optimizadas de iconos - solo los que necesitamos
 import { 
@@ -51,6 +53,9 @@ interface PlansResponse {
 export default function NutritionPlansClient() {
   const router = useRouter();
   const [plans, setPlans] = useState<EnrichedNutritionPlan[]>([]);
+  const [categorizedPlans, setCategorizedPlans] = useState<CategorizedPlansResponse | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [filteredPlans, setFilteredPlans] = useState<EnrichedNutritionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -178,6 +183,18 @@ export default function NutritionPlansClient() {
     }
   }, []);
 
+  // Función para cargar planes categorizados
+  const fetchCategorizedPlans = useCallback(async () => {
+    try {
+      const data = await nutritionAPI.getCategorizedPlans();
+      setCategorizedPlans(data);
+      return data;
+    } catch (error) {
+      console.error('Error fetching categorized plans:', error);
+      return null;
+    }
+  }, []);
+
   // Función para cargar planes optimizada con useCallback
   const fetchPlans = useCallback(async (page = 1) => {
     setLoading(true);
@@ -273,7 +290,34 @@ export default function NutritionPlansClient() {
   // Cargar planes al montar el componente
   useEffect(() => {
     fetchPlans();
+    fetchCategorizedPlans();
   }, []); // Solo ejecutar una vez al montar
+
+  // Filtrar planes según el tab activo
+  useEffect(() => {
+    if (!categorizedPlans) {
+      setFilteredPlans(plans);
+      return;
+    }
+
+    let result: EnrichedNutritionPlan[] = [];
+
+    switch (activeTab) {
+      case 'live':
+        result = plans.filter(p => p.plan_type === 'live');
+        break;
+      case 'template':
+        result = plans.filter(p => p.plan_type === 'template');
+        break;
+      case 'archived':
+        result = plans.filter(p => p.plan_type === 'archived' || p.status === 'archived');
+        break;
+      default:
+        result = plans;
+    }
+
+    setFilteredPlans(result);
+  }, [plans, activeTab, categorizedPlans]);
 
   // Cargar automáticamente información de días para planes que no la tienen
   useEffect(() => {
@@ -482,7 +526,15 @@ export default function NutritionPlansClient() {
         </a>
       </div>
 
-            {/* Filtros y búsqueda compactos */}
+      {/* Tabs de categorías */}
+      <PlanCategoryTabs
+        categories={categorizedPlans}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        loading={loading}
+      />
+
+      {/* Filtros y búsqueda compactos */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
         {/* Header de filtros */}
         <div className="bg-gradient-to-r from-slate-50 to-white p-6 border-b border-slate-200">
@@ -860,7 +912,7 @@ export default function NutritionPlansClient() {
             Reintentar
           </button>
         </div>
-      ) : plans.length === 0 ? (
+      ) : filteredPlans.length === 0 ? (
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-12 text-center">
           <div className="text-6xl mb-4">🍎</div>
           <h3 className="text-lg font-medium text-slate-900 mb-2">No se encontraron planes</h3>
@@ -883,7 +935,12 @@ export default function NutritionPlansClient() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-slate-900">
-                {pagination.total} plan{pagination.total !== 1 ? 'es' : ''} nutricional{pagination.total !== 1 ? 'es' : ''}
+                {filteredPlans.length} plan{filteredPlans.length !== 1 ? 'es' : ''} nutricional{filteredPlans.length !== 1 ? 'es' : ''}
+                {activeTab !== 'all' && (
+                  <span className="text-base font-normal text-slate-500 ml-2">
+                    ({activeTab === 'live' ? 'Live' : activeTab === 'template' ? 'Templates' : 'Archivados'})
+                  </span>
+                )}
               </h2>
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
@@ -893,7 +950,7 @@ export default function NutritionPlansClient() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {plans.map((plan) => (
+              {filteredPlans.map((plan) => (
                 <div key={plan.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden max-w-sm mx-auto">
                   
                   {/* Header simple */}

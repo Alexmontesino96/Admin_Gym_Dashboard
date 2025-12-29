@@ -25,10 +25,12 @@ import {
   Target,
   TrendingUp,
   Sparkles,
-  ChefHat
+  ChefHat,
+  Camera
 } from 'lucide-react';
 import AIIngredientGenerator from '@/components/AIIngredientGenerator';
-import { AIIngredientGenerationResponse } from '@/lib/api';
+import MealImageAnalyzer from '@/components/nutrition/MealImageAnalyzer';
+import { AIIngredientGenerationResponse, DetectedIngredient } from '@/lib/api';
 
 interface MealManagerClientProps {
   dailyPlanId: number;
@@ -51,6 +53,8 @@ export default function MealManagerClient({
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
   const [aiGeneratorMeal, setAiGeneratorMeal] = useState<Meal | null>(null);
+  const [showImageAnalyzer, setShowImageAnalyzer] = useState(false);
+  const [imageAnalyzerMealId, setImageAnalyzerMealId] = useState<number | null>(null);
 
   // Formulario para nueva comida
   const [mealForm, setMealForm] = useState<MealCreateData>({
@@ -274,6 +278,40 @@ export default function MealManagerClient({
     ));
     setSuccessMessage(`Ingredientes generados con IA para "${aiGeneratorMeal?.name}"`);
     setAiGeneratorMeal(null);
+  };
+
+  // Handler para ingredientes detectados de imagen
+  const handleImageIngredientsDetected = (
+    ingredients: DetectedIngredient[],
+    mealName: string,
+    macros: { protein: number; carbs: number; fat: number },
+    calories: number
+  ) => {
+    if (!imageAnalyzerMealId) return;
+
+    // Actualizar la comida con los datos detectados
+    setMeals(prev => prev.map(meal =>
+      meal.id === imageAnalyzerMealId
+        ? {
+            ...meal,
+            name: mealName || meal.name,
+            calories: calories,
+            protein_g: macros.protein,
+            carbs_g: macros.carbs,
+            fat_g: macros.fat
+          }
+        : meal
+    ));
+
+    setSuccessMessage(`Macros actualizados desde imagen para la comida`);
+    setShowImageAnalyzer(false);
+    setImageAnalyzerMealId(null);
+  };
+
+  // Abrir analizador de imagen para una comida
+  const openImageAnalyzer = (mealId: number) => {
+    setImageAnalyzerMealId(mealId);
+    setShowImageAnalyzer(true);
   };
 
   const getTotalNutrients = () => {
@@ -757,6 +795,15 @@ export default function MealManagerClient({
                       >
                         <Sparkles size={16} />
                       </button>
+                      {meal.id && (
+                        <button
+                          onClick={() => openImageAnalyzer(meal.id!)}
+                          className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Analizar imagen de comida"
+                        >
+                          <Camera size={16} />
+                        </button>
+                      )}
                       {/* Botón de editar */}
                       <button
                         onClick={() => handleEditMeal(meal)}
@@ -790,6 +837,16 @@ export default function MealManagerClient({
           onSuccess={handleAIGenerationSuccess}
         />
       )}
+
+      {/* Meal Image Analyzer Modal */}
+      <MealImageAnalyzer
+        isOpen={showImageAnalyzer}
+        onClose={() => {
+          setShowImageAnalyzer(false);
+          setImageAnalyzerMealId(null);
+        }}
+        onIngredientsDetected={handleImageIngredientsDetected}
+      />
     </div>
   );
 } 

@@ -932,6 +932,196 @@ export interface ArchivePlanRequest {
   template_title?: string;
 }
 
+// ===== TIPOS CATEGORIZADOS (Backend Nuevo) =====
+
+export interface CategorizedPlansResponse {
+  live_plans: NutritionPlan[];
+  template_plans: NutritionPlan[];
+  archived_plans: NutritionPlan[];
+  my_active_plans: NutritionPlan[];  // Planes que usuarios siguen (info para admin)
+  total: number;
+}
+
+// ===== TIPOS DE ANALYTICS =====
+
+export interface PlanAnalytics {
+  plan_id: number;
+  plan_title: string;
+  // Seguidores
+  followers: {
+    total: number;
+    active: number;
+    completed: number;
+    abandoned: number;
+    retention_rate: number;
+  };
+  // Engagement
+  engagement: {
+    avg_completion_rate: number;
+    avg_days_followed: number;
+    avg_satisfaction: number;
+    photos_shared: number;
+    comments_count: number;
+  };
+  // Performance de comidas
+  meal_performance: MealPerformance[];
+  // Performance diaria
+  daily_performance: DayPerformance[];
+  // Feedback
+  user_feedback: {
+    positive_keywords: string[];
+    negative_keywords: string[];
+    improvement_suggestions: string[];
+  };
+  // Costo (si aplica)
+  financial?: {
+    avg_daily_cost: number;
+    cost_perception: string;
+    ingredient_availability: number;
+  };
+}
+
+export interface MealPerformance {
+  meal_id: number;
+  meal_name: string;
+  meal_type: MealType;
+  completion_rate: number;
+  avg_satisfaction: number;
+  skip_rate: number;
+  favorite_count: number;
+}
+
+export interface DayPerformance {
+  day_number: number;
+  completion_rate: number;
+  dropout_rate: number;
+}
+
+// ===== TIPOS DE SEGUIDORES (para vista admin) =====
+
+export interface PlanFollowersResponse {
+  plan_id: number;
+  total_followers: number;
+  followers: FollowerInfo[];
+  pagination: {
+    page: number;
+    per_page: number;
+    total_pages: number;
+  };
+}
+
+export interface FollowerInfo {
+  user_id: number;
+  user_name: string;
+  user_photo?: string;
+  started_at: string;
+  current_day: number;
+  completion_percentage: number;
+  status: 'running' | 'completed' | 'abandoned' | 'paused';
+  last_activity?: string;
+}
+
+// ===== TIPOS DE IA AVANZADA =====
+
+export interface AIFullPlanRequest {
+  title: string;
+  description?: string;
+  goal: string;                      // 'bulk' | 'cut' | 'maintain' | 'performance'
+  target_calories: number;
+  target_protein_g?: number;
+  target_carbs_g?: number;
+  target_fat_g?: number;
+  duration_days: number;
+  difficulty_level?: string;         // 'beginner' | 'intermediate' | 'advanced'
+  budget_level?: string;             // 'economic' | 'medium' | 'premium'
+  dietary_restrictions?: string[];   // ['vegetarian', 'gluten_free', etc.]
+  meals_per_day?: number;            // 3-6
+  cuisine_preferences?: string[];
+  excluded_ingredients?: string[];
+  language?: string;                 // 'es' | 'en'
+}
+
+export interface AIFullPlanResponse {
+  success: boolean;
+  plan: GeneratedPlanContent;
+  ai_metadata: AIMetadata;
+}
+
+export interface GeneratedPlanContent {
+  title: string;
+  description: string;
+  daily_plans: GeneratedDay[];
+  total_avg_calories: number;
+  shopping_list?: ShoppingListItem[];
+}
+
+export interface GeneratedDay {
+  day_number: number;
+  day_name?: string;
+  meals: GeneratedMeal[];
+  total_calories: number;
+  total_protein_g: number;
+  total_carbs_g: number;
+  total_fat_g: number;
+  notes?: string;
+}
+
+export interface GeneratedMeal {
+  name: string;
+  meal_type: MealType;
+  description?: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g?: number;
+  preparation_time_minutes: number;
+  cooking_instructions: string;
+  ingredients: AIGeneratedIngredient[];
+}
+
+export interface ShoppingListItem {
+  name: string;
+  total_quantity: number;
+  unit: string;
+  category: string;  // 'proteins', 'vegetables', 'dairy', etc.
+}
+
+export interface AIMetadata {
+  model: string;
+  cost_usd: number;
+  generation_time_ms: number;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+}
+
+// ===== TIPOS DE ANÁLISIS DE IMAGEN =====
+
+export interface MealImageAnalysisRequest {
+  image_base64: string;
+  context?: string;  // Ej: "Almuerzo en restaurante italiano"
+}
+
+export interface MealImageAnalysisResponse {
+  meal_name: string;
+  estimated_calories: number;
+  macros: {
+    protein: number;
+    carbs: number;
+    fat: number;
+  };
+  ingredients_detected: DetectedIngredient[];
+  confidence_score: number;  // 0-1
+  nutritional_warnings: string[];
+  ai_metadata: AIMetadata;
+}
+
+export interface DetectedIngredient {
+  name: string;
+  estimated_quantity: string;  // "200g", "1 taza", etc.
+  confidence: number;
+}
+
 // ===== INTERFACES DE MEMBRESÍA =====
 export interface MembershipPlan {
   id: number;
@@ -2034,6 +2224,62 @@ export const nutritionAPI = {
   // Obtener niveles de presupuesto disponibles
   getBudgetLevels: async (): Promise<EnumOption[]> => {
     return apiCall('/nutrition/enums/budgets');
+  },
+
+  // ===== PLANES CATEGORIZADOS (Backend Nuevo) =====
+
+  // Obtener planes organizados por categoría
+  getCategorizedPlans: async (): Promise<CategorizedPlansResponse> => {
+    return apiCall('/nutrition/plans/categorized');
+  },
+
+  // ===== ANALYTICS DE PLANES =====
+
+  // Obtener analytics completos de un plan
+  getPlanAnalytics: async (planId: number): Promise<PlanAnalytics> => {
+    return apiCall(`/nutrition/plans/${planId}/analytics`);
+  },
+
+  // Obtener seguidores de un plan (paginado)
+  getPlanFollowers: async (planId: number, page: number = 1, perPage: number = 20): Promise<PlanFollowersResponse> => {
+    return apiCall(`/nutrition/plans/${planId}/followers?page=${page}&per_page=${perPage}`);
+  },
+
+  // ===== GENERACIÓN CON IA =====
+
+  // Generar plan completo con IA
+  generateFullPlanWithAI: async (request: AIFullPlanRequest): Promise<AIFullPlanResponse> => {
+    return apiCall('/nutrition/plans/generate', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  // ===== ANÁLISIS DE IMAGEN =====
+
+  // Analizar imagen de comida con IA
+  analyzeMealImage: async (request: MealImageAnalysisRequest): Promise<MealImageAnalysisResponse> => {
+    return apiCall('/nutrition/meals/analyze', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  // ===== GESTIÓN DE ESTADO DE PLANES =====
+
+  // Convertir plan live a template
+  convertToTemplate: async (planId: number): Promise<NutritionPlan> => {
+    return apiCall(`/nutrition/plans/${planId}/convert-to-template`, {
+      method: 'POST',
+    });
+  },
+
+  // Duplicar un plan
+  duplicatePlan: async (planId: number, newTitle?: string): Promise<NutritionPlan> => {
+    return apiCall(`/nutrition/plans/${planId}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({ title: newTitle }),
+    });
   },
 };
 
