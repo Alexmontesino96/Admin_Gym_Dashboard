@@ -95,8 +95,10 @@ export default function PlanCreationWizard({
 
   const handleContinue = () => {
     if (selectedMethod) {
+      console.log('[PlanCreationWizard] Selected method:', selectedMethod);
       onMethodSelected(selectedMethod);
-      onClose();
+      // No llamar onClose() aquí - el padre maneja el cierre del wizard
+      // onClose() ejecuta router.back() lo cual navega fuera de la página
     }
   };
 

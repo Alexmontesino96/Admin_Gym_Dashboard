@@ -2229,8 +2229,32 @@ export const nutritionAPI = {
   // ===== PLANES CATEGORIZADOS (Backend Nuevo) =====
 
   // Obtener planes organizados por categoría
+  // Con fallback a getPlans si el endpoint categorizado no está disponible
   getCategorizedPlans: async (): Promise<CategorizedPlansResponse> => {
-    return apiCall('/nutrition/plans/categorized');
+    try {
+      // Intentar usar el endpoint categorizado del backend
+      return await apiCall('/nutrition/plans/categorized');
+    } catch (error) {
+      // Si falla (404 o endpoint no existe), hacer fallback manual
+      console.warn('[nutritionAPI] Endpoint /plans/categorized no disponible, usando fallback manual');
+
+      // Obtener todos los planes y categorizarlos manualmente
+      const response = await nutritionAPI.getPlans({ per_page: 100 });
+      const allPlans = response.plans || [];
+
+      // Categorizar manualmente según plan_type
+      const live_plans = allPlans.filter(p => p.plan_type === 'live');
+      const template_plans = allPlans.filter(p => p.plan_type === 'template');
+      const archived_plans = allPlans.filter(p => p.plan_type === 'archived');
+
+      return {
+        live_plans,
+        template_plans,
+        archived_plans,
+        my_active_plans: [], // No disponible sin endpoint específico
+        total: allPlans.length
+      };
+    }
   },
 
   // ===== ANALYTICS DE PLANES =====
