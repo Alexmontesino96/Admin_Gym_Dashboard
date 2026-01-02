@@ -230,6 +230,14 @@ export default function CreatePlanClient() {
       setLoading(true);
       setError(null);
 
+      // Validar que la respuesta tenga la estructura esperada
+      if (!response?.plan?.daily_plans || response.plan.daily_plans.length === 0) {
+        throw new Error('La respuesta de IA no contiene días de plan válidos');
+      }
+
+      const dailyPlans = response.plan.daily_plans;
+      const firstDay = dailyPlans[0];
+
       // Crear el plan base con los datos del plan generado
       const planData: CreateNutritionPlanRequestHybrid = {
         title: response.plan.title,
@@ -238,12 +246,12 @@ export default function CreatePlanClient() {
         difficulty_level: formData.difficulty_level,
         budget_level: formData.budget_level,
         dietary_restrictions: formData.dietary_restrictions,
-        duration_days: response.plan.daily_plans.length,
+        duration_days: dailyPlans.length,
         is_recurring: false,
         target_calories: response.plan.total_avg_calories,
-        target_protein_g: Math.round(response.plan.daily_plans[0]?.total_protein_g || 150),
-        target_carbs_g: Math.round(response.plan.daily_plans[0]?.total_carbs_g || 250),
-        target_fat_g: Math.round(response.plan.daily_plans[0]?.total_fat_g || 67),
+        target_protein_g: Math.round(firstDay?.total_protein_g || 150),
+        target_carbs_g: Math.round(firstDay?.total_carbs_g || 250),
+        target_fat_g: Math.round(firstDay?.total_fat_g || 67),
         is_public: true,
         tags: ['generado-con-ia'],
         plan_type: PlanType.TEMPLATE
@@ -252,7 +260,7 @@ export default function CreatePlanClient() {
       const newPlan = await nutritionAPI.createPlan(planData);
 
       // Crear los días con las comidas generadas
-      for (const day of response.plan.daily_plans) {
+      for (const day of dailyPlans) {
         const dayData: DailyPlanCreateData = {
           day_number: day.day_number,
           planned_date: new Date().toISOString().split('T')[0],

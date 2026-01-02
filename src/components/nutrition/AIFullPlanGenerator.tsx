@@ -212,6 +212,12 @@ export default function AIFullPlanGenerator({
       };
 
       const response = await nutritionAPI.generateFullPlanWithAI(request);
+
+      // Validar que la respuesta tenga la estructura esperada
+      if (!response?.plan?.daily_plans || response.plan.daily_plans.length === 0) {
+        throw new Error('La respuesta de IA no contiene un plan válido con días');
+      }
+
       setGeneratedPlan(response);
       setStep('preview');
     } catch (err) {
