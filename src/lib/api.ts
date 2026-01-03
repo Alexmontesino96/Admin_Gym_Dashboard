@@ -1041,10 +1041,20 @@ export interface AIFullPlanRequest {
   language?: string;                 // 'es' | 'en'
 }
 
+// Respuesta del endpoint /nutrition/plans/generate
+// El backend crea el plan directamente en la base de datos y devuelve los datos
 export interface AIFullPlanResponse {
-  success: boolean;
-  plan: GeneratedPlanContent;
+  plan_id: number;
+  name: string;
+  description: string;
+  total_days: number;
+  nutritional_goal: string;
+  target_calories: number;
+  daily_plans: GeneratedDay[];
   ai_metadata: AIMetadata;
+  // Campos opcionales que puede o no devolver el backend
+  success?: boolean;
+  plan?: GeneratedPlanContent;  // Por compatibilidad con estructura anterior
 }
 
 export interface GeneratedPlanContent {

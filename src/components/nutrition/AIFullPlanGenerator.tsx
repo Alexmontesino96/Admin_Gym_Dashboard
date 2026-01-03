@@ -27,7 +27,7 @@ interface AIFullPlanGeneratorProps {
 const GOALS = [
   { value: 'bulk', label: 'Volumen', icon: '💪', description: 'Ganar masa muscular' },
   { value: 'cut', label: 'Definición', icon: '🔥', description: 'Perder grasa' },
-  { value: 'maintain', label: 'Mantenimiento', icon: '⚖️', description: 'Mantener peso actual' },
+  { value: 'maintenance', label: 'Mantenimiento', icon: '⚖️', description: 'Mantener peso actual' },
   { value: 'performance', label: 'Rendimiento', icon: '⚡', description: 'Optimizar rendimiento deportivo' }
 ];
 
@@ -106,7 +106,7 @@ export default function AIFullPlanGenerator({
 
   const [formData, setFormData] = useState<FormData>({
     title: '',
-    goal: 'maintain',
+    goal: 'maintenance',
     target_calories: 2000,
     duration_days: 7,
     difficulty_level: 'intermediate',
@@ -214,7 +214,8 @@ export default function AIFullPlanGenerator({
       const response = await nutritionAPI.generateFullPlanWithAI(request);
 
       // Validar que la respuesta tenga la estructura esperada
-      if (!response?.plan?.daily_plans || response.plan.daily_plans.length === 0) {
+      // El backend devuelve daily_plans directamente, no dentro de response.plan
+      if (!response?.daily_plans || response.daily_plans.length === 0) {
         throw new Error('La respuesta de IA no contiene un plan válido con días');
       }
 
@@ -719,13 +720,13 @@ export default function AIFullPlanGenerator({
                   <div className="grid grid-cols-3 gap-4 text-center mt-4">
                     <div>
                       <p className="text-2xl font-bold text-slate-900">
-                        {generatedPlan.plan.daily_plans.length}
+                        {generatedPlan.daily_plans.length}
                       </p>
                       <p className="text-sm text-slate-600">días</p>
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-slate-900">
-                        {generatedPlan.plan.total_avg_calories}
+                        {generatedPlan.target_calories}
                       </p>
                       <p className="text-sm text-slate-600">kcal/día</p>
                     </div>
@@ -740,7 +741,7 @@ export default function AIFullPlanGenerator({
 
                 {/* Días del plan */}
                 <div className="space-y-3">
-                  {generatedPlan.plan.daily_plans.map((day) => (
+                  {generatedPlan.daily_plans.map((day) => (
                     <div key={day.day_number} className="border border-slate-200 rounded-xl overflow-hidden">
                       <button
                         onClick={() => toggleDayExpanded(day.day_number)}

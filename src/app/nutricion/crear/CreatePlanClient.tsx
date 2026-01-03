@@ -231,24 +231,25 @@ export default function CreatePlanClient() {
       setError(null);
 
       // Validar que la respuesta tenga la estructura esperada
-      if (!response?.plan?.daily_plans || response.plan.daily_plans.length === 0) {
+      // El backend devuelve daily_plans directamente, no dentro de response.plan
+      if (!response?.daily_plans || response.daily_plans.length === 0) {
         throw new Error('La respuesta de IA no contiene días de plan válidos');
       }
 
-      const dailyPlans = response.plan.daily_plans;
+      const dailyPlans = response.daily_plans;
       const firstDay = dailyPlans[0];
 
       // Crear el plan base con los datos del plan generado
       const planData: CreateNutritionPlanRequestHybrid = {
-        title: response.plan.title,
-        description: response.plan.description,
+        title: response.name,
+        description: response.description,
         goal: formData.goal,
         difficulty_level: formData.difficulty_level,
         budget_level: formData.budget_level,
         dietary_restrictions: formData.dietary_restrictions,
         duration_days: dailyPlans.length,
         is_recurring: false,
-        target_calories: response.plan.total_avg_calories,
+        target_calories: response.target_calories,
         target_protein_g: Math.round(firstDay?.total_protein_g || 150),
         target_carbs_g: Math.round(firstDay?.total_carbs_g || 250),
         target_fat_g: Math.round(firstDay?.total_fat_g || 67),
