@@ -1042,7 +1042,8 @@ export interface AIFullPlanRequest {
 }
 
 // Respuesta del endpoint /nutrition/plans/generate
-// El backend crea el plan directamente en la base de datos y devuelve los datos
+// El backend crea el plan directamente en la base de datos y devuelve metadatos
+// NOTA: El backend NO devuelve los daily_plans, solo el conteo
 export interface AIFullPlanResponse {
   plan_id: number;
   name: string;
@@ -1050,11 +1051,17 @@ export interface AIFullPlanResponse {
   total_days: number;
   nutritional_goal: string;
   target_calories: number;
-  daily_plans: GeneratedDay[];
+  // Metadatos del plan creado (el backend devuelve estos)
+  daily_plans_count?: number;
+  total_meals?: number;
+  // Metadatos de IA
   ai_metadata: AIMetadata;
-  // Campos opcionales que puede o no devolver el backend
+  generation_time_ms?: number;
+  cost_estimate_usd?: number;
+  // Campos opcionales legacy (el backend actual NO devuelve daily_plans)
+  daily_plans?: GeneratedDay[];
   success?: boolean;
-  plan?: GeneratedPlanContent;  // Por compatibilidad con estructura anterior
+  plan?: GeneratedPlanContent;
 }
 
 export interface GeneratedPlanContent {
@@ -1099,10 +1106,12 @@ export interface ShoppingListItem {
 
 export interface AIMetadata {
   model: string;
-  cost_usd: number;
-  generation_time_ms: number;
+  cost_usd?: number;
+  generation_time_ms?: number;
   prompt_tokens?: number;
   completion_tokens?: number;
+  total_tokens?: number;
+  temperature?: number;
 }
 
 // ===== TIPOS DE ANÁLISIS DE IMAGEN =====

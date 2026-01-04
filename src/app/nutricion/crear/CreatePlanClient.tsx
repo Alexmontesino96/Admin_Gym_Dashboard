@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { nutritionAPI, DailyPlanCreateData, CreateNutritionPlanRequestHybrid, PlanType } from '@/lib/api';
+import { nutritionAPI, DailyPlanCreateData, CreateNutritionPlanRequestHybrid, PlanType, AIFullPlanResponse } from '@/lib/api';
 import {
   PlusCircle,
   Save,
@@ -31,7 +31,6 @@ import {
 import AIFullPlanGenerator from '@/components/nutrition/AIFullPlanGenerator';
 import PlanCreationWizard from '@/components/nutrition/PlanCreationWizard';
 import TemplateLibrary from '@/components/nutrition/TemplateLibrary';
-import { AIFullPlanResponse } from '@/lib/api';
 
 // Tipo para los métodos de creación
 type CreationMethod = 'ai' | 'manual' | 'template' | 'import';
@@ -225,62 +224,30 @@ export default function CreatePlanClient() {
   };
 
   // Handler para plan generado con IA
+  // NOTA: El backend ya crea el plan completo (con días y comidas)
+  // Solo necesitamos redirigir a la página de edición
   const handleAIPlanGenerated = async (response: AIFullPlanResponse) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Validar que la respuesta tenga la estructura esperada
-      // El backend devuelve daily_plans directamente, no dentro de response.plan
-      if (!response?.daily_plans || response.daily_plans.length === 0) {
-        throw new Error('La respuesta de IA no contiene días de plan válidos');
+      // Validar que tengamos un plan_id válido
+      if (!response?.plan_id) {
+        throw new Error('La respuesta de IA no contiene un ID de plan válido');
       }
 
-      const dailyPlans = response.daily_plans;
-      const firstDay = dailyPlans[0];
+      console.log('[CreatePlanClient] Plan creado por IA:', {
+        plan_id: response.plan_id,
+        name: response.name,
+        total_days: response.total_days,
+        total_meals: response.total_meals
+      });
 
-      // Crear el plan base con los datos del plan generado
-      const planData: CreateNutritionPlanRequestHybrid = {
-        title: response.name,
-        description: response.description,
-        goal: formData.goal,
-        difficulty_level: formData.difficulty_level,
-        budget_level: formData.budget_level,
-        dietary_restrictions: formData.dietary_restrictions,
-        duration_days: dailyPlans.length,
-        is_recurring: false,
-        target_calories: response.target_calories,
-        target_protein_g: Math.round(firstDay?.total_protein_g || 150),
-        target_carbs_g: Math.round(firstDay?.total_carbs_g || 250),
-        target_fat_g: Math.round(firstDay?.total_fat_g || 67),
-        is_public: true,
-        tags: ['generado-con-ia'],
-        plan_type: PlanType.TEMPLATE
-      };
-
-      const newPlan = await nutritionAPI.createPlan(planData);
-
-      // Crear los días con las comidas generadas
-      for (const day of dailyPlans) {
-        const dayData: DailyPlanCreateData = {
-          day_number: day.day_number,
-          planned_date: new Date().toISOString().split('T')[0],
-          total_calories: day.total_calories,
-          total_protein_g: day.total_protein_g,
-          total_carbs_g: day.total_carbs_g,
-          total_fat_g: day.total_fat_g,
-          notes: day.notes || `Día ${day.day_number} generado con IA`,
-          nutrition_plan_id: newPlan.id
-        };
-
-        await nutritionAPI.createPlanDay(newPlan.id, dayData);
-      }
-
-      // Redirigir a la página de edición del plan
-      router.push(`/nutricion/planes/${newPlan.id}/editar-dias`);
+      // Redirigir a la página de edición del plan (ya creado por el backend)
+      router.push(`/nutricion/planes/${response.plan_id}/editar-dias`);
     } catch (err) {
-      console.error('Error creating AI-generated plan:', err);
-      setError('Error al crear el plan generado. Por favor, intenta de nuevo.');
+      console.error('Error handling AI-generated plan:', err);
+      setError('Error al procesar el plan generado. Por favor, intenta de nuevo.');
     } finally {
       setLoading(false);
     }

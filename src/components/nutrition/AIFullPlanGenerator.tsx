@@ -215,16 +215,14 @@ export default function AIFullPlanGenerator({
 
       // DEBUG: Log completo de la respuesta del API
       console.log('[AIFullPlanGenerator] API Response:', JSON.stringify(response, null, 2));
-      console.log('[AIFullPlanGenerator] Response keys:', Object.keys(response || {}));
-      console.log('[AIFullPlanGenerator] Has daily_plans:', !!response?.daily_plans);
-      console.log('[AIFullPlanGenerator] daily_plans length:', response?.daily_plans?.length);
 
-      // Validar que la respuesta tenga la estructura esperada
-      // El backend devuelve daily_plans directamente, no dentro de response.plan
-      if (!response?.daily_plans || response.daily_plans.length === 0) {
-        throw new Error('La respuesta de IA no contiene un plan válido con días');
+      // El backend crea el plan directamente y devuelve solo metadatos (no los daily_plans)
+      // Validar que tengamos un plan_id válido
+      if (!response?.plan_id) {
+        throw new Error('La respuesta de IA no contiene un ID de plan válido');
       }
 
+      // Guardar la respuesta y mostrar preview con los metadatos disponibles
       setGeneratedPlan(response);
       setStep('preview');
     } catch (err) {
@@ -726,7 +724,7 @@ export default function AIFullPlanGenerator({
                   <div className="grid grid-cols-3 gap-4 text-center mt-4">
                     <div>
                       <p className="text-2xl font-bold text-slate-900">
-                        {generatedPlan.daily_plans.length}
+                        {generatedPlan.total_days || generatedPlan.daily_plans_count || 0}
                       </p>
                       <p className="text-sm text-slate-600">días</p>
                     </div>
@@ -738,67 +736,58 @@ export default function AIFullPlanGenerator({
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-slate-900">
-                        ${generatedPlan.ai_metadata.cost_usd.toFixed(4)}
+                        {generatedPlan.total_meals || '-'}
                       </p>
-                      <p className="text-sm text-slate-600">costo IA</p>
+                      <p className="text-sm text-slate-600">comidas</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Días del plan */}
-                <div className="space-y-3">
-                  {generatedPlan.daily_plans.map((day) => (
-                    <div key={day.day_number} className="border border-slate-200 rounded-xl overflow-hidden">
-                      <button
-                        onClick={() => toggleDayExpanded(day.day_number)}
-                        className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <span className="w-8 h-8 bg-green-100 text-green-700 rounded-full flex items-center justify-center font-semibold">
-                            {day.day_number}
-                          </span>
-                          <span className="font-medium text-slate-900">
-                            {day.day_name || `Día ${day.day_number}`}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          <span className="text-sm text-slate-600">
-                            {day.total_calories} kcal • {day.meals.length} comidas
-                          </span>
-                          {expandedDays.has(day.day_number) ? (
-                            <ChevronUp size={20} className="text-slate-400" />
-                          ) : (
-                            <ChevronDown size={20} className="text-slate-400" />
-                          )}
-                        </div>
-                      </button>
+                {/* Descripción del plan */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h4 className="font-medium text-slate-900 mb-2">{generatedPlan.name}</h4>
+                  <p className="text-sm text-slate-600">{generatedPlan.description}</p>
+                </div>
 
-                      {expandedDays.has(day.day_number) && (
-                        <div className="p-4 space-y-3">
-                          {day.meals.map((meal, mealIndex) => (
-                            <div key={mealIndex} className="flex items-start space-x-3 p-3 bg-slate-50 rounded-lg">
-                              <Apple size={18} className="text-green-600 mt-0.5" />
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium text-slate-900">{meal.name}</span>
-                                  <span className="text-sm text-slate-600">{meal.calories} kcal</span>
-                                </div>
-                                <p className="text-xs text-slate-500 mt-1">
-                                  {meal.meal_type} • P: {meal.protein_g}g C: {meal.carbs_g}g G: {meal.fat_g}g
-                                </p>
-                                {meal.ingredients.length > 0 && (
-                                  <p className="text-xs text-slate-400 mt-1">
-                                    {meal.ingredients.slice(0, 3).map(i => i.name).join(', ')}
-                                    {meal.ingredients.length > 3 && ` +${meal.ingredients.length - 3} más`}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                {/* Info de IA */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Sparkles size={16} className="text-blue-600" />
+                    <span className="font-medium text-blue-800">Información de generación</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-slate-500">Modelo:</span>
+                      <span className="ml-2 text-slate-700">{generatedPlan.ai_metadata?.model || 'N/A'}</span>
                     </div>
-                  ))}
+                    <div>
+                      <span className="text-slate-500">Tiempo:</span>
+                      <span className="ml-2 text-slate-700">
+                        {generatedPlan.generation_time_ms
+                          ? `${(generatedPlan.generation_time_ms / 1000).toFixed(1)}s`
+                          : 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Tokens:</span>
+                      <span className="ml-2 text-slate-700">{generatedPlan.ai_metadata?.total_tokens || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Costo:</span>
+                      <span className="ml-2 text-slate-700">
+                        ${generatedPlan.cost_estimate_usd?.toFixed(4) || '0.0000'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Nota informativa */}
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <p className="text-sm text-amber-800">
+                    <strong>Nota:</strong> El plan ha sido creado con {generatedPlan.total_meals || 0} comidas distribuidas
+                    en {generatedPlan.total_days || generatedPlan.daily_plans_count || 0} días.
+                    Al hacer clic en "Ir a editar", podrás ver y modificar todas las comidas y sus ingredientes.
+                  </p>
                 </div>
               </div>
             )}
@@ -828,17 +817,17 @@ export default function AIFullPlanGenerator({
             {step === 'preview' && (
               <div className="flex space-x-3">
                 <button
-                  onClick={handleRegenerate}
+                  onClick={handleClose}
                   className="flex-1 px-4 py-3 border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-100 transition-colors"
                 >
-                  Regenerar
+                  Cerrar
                 </button>
                 <button
                   onClick={handleAccept}
                   className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors flex items-center justify-center space-x-2"
                 >
                   <Check size={18} />
-                  <span>Usar este Plan</span>
+                  <span>Ir a editar plan</span>
                 </button>
               </div>
             )}

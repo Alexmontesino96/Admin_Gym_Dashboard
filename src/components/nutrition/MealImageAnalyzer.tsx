@@ -312,7 +312,7 @@ export default function MealImageAnalyzer({
 
                     {/* Costo */}
                     <p className="text-xs text-slate-400 text-right">
-                      Costo del análisis: ${analysisResult.ai_metadata.cost_usd.toFixed(4)}
+                      Costo del análisis: ${analysisResult.ai_metadata.cost_usd?.toFixed(4) || '0.0000'}
                     </p>
                   </div>
                 )}
