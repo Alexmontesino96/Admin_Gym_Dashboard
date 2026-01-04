@@ -213,6 +213,12 @@ export default function AIFullPlanGenerator({
 
       const response = await nutritionAPI.generateFullPlanWithAI(request);
 
+      // DEBUG: Log completo de la respuesta del API
+      console.log('[AIFullPlanGenerator] API Response:', JSON.stringify(response, null, 2));
+      console.log('[AIFullPlanGenerator] Response keys:', Object.keys(response || {}));
+      console.log('[AIFullPlanGenerator] Has daily_plans:', !!response?.daily_plans);
+      console.log('[AIFullPlanGenerator] daily_plans length:', response?.daily_plans?.length);
+
       // Validar que la respuesta tenga la estructura esperada
       // El backend devuelve daily_plans directamente, no dentro de response.plan
       if (!response?.daily_plans || response.daily_plans.length === 0) {
