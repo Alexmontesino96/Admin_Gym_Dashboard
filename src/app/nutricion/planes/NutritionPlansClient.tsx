@@ -955,17 +955,22 @@ export default function NutritionPlansClient() {
                   
                   {/* Header simple */}
                   <div className="p-6 pb-4">
-                    <div className="flex items-center space-x-3 mb-4">
+                    <div className="flex items-center space-x-3 mb-2">
                       <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                         <Apple size={20} className="text-green-600" />
                       </div>
-                      <h3 className="text-2xl font-bold text-slate-900">
-                        {plan.goal === 'bulk' ? 'Volumen' : 
-                         plan.goal === 'cut' ? 'Definición' : 
-                         plan.goal === 'maintain' ? 'Mantenimiento' : 
-                         plan.goal === 'performance' ? 'Rendimiento' : plan.goal}
+                      <h3 className="text-lg font-bold text-slate-900 line-clamp-1" title={plan.title}>
+                        {plan.title || 'Sin nombre'}
                       </h3>
                     </div>
+
+                    {/* Descripción breve */}
+                    {plan.description && (
+                      <p className="text-sm text-slate-600 line-clamp-2 mb-4" title={plan.description}>
+                        {plan.description}
+                      </p>
+                    )}
+                    {!plan.description && <div className="mb-4" />}
 
                     {/* Badges con indicador de tipo */}
                     <div className="flex gap-2 mb-6">

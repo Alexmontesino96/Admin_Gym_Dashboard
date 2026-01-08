@@ -250,18 +250,26 @@ export default function EditPlanDaysClient({ planId }: EditPlanDaysClientProps) 
         </div>
 
         {/* Información del plan */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <div className="bg-slate-50 rounded-xl p-4 text-center">
             <div className="text-2xl font-bold text-slate-900">{plan.duration_days}</div>
             <div className="text-sm text-slate-600">Días totales</div>
           </div>
           <div className="bg-orange-50 rounded-xl p-4 text-center">
             <div className="text-2xl font-bold text-orange-600">{plan.target_calories}</div>
-            <div className="text-sm text-orange-600">Calorías objetivo</div>
+            <div className="text-sm text-orange-600">Calorías</div>
           </div>
           <div className="bg-blue-50 rounded-xl p-4 text-center">
             <div className="text-2xl font-bold text-blue-600">{plan.target_protein_g}g</div>
-            <div className="text-sm text-blue-600">Proteína objetivo</div>
+            <div className="text-sm text-blue-600">Proteína</div>
+          </div>
+          <div className="bg-yellow-50 rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-yellow-600">{plan.target_carbs_g}g</div>
+            <div className="text-sm text-yellow-600">Carbohidratos</div>
+          </div>
+          <div className="bg-green-50 rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-green-600">{plan.target_fat_g}g</div>
+            <div className="text-sm text-green-600">Grasas</div>
           </div>
           <div className="bg-purple-50 rounded-xl p-4 text-center">
             <div className="text-2xl font-bold text-purple-600">{progress.created}</div>
