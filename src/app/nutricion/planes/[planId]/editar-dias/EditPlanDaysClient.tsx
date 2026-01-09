@@ -68,16 +68,38 @@ export default function EditPlanDaysClient({ planId }: EditPlanDaysClientProps) 
       setLoading(true);
       setError(null);
       const planData = await nutritionAPI.getPlan(planId);
-      const daysData = planData.daily_plans || [];
+      let daysData = planData.daily_plans || [];
+
+      // Si los días no tienen comidas, cargar los detalles completos de cada día
+      // El endpoint getPlanDay incluye las comidas
+      if (daysData.length > 0 && (!daysData[0].meals || daysData[0].meals.length === 0)) {
+        try {
+          const daysWithMeals = await Promise.all(
+            daysData.map(async (day) => {
+              try {
+                const dayDetails = await nutritionAPI.getPlanDay(planId, day.id!);
+                return dayDetails;
+              } catch {
+                // Si falla cargar el día, retornar el día sin comidas
+                return day;
+              }
+            })
+          );
+          daysData = daysWithMeals;
+        } catch (err) {
+          console.warn('Error loading day details with meals:', err);
+          // Continuar con los días sin comidas
+        }
+      }
 
       setPlan(planData);
       setDays(daysData);
-      
+
       // Configurar formulario para el siguiente día
-      const nextDayNumber = daysData.length > 0 
-        ? Math.max(...daysData.map(d => d.day_number)) + 1 
+      const nextDayNumber = daysData.length > 0
+        ? Math.max(...daysData.map(d => d.day_number)) + 1
         : 1;
-      
+
       setDayForm(prev => ({
         ...prev,
         day_number: nextDayNumber,
@@ -182,6 +204,29 @@ export default function EditPlanDaysClient({ planId }: EditPlanDaysClientProps) 
   const getDaysRemaining = () => {
     const { created, total } = getDaysProgress();
     return Math.max(0, total - created);
+  };
+
+  // Función para calcular macros del día (suma de comidas si están disponibles)
+  const getDayMacros = (day: DailyPlan) => {
+    // Si el día tiene comidas, calcular los totales sumando las comidas
+    if (day.meals && day.meals.length > 0) {
+      return {
+        calories: day.meals.reduce((sum, meal) => sum + (meal.calories || 0), 0),
+        protein: day.meals.reduce((sum, meal) => sum + (meal.protein_g || 0), 0),
+        carbs: day.meals.reduce((sum, meal) => sum + (meal.carbs_g || 0), 0),
+        fat: day.meals.reduce((sum, meal) => sum + (meal.fat_g || 0), 0),
+        mealsCount: day.meals.length
+      };
+    }
+
+    // Si no hay comidas, usar los valores almacenados en el día
+    return {
+      calories: day.total_calories || 0,
+      protein: day.total_protein_g || 0,
+      carbs: day.total_carbs_g || 0,
+      fat: day.total_fat_g || 0,
+      mealsCount: 0
+    };
   };
 
   if (loading) {
@@ -515,85 +560,98 @@ export default function EditPlanDaysClient({ planId }: EditPlanDaysClientProps) 
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {days.sort((a, b) => a.day_number - b.day_number).map((day) => (
-              <div key={day.id} className="bg-slate-50 rounded-xl p-5 border border-slate-200 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-green-600 font-bold">{day.day_number}</span>
+            {days.sort((a, b) => a.day_number - b.day_number).map((day) => {
+              const macros = getDayMacros(day);
+              return (
+                <div key={day.id} className="bg-slate-50 rounded-xl p-5 border border-slate-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <span className="text-green-600 font-bold">{day.day_number}</span>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-slate-900">Día {day.day_number}</h4>
+                        <p className="text-sm text-slate-600">
+                          {new Date(day.planned_date).toLocaleDateString('es-ES', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short'
+                          })}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-slate-900">Día {day.day_number}</h4>
-                      <p className="text-sm text-slate-600">
-                        {new Date(day.planned_date).toLocaleDateString('es-ES', {
-                          weekday: 'short',
-                          day: 'numeric',
-                          month: 'short'
-                        })}
-                      </p>
+                    <button
+                      onClick={() => handleDeleteDay(day.id!, day.day_number)}
+                      disabled={actionLoading}
+                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+
+                  {/* Badge de comidas */}
+                  {macros.mealsCount > 0 && (
+                    <div className="mb-3">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                        <Utensils size={12} className="mr-1" />
+                        {macros.mealsCount} comida{macros.mealsCount !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-600 flex items-center">
+                        <Flame size={14} className="mr-1 text-orange-500" />
+                        Calorías
+                      </span>
+                      <span className="font-medium text-slate-900">{macros.calories} kcal</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-600 flex items-center">
+                        <Zap size={14} className="mr-1 text-blue-500" />
+                        Proteína
+                      </span>
+                      <span className="font-medium text-slate-900">{macros.protein}g</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-600 flex items-center">
+                        <TrendingUp size={14} className="mr-1 text-yellow-500" />
+                        Carbohidratos
+                      </span>
+                      <span className="font-medium text-slate-900">{macros.carbs}g</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-600 flex items-center">
+                        <Target size={14} className="mr-1 text-green-500" />
+                        Grasas
+                      </span>
+                      <span className="font-medium text-slate-900">{macros.fat}g</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDeleteDay(day.id!, day.day_number)}
-                    disabled={actionLoading}
-                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600 flex items-center">
-                      <Flame size={14} className="mr-1 text-orange-500" />
-                      Calorías
-                    </span>
-                    <span className="font-medium text-slate-900">{day.total_calories} kcal</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600 flex items-center">
-                      <Zap size={14} className="mr-1 text-blue-500" />
-                      Proteína
-                    </span>
-                    <span className="font-medium text-slate-900">{day.total_protein_g}g</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600 flex items-center">
-                      <TrendingUp size={14} className="mr-1 text-yellow-500" />
-                      Carbohidratos
-                    </span>
-                    <span className="font-medium text-slate-900">{day.total_carbs_g}g</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-600 flex items-center">
-                      <Target size={14} className="mr-1 text-green-500" />
-                      Grasas
-                    </span>
-                    <span className="font-medium text-slate-900">{day.total_fat_g}g</span>
+
+                  {day.notes && (
+                    <div className="mt-4 p-3 bg-white rounded-lg border border-slate-200">
+                      <p className="text-sm text-slate-600">{day.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Botón para gestionar comidas */}
+                  <div className="mt-4 pt-4 border-t border-slate-200">
+                    <button
+                      onClick={() => router.push(`/nutricion/planes/${planId}/dias/${day.id}/comidas`)}
+                      className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <Utensils size={16} />
+                      <span>Gestionar Comidas{macros.mealsCount > 0 ? ` (${macros.mealsCount})` : ''}</span>
+                    </button>
                   </div>
                 </div>
-                
-                {day.notes && (
-                  <div className="mt-4 p-3 bg-white rounded-lg border border-slate-200">
-                    <p className="text-sm text-slate-600">{day.notes}</p>
-                  </div>
-                )}
-                
-                {/* Botón para gestionar comidas */}
-                <div className="mt-4 pt-4 border-t border-slate-200">
-                  <button
-                    onClick={() => router.push(`/nutricion/planes/${planId}/dias/${day.id}/comidas`)}
-                    className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2"
-                  >
-                    <Utensils size={16} />
-                    <span>Gestionar Comidas</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
