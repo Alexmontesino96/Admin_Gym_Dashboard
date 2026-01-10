@@ -269,25 +269,24 @@ export default function GymInfoClient() {
           {/* Logo and Title Section */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-6">
-              {/* Logo with glassmorphism effect */}
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-3xl blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
-                <div className="relative w-32 h-32 md:w-40 md:h-40 bg-white/20 backdrop-blur-xl rounded-3xl border border-white/30 flex items-center justify-center shadow-2xl">
-                  {gymInfo?.logo_url ? (
-                    <Image
-                      src={gymInfo.logo_url}
-                      alt="Logo"
-                      width={180}
-                      height={180}
-                      className="rounded-2xl object-cover w-28 h-28 md:w-36 md:h-36"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <Building2 className="w-16 h-16 md:w-20 md:h-20 text-white" />
-                  )}
-                </div>
+              {/* Logo */}
+              <div className="relative group flex-shrink-0">
+                {gymInfo?.logo_url ? (
+                  <Image
+                    src={gymInfo.logo_url}
+                    alt="Logo"
+                    width={200}
+                    height={200}
+                    className="rounded-2xl object-cover w-36 h-36 md:w-48 md:h-48 shadow-2xl"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="w-36 h-36 md:w-48 md:h-48 bg-white/20 backdrop-blur-xl rounded-2xl flex items-center justify-center">
+                    <Building2 className="w-16 h-16 md:w-24 md:h-24 text-white" />
+                  </div>
+                )}
               </div>
 
               {/* Title and Status */}
