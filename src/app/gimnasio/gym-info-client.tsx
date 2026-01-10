@@ -277,13 +277,13 @@ export default function GymInfoClient() {
                     alt="Logo"
                     width={200}
                     height={200}
-                    className="rounded-2xl object-cover w-36 h-36 md:w-48 md:h-48 shadow-2xl"
+                    className="object-contain w-36 h-36 md:w-48 md:h-48"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
                   />
                 ) : (
-                  <div className="w-36 h-36 md:w-48 md:h-48 bg-white/20 backdrop-blur-xl rounded-2xl flex items-center justify-center">
+                  <div className="w-36 h-36 md:w-48 md:h-48 flex items-center justify-center">
                     <Building2 className="w-16 h-16 md:w-24 md:h-24 text-white" />
                   </div>
                 )}
