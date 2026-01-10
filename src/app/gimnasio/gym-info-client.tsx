@@ -271,21 +271,21 @@ export default function GymInfoClient() {
             <div className="flex items-center gap-6">
               {/* Logo with glassmorphism effect */}
               <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
-                <div className="relative w-24 h-24 bg-white/20 backdrop-blur-xl rounded-2xl border border-white/30 flex items-center justify-center shadow-2xl">
+                <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-3xl blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                <div className="relative w-32 h-32 md:w-40 md:h-40 bg-white/20 backdrop-blur-xl rounded-3xl border border-white/30 flex items-center justify-center shadow-2xl">
                   {gymInfo?.logo_url ? (
                     <Image
                       src={gymInfo.logo_url}
                       alt="Logo"
-                      width={80}
-                      height={80}
-                      className="rounded-xl object-cover"
+                      width={144}
+                      height={144}
+                      className="rounded-2xl object-cover w-28 h-28 md:w-36 md:h-36"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
                       }}
                     />
                   ) : (
-                    <Building2 className="w-12 h-12 text-white" />
+                    <Building2 className="w-16 h-16 md:w-20 md:h-20 text-white" />
                   )}
                 </div>
               </div>
@@ -575,33 +575,33 @@ export default function GymInfoClient() {
                     <div className="flex items-start gap-6">
                       {/* Preview del logo actual */}
                       <div className="flex-shrink-0">
-                        <div className="relative w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                        <div className="relative w-32 h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
                           {isUploadingLogo ? (
                             <div className="flex flex-col items-center justify-center">
-                              <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                              <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
                               <span className="text-xs text-gray-500 mt-1">Subiendo...</span>
                             </div>
                           ) : logoPreview ? (
                             <Image
                               src={logoPreview}
                               alt="Preview"
-                              width={96}
-                              height={96}
+                              width={128}
+                              height={128}
                               className="w-full h-full object-cover"
                             />
                           ) : gymInfo.logo_url ? (
                             <Image
                               src={gymInfo.logo_url}
                               alt="Logo actual"
-                              width={96}
-                              height={96}
+                              width={128}
+                              height={128}
                               className="w-full h-full object-cover"
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
                               }}
                             />
                           ) : (
-                            <Building2 className="w-10 h-10 text-gray-400" />
+                            <Building2 className="w-12 h-12 text-gray-400" />
                           )}
                         </div>
                       </div>
