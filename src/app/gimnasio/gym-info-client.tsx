@@ -277,8 +277,8 @@ export default function GymInfoClient() {
                     <Image
                       src={gymInfo.logo_url}
                       alt="Logo"
-                      width={144}
-                      height={144}
+                      width={180}
+                      height={180}
                       className="rounded-2xl object-cover w-28 h-28 md:w-36 md:h-36"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
@@ -593,8 +593,8 @@ export default function GymInfoClient() {
                             <Image
                               src={gymInfo.logo_url}
                               alt="Logo actual"
-                              width={180}
-                              height={180}
+                              width={128}
+                              height={128}
                               className="w-full h-full object-cover"
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
