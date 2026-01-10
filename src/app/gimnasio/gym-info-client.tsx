@@ -593,8 +593,8 @@ export default function GymInfoClient() {
                             <Image
                               src={gymInfo.logo_url}
                               alt="Logo actual"
-                              width={128}
-                              height={128}
+                              width={180}
+                              height={180}
                               className="w-full h-full object-cover"
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
