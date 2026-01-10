@@ -1503,6 +1503,59 @@ export const gymsAPI = {
       body: JSON.stringify(gymData),
     });
   },
+
+  // Subir logo del gimnasio
+  // POST /api/v1/gyms/{gym_id}/logo
+  // Formatos: jpg, jpeg, png, webp - Máximo: 5MB
+  uploadGymLogo: async (gymId: number, file: File): Promise<{ logo_url: string }> => {
+    // Validar tipo de archivo
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('Formato de archivo no válido. Use JPG, PNG o WEBP.');
+    }
+
+    // Validar tamaño (5MB máximo)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new Error('El archivo es demasiado grande. Máximo 5MB.');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = await getAccessToken();
+    const selectedGymId = getSelectedGymId();
+
+    const response = await fetch(`${API_BASE_URL}/gyms/${gymId}/logo`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        ...(selectedGymId && { 'X-Gym-ID': selectedGymId }),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = 'Error al subir el logo';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.detail || errorData.message || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+
+  // Eliminar logo del gimnasio
+  deleteGymLogo: async (gymId: number): Promise<void> => {
+    return apiCall(`/gyms/${gymId}/logo`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // Funciones específicas para endpoints de eventos

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { gymsAPI, GymWithStats, GymUpdateData, WorkspaceType } from '@/lib/api';
 import Image from 'next/image';
 import {
@@ -27,7 +27,11 @@ import {
   Zap,
   Star,
   Target,
-  Award
+  Award,
+  Upload,
+  Trash2,
+  ImagePlus,
+  Loader2
 } from 'lucide-react';
 import StripeConnectCard from '@/components/StripeConnectCard';
 import { useTerminology } from '@/hooks/useTerminology';
@@ -46,6 +50,11 @@ export default function GymInfoClient() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setSaving] = useState(false);
   const [editData, setEditData] = useState<GymUpdateData>({});
+
+  // Estados para upload de logo
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchGymInfo = async () => {
     try {
@@ -108,7 +117,80 @@ export default function GymInfoClient() {
       });
     }
     setIsEditing(false);
+    setLogoPreview(null);
     setError(null);
+  };
+
+  // Handler para selección de archivo de logo
+  const handleLogoFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !gymInfo) return;
+
+    // Validar tipo
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Formato de archivo no válido. Use JPG, PNG o WEBP.');
+      return;
+    }
+
+    // Validar tamaño (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('El archivo es demasiado grande. Máximo 5MB.');
+      return;
+    }
+
+    // Mostrar preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setLogoPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Subir archivo
+    setIsUploadingLogo(true);
+    setError(null);
+
+    try {
+      const result = await gymsAPI.uploadGymLogo(gymInfo.id, file);
+
+      // Actualizar gymInfo con la nueva URL del logo
+      setGymInfo(prev => prev ? { ...prev, logo_url: result.logo_url } : null);
+      setEditData(prev => ({ ...prev, logo_url: result.logo_url }));
+      setLogoPreview(null);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al subir el logo');
+      setLogoPreview(null);
+    } finally {
+      setIsUploadingLogo(false);
+      // Limpiar el input para permitir seleccionar el mismo archivo
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Handler para eliminar logo
+  const handleDeleteLogo = async () => {
+    if (!gymInfo || !gymInfo.logo_url) return;
+
+    if (!confirm('¿Estás seguro de que quieres eliminar el logo?')) return;
+
+    setIsUploadingLogo(true);
+    setError(null);
+
+    try {
+      await gymsAPI.deleteGymLogo(gymInfo.id);
+
+      // Actualizar gymInfo
+      setGymInfo(prev => prev ? { ...prev, logo_url: null } : null);
+      setEditData(prev => ({ ...prev, logo_url: '' }));
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar el logo');
+    } finally {
+      setIsUploadingLogo(false);
+    }
   };
 
   useEffect(() => {
@@ -483,37 +565,96 @@ export default function GymInfoClient() {
                     )}
                   </div>
 
-                  {/* Logo URL */}
+                  {/* Logo Upload */}
                   <div className="lg:col-span-2 space-y-2">
                     <label className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-indigo-500" />
-                      URL del Logo
+                      <ImagePlus className="w-4 h-4 text-indigo-500" />
+                      Logo del {workspace.charAt(0).toUpperCase() + workspace.slice(1)}
                     </label>
-                    {isEditing ? (
-                      <input
-                        type="url"
-                        value={editData.logo_url || ''}
-                        onChange={(e) => setEditData({ ...editData, logo_url: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                        placeholder="https://ejemplo.com/logo.png"
-                      />
-                    ) : (
-                      <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl">
-                        <span className="text-gray-900 font-medium text-sm break-all flex-1">{gymInfo.logo_url || 'No especificada'}</span>
-                        {gymInfo.logo_url && (
-                          <Image
-                            src={gymInfo.logo_url}
-                            alt="Logo"
-                            width={40}
-                            height={40}
-                            className="w-10 h-10 rounded-lg object-cover border-2 border-indigo-200 shadow-sm"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
+
+                    <div className="flex items-start gap-6">
+                      {/* Preview del logo actual */}
+                      <div className="flex-shrink-0">
+                        <div className="relative w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                          {isUploadingLogo ? (
+                            <div className="flex flex-col items-center justify-center">
+                              <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                              <span className="text-xs text-gray-500 mt-1">Subiendo...</span>
+                            </div>
+                          ) : logoPreview ? (
+                            <Image
+                              src={logoPreview}
+                              alt="Preview"
+                              width={96}
+                              height={96}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : gymInfo.logo_url ? (
+                            <Image
+                              src={gymInfo.logo_url}
+                              alt="Logo actual"
+                              width={96}
+                              height={96}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <Building2 className="w-10 h-10 text-gray-400" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Botones de acción */}
+                      <div className="flex-1 space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                          {/* Input oculto para selección de archivo */}
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                            onChange={handleLogoFileSelect}
+                            className="hidden"
+                            disabled={isUploadingLogo}
                           />
+
+                          {/* Botón para subir nuevo logo */}
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploadingLogo}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                          >
+                            <Upload className="w-4 h-4" />
+                            {gymInfo.logo_url ? 'Cambiar logo' : 'Subir logo'}
+                          </button>
+
+                          {/* Botón para eliminar logo */}
+                          {gymInfo.logo_url && (
+                            <button
+                              type="button"
+                              onClick={handleDeleteLogo}
+                              disabled={isUploadingLogo}
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Eliminar
+                            </button>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-gray-500">
+                          Formatos: JPG, PNG, WEBP. Tamaño máximo: 5MB
+                        </p>
+
+                        {gymInfo.logo_url && (
+                          <p className="text-xs text-gray-400 break-all">
+                            URL actual: {gymInfo.logo_url}
+                          </p>
                         )}
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   {/* Description */}
