@@ -26,7 +26,9 @@ export default function LogoutPage() {
         // Limpiar workspace context si existe
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('workspace_context');
-          console.log('Contexto de workspace limpiado');
+          // Limpiar cualquier otro dato de sesión
+          sessionStorage.clear();
+          console.log('Contexto de workspace y sesión limpiado');
         }
 
         console.log('Contexto limpiado exitosamente. Redirigiendo a logout...');
@@ -34,7 +36,7 @@ export default function LogoutPage() {
         // Pequeño delay para asegurar que se limpiaron los datos
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Redirigir al endpoint de Auth0 logout
+        // Redirigir al endpoint de Auth0 logout (usa el SDK para eliminar la sesión del servidor)
         window.location.href = '/auth/logout';
       } catch (error) {
         console.error('Error durante logout:', error);

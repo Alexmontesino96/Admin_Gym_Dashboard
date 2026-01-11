@@ -1,18 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { auth0 } from '@/lib/auth0'
 
 export async function GET(req: NextRequest) {
-  // Limpiar la cookie selectedGymId antes de hacer logout
-  const response = NextResponse.redirect(
-    new URL('/api/auth/logout', req.url),
-    { status: 302 }
-  );
-
-  // Eliminar la cookie selectedGymId
-  response.cookies.set('selectedGymId', '', {
-    path: '/',
-    expires: new Date(0), // Fecha en el pasado para eliminar
-    maxAge: 0,
-  });
-
-  return response;
+  // Usar el SDK de Auth0 para hacer logout correctamente
+  // Esto elimina la sesión del servidor Y redirige a Auth0 para cerrar la sesión allí también
+  return auth0.handleLogout(req, {
+    returnTo: '/login'
+  })
 } 
