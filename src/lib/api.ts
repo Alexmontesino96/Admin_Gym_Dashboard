@@ -1039,6 +1039,8 @@ export interface AIFullPlanRequest {
   cuisine_preferences?: string[];
   excluded_ingredients?: string[];
   language?: string;                 // 'es' | 'en'
+  plan_type?: 'template' | 'live';   // default: 'template'
+  live_start_date?: string;          // ISO 8601, requerido si plan_type === 'live'
 }
 
 // Respuesta del endpoint /nutrition/plans/generate

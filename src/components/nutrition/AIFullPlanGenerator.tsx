@@ -14,7 +14,9 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Apple
+  Apple,
+  Calendar,
+  Users
 } from 'lucide-react';
 import { nutritionAPI, AIFullPlanRequest, AIFullPlanResponse, GeneratedDay } from '@/lib/api';
 
@@ -88,6 +90,9 @@ interface FormData {
   meals_per_day: number;
   dietary_restrictions: string[];
   excluded_ingredients: string;
+  // Tipo de plan
+  plan_type: 'template' | 'live';
+  live_start_date: string;
   // Nuevos campos para mejorar contexto de IA
   user_profile: UserProfile;
   additional_prompt: string;
@@ -114,6 +119,8 @@ export default function AIFullPlanGenerator({
     meals_per_day: 5,
     dietary_restrictions: [],
     excluded_ingredients: '',
+    plan_type: 'template',
+    live_start_date: '',
     user_profile: {
       enabled: false,
       weight_kg: undefined,
@@ -141,6 +148,18 @@ export default function AIFullPlanGenerator({
     }
     if (formData.duration_days < 1 || formData.duration_days > 30) {
       newErrors.duration_days = 'La duración debe ser entre 1 y 30 días';
+    }
+    if (formData.plan_type === 'live') {
+      if (!formData.live_start_date) {
+        newErrors.live_start_date = 'La fecha de inicio es requerida para planes Live';
+      } else {
+        const startDate = new Date(formData.live_start_date);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        if (startDate < now) {
+          newErrors.live_start_date = 'La fecha de inicio no puede ser en el pasado';
+        }
+      }
     }
 
     setErrors(newErrors);
@@ -208,7 +227,11 @@ export default function AIFullPlanGenerator({
         excluded_ingredients: formData.excluded_ingredients.trim()
           ? formData.excluded_ingredients.split(',').map(i => i.trim())
           : undefined,
-        language: 'es'
+        language: 'es',
+        ...(formData.plan_type === 'live' && {
+          plan_type: 'live' as const,
+          live_start_date: new Date(formData.live_start_date).toISOString()
+        })
       };
 
       const response = await nutritionAPI.generateFullPlanWithAI(request);
@@ -415,6 +438,75 @@ export default function AIFullPlanGenerator({
                     />
                     {errors.duration_days && <p className="text-red-500 text-sm mt-1">{errors.duration_days}</p>}
                   </div>
+                </div>
+
+                {/* Tipo de Plan */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Tipo de Plan
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, plan_type: 'template', live_start_date: '' })}
+                      className={`p-3 border rounded-xl text-left transition-all ${
+                        formData.plan_type === 'template'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xl">📋</span>
+                        <span className="font-medium">Template</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">Individual - Cada usuario empieza cuando quiere</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, plan_type: 'live' })}
+                      className={`p-3 border rounded-xl text-left transition-all ${
+                        formData.plan_type === 'live'
+                          ? 'border-red-500 bg-red-50'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xl">🔴</span>
+                        <span className="font-medium">Live</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">Grupal - Todos empiezan en la misma fecha</p>
+                    </button>
+                  </div>
+
+                  {/* Campo de fecha para planes Live */}
+                  {formData.plan_type === 'live' && (
+                    <div className="mt-3 space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          <Calendar size={14} className="inline mr-1" />
+                          Fecha de inicio
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={formData.live_start_date}
+                          onChange={(e) => setFormData({ ...formData, live_start_date: e.target.value })}
+                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 ${
+                            errors.live_start_date ? 'border-red-300' : 'border-slate-300'
+                          }`}
+                        />
+                        {errors.live_start_date && <p className="text-red-500 text-sm mt-1">{errors.live_start_date}</p>}
+                      </div>
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                        <div className="flex items-start space-x-2">
+                          <Users size={16} className="text-blue-600 mt-0.5" />
+                          <p className="text-xs text-blue-700">
+                            Los planes <strong>Live</strong> se sincronizan con una fecha de inicio común para todos los usuarios asignados.
+                            El plan pasará automáticamente por los estados: No Iniciado → En Progreso → Finalizado.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Dificultad */}
