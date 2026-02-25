@@ -205,6 +205,7 @@ export default function NutritionPlansClient() {
       const data = await nutritionAPI.getPlans({
         page,
         per_page: pagination.per_page,
+        include_details: true,
         search_query: searchQuery.trim() || undefined,
         goal: filters.goal || undefined,
         difficulty_level: filters.difficulty_level || undefined,
@@ -240,19 +241,9 @@ export default function NutritionPlansClient() {
             console.warn(`No se pudo obtener información del creador para el plan ${plan.id} (creator_id: ${plan.creator_id})`);
           }
           
-          // Si no vienen los daily_plans en la lista, obtenerlos individualmente SOLO si es crítico
-          let planDays: DailyPlan[] = [];
-          let daysCount: number | undefined = undefined;
-          
-          if (plan.daily_plans) {
-            planDays = plan.daily_plans;
-            daysCount = plan.daily_plans.length;
-          } else {
-            // Para la carga inicial, NO asumir que todos los días están completados
-            // Usar undefined para indicar que no sabemos cuántos días realmente hay
-            daysCount = undefined; // Días realmente creados (desconocido)
-            planDays = []; // Dejar vacío para carga lazy
-          }
+          // Con include_details=true, daily_plans siempre viene poblado
+          const daysCount = plan.daily_plans?.length ?? 0;
+          const planDays = plan.daily_plans || [];
           
           console.log(`Plan ${plan.id}: ${daysCount} días de ${plan.duration_days} - Creador: ${creatorInfo ? getCreatorDisplayName(creatorInfo) : 'No disponible'}`, {
             daily_plans: planDays,
@@ -318,43 +309,6 @@ export default function NutritionPlansClient() {
 
     setFilteredPlans(result);
   }, [plans, activeTab, categorizedPlans]);
-
-  // Cargar automáticamente información de días para planes que no la tienen
-  useEffect(() => {
-    if (loading || plans.length === 0) return;
-    
-    // Encontrar planes sin información de días
-    const plansWithoutDays = plans.filter(plan => plan.daysCount === undefined);
-    
-    if (plansWithoutDays.length === 0) return;
-    
-    // Cargar información en lotes pequeños para no sobrecargar el servidor
-    const loadDaysInfo = async () => {
-      const BATCH_SIZE = 3; // Máximo 3 planes a la vez
-      
-      for (let i = 0; i < plansWithoutDays.length; i += BATCH_SIZE) {
-        const batch = plansWithoutDays.slice(i, i + BATCH_SIZE);
-        
-        // Cargar batch en paralelo
-        await Promise.all(
-          batch.map(async (plan) => {
-            try {
-              await fetchPlanDaysInfo(plan.id);
-            } catch (error) {
-              console.warn(`Error cargando días para plan ${plan.id}:`, error);
-            }
-          })
-        );
-        
-        // Pequeña pausa entre lotes para no sobrecargar
-        if (i + BATCH_SIZE < plansWithoutDays.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
-    };
-    
-    loadDaysInfo();
-  }, [plans, loading, fetchPlanDaysInfo]); // Ejecutar cuando cambien los planes
 
   // Aplicar filtros automáticamente cuando cambien los filtros o búsqueda (CORREGIDO)
   useEffect(() => {

@@ -883,6 +883,7 @@ export interface NutritionPlanFilters {
   plan_type?: PlanType;
   status?: PlanStatus;
   is_live_active?: boolean;
+  include_details?: boolean;
 }
 
 export interface TodayMealPlan {
@@ -2306,7 +2307,7 @@ export const nutritionAPI = {
   // NOTA: El backend no tiene endpoint /plans/categorized, así que categorizamos manualmente
   getCategorizedPlans: async (): Promise<CategorizedPlansResponse> => {
     // Obtener todos los planes y categorizarlos manualmente
-    const response = await nutritionAPI.getPlans({ per_page: 100 });
+    const response = await nutritionAPI.getPlans({ per_page: 100, include_details: true });
     const allPlans = response.plans || [];
 
     // Categorizar según plan_type
