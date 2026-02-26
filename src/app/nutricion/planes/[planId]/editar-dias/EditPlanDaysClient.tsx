@@ -572,11 +572,13 @@ export default function EditPlanDaysClient({ planId }: EditPlanDaysClientProps) 
                       <div>
                         <h4 className="font-medium text-slate-900">Día {day.day_number}</h4>
                         <p className="text-sm text-slate-600">
-                          {new Date(day.planned_date + (day.planned_date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString('es-ES', {
-                            weekday: 'short',
-                            day: 'numeric',
-                            month: 'short'
-                          })}
+                          {day.planned_date
+                            ? new Date(day.planned_date + (day.planned_date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString('es-ES', {
+                                weekday: 'short',
+                                day: 'numeric',
+                                month: 'short'
+                              })
+                            : `Día ${day.day_number}`}
                         </p>
                       </div>
                     </div>

@@ -638,7 +638,7 @@ export default function CreatePlanClient() {
                   <div className="flex-1">
                     <div className="flex items-center space-x-4 mb-2">
                       <span className="font-medium text-slate-900">Día {day.day_number}</span>
-                      <span className="text-slate-600">{new Date(day.planned_date + (day.planned_date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString()}</span>
+                      <span className="text-slate-600">{day.planned_date ? new Date(day.planned_date + (day.planned_date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString() : `Día ${day.day_number}`}</span>
                     </div>
                     <div className="flex items-center space-x-6 text-sm text-slate-600">
                       <span>🔥 {day.total_calories} kcal</span>

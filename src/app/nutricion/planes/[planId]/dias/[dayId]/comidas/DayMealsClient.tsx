@@ -106,12 +106,14 @@ export default function DayMealsClient({ planId, dayId }: DayMealsClientProps) {
                   {plan.title} - Día {day.day_number}
                 </h1>
                 <p className="text-slate-600">
-                  {new Date(day.planned_date + (day.planned_date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString('es-ES', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
+                  {day.planned_date
+                    ? new Date(day.planned_date + (day.planned_date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString('es-ES', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })
+                    : `Día ${day.day_number}`}
                 </p>
               </div>
             </div>
