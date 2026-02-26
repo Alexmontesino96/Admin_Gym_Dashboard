@@ -145,7 +145,7 @@ export default function EditPlanDaysClient({ planId }: EditPlanDaysClientProps) 
     try {
       const dayData = {
         ...dayForm,
-        planned_date: new Date(dayForm.planned_date).toISOString(),
+        planned_date: new Date(dayForm.planned_date + 'T12:00:00').toISOString(),
         nutrition_plan_id: planId
       };
 
@@ -154,9 +154,9 @@ export default function EditPlanDaysClient({ planId }: EditPlanDaysClientProps) 
       
       // Resetear formulario para el siguiente día
       const nextDayNumber = Math.max(...days.map(d => d.day_number), dayForm.day_number) + 1;
-      const nextDate = new Date(dayForm.planned_date);
+      const nextDate = new Date(dayForm.planned_date + 'T12:00:00');
       nextDate.setDate(nextDate.getDate() + 1);
-      
+
       setDayForm(prev => ({
         ...prev,
         day_number: nextDayNumber,
@@ -572,7 +572,7 @@ export default function EditPlanDaysClient({ planId }: EditPlanDaysClientProps) 
                       <div>
                         <h4 className="font-medium text-slate-900">Día {day.day_number}</h4>
                         <p className="text-sm text-slate-600">
-                          {new Date(day.planned_date).toLocaleDateString('es-ES', {
+                          {new Date(day.planned_date + (day.planned_date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString('es-ES', {
                             weekday: 'short',
                             day: 'numeric',
                             month: 'short'

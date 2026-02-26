@@ -318,7 +318,7 @@ export default function CreatePlanClient() {
     try {
       const dayData: DailyPlanCreateData = {
         ...dayForm,
-        planned_date: new Date(dayForm.planned_date).toISOString(),
+        planned_date: new Date(dayForm.planned_date + 'T12:00:00').toISOString(),
         nutrition_plan_id: createdPlan.id
       };
 
@@ -328,9 +328,9 @@ export default function CreatePlanClient() {
       
       // Resetear formulario para el siguiente día
       const nextDayNumber = Math.max(...dailyPlans.map(d => d.day_number), dayForm.day_number) + 1;
-      const nextDate = new Date(dayForm.planned_date);
+      const nextDate = new Date(dayForm.planned_date + 'T12:00:00');
       nextDate.setDate(nextDate.getDate() + 1);
-      
+
       setDayForm({
         day_number: nextDayNumber,
         planned_date: nextDate.toISOString().split('T')[0],
@@ -638,7 +638,7 @@ export default function CreatePlanClient() {
                   <div className="flex-1">
                     <div className="flex items-center space-x-4 mb-2">
                       <span className="font-medium text-slate-900">Día {day.day_number}</span>
-                      <span className="text-slate-600">{new Date(day.planned_date).toLocaleDateString()}</span>
+                      <span className="text-slate-600">{new Date(day.planned_date + (day.planned_date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center space-x-6 text-sm text-slate-600">
                       <span>🔥 {day.total_calories} kcal</span>
