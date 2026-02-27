@@ -121,66 +121,77 @@ export const forceTokenRefresh = async (): Promise<void> => {
   await getAccessToken();
 };
 
+// Promesa en vuelo para deduplicar refreshes concurrentes
+let _tokenRefreshPromise: Promise<string> | null = null;
+
 // Función para obtener el token de acceso
 export const getAccessToken = async (): Promise<string> => {
-  try {
-    // Primero intentamos obtener el token desde el session storage
-    const cachedToken = sessionStorage.getItem('gym_access_token');
-    const tokenExpiry = sessionStorage.getItem('gym_token_expiry');
-    
-    // Verificar si el token está vigente (con margen de 2 minutos)
-    if (cachedToken && tokenExpiry && Date.now() < (parseInt(tokenExpiry) - 120000)) {
-      return cachedToken;
-    }
+  // Primero intentamos obtener el token desde el session storage
+  const cachedToken = sessionStorage.getItem('gym_access_token');
+  const tokenExpiry = sessionStorage.getItem('gym_token_expiry');
 
-    // Si no hay token cacheado o está por expirar, obtenemos uno nuevo
-    console.log('Obteniendo nuevo token de acceso...');
-    const response = await fetch('/api/token', {
-      method: 'GET',
-      cache: 'no-cache',
-      headers: {
-        'Cache-Control': 'no-cache',
-      },
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      
-      // Si el backend indica que necesitamos reautenticar
-      if (errorText.includes('logout_required') || errorText.includes('login_required')) {
-        const to = errorText.match(/login_url="([^"]+)"/)?.[1] || `/auth/login?returnTo=${encodeURIComponent(window.location.href)}`;
-        console.warn('Token no disponible, redirigiendo a', to);
-        if (typeof window !== 'undefined') {
-          window.location.href = to;
-        }
-        throw new Error('Sesión expirada, redirigiendo...');
-      }
-      
-      throw new Error(`Error ${response.status} obteniendo token de acceso: ${errorText}`);
-    }
-    
-    const data = await response.json();
-    
-    if (!data.accessToken) {
-      throw new Error('No se recibió token de acceso válido');
-    }
-    
-    // Cachear el token con su tiempo de expiración
-    sessionStorage.setItem('gym_access_token', data.accessToken);
-    // Establecer expiración con margen de seguridad (5 minutos antes)
-    const expiryTime = Date.now() + (data.expiresIn - 300) * 1000;
-    sessionStorage.setItem('gym_token_expiry', expiryTime.toString());
-    
-    console.log('Token de acceso renovado exitosamente');
-    return data.accessToken;
-  } catch (error) {
-    console.error('Error obteniendo token:', error);
-    
-    // Si hay un error crítico, limpiar el cache
-    clearTokenCache();
-    
-    throw error;
+  // Verificar si el token está vigente (con margen de 2 minutos)
+  if (cachedToken && tokenExpiry && Date.now() < (parseInt(tokenExpiry) - 120000)) {
+    return cachedToken;
   }
+
+  // Si ya hay un refresh en curso, esperar esa misma promesa
+  if (_tokenRefreshPromise) {
+    return _tokenRefreshPromise;
+  }
+
+  // Iniciar refresh y compartir la promesa
+  _tokenRefreshPromise = (async () => {
+    try {
+      console.log('Obteniendo nuevo token de acceso...');
+      const response = await fetch('/api/token', {
+        method: 'GET',
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+
+        // Si el backend indica que necesitamos reautenticar
+        if (errorText.includes('logout_required') || errorText.includes('login_required')) {
+          const to = errorText.match(/login_url="([^"]+)"/)?.[1] || `/auth/login?returnTo=${encodeURIComponent(window.location.href)}`;
+          console.warn('Token no disponible, redirigiendo a', to);
+          if (typeof window !== 'undefined') {
+            window.location.href = to;
+          }
+          throw new Error('Sesión expirada, redirigiendo...');
+        }
+
+        throw new Error(`Error ${response.status} obteniendo token de acceso: ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.accessToken) {
+        throw new Error('No se recibió token de acceso válido');
+      }
+
+      // Cachear el token con su tiempo de expiración
+      sessionStorage.setItem('gym_access_token', data.accessToken);
+      // Establecer expiración con margen de seguridad (5 minutos antes)
+      const expiryTime = Date.now() + (data.expiresIn - 300) * 1000;
+      sessionStorage.setItem('gym_token_expiry', expiryTime.toString());
+
+      console.log('Token de acceso renovado exitosamente');
+      return data.accessToken;
+    } catch (error) {
+      console.error('Error obteniendo token:', error);
+      clearTokenCache();
+      throw error;
+    } finally {
+      _tokenRefreshPromise = null;
+    }
+  })();
+
+  return _tokenRefreshPromise;
 };
 
 // Función para hacer llamadas a la API con autenticación
