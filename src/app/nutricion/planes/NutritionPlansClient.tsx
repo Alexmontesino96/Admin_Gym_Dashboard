@@ -9,16 +9,16 @@ import PlanCategoryTabs, { TabType } from '@/components/nutrition/PlanCategoryTa
 import PlanCard from '@/components/nutrition/PlanCard';
 
 // Importaciones optimizadas de iconos - solo los que necesitamos
-import { 
-  FileText, 
-  Search, 
-  Filter, 
-  Eye, 
-  Edit, 
-  Trash2, 
-  Users, 
-  Target, 
-  Clock, 
+import {
+  FileText,
+  Search,
+  Filter,
+  Eye,
+  Edit,
+  Trash2,
+  Users,
+  Target,
+  Clock,
   DollarSign,
   ChevronLeft,
   ChevronRight,
@@ -32,7 +32,8 @@ import {
   Check,
   X,
   Archive,
-  AlertCircle
+  AlertCircle,
+  ArrowUpDown
 } from 'lucide-react';
 
 interface EnrichedNutritionPlan extends NutritionPlan {
@@ -83,6 +84,7 @@ export default function NutritionPlansClient() {
   const [createTemplate, setCreateTemplate] = useState(false);
   const [templateTitle, setTemplateTitle] = useState('');
   const [archiving, setArchiving] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   // Memoizar los valores de filtros para evitar re-renders innecesarios
   const filterValues = useMemo(() => [
     filters.goal,
@@ -202,31 +204,37 @@ export default function NutritionPlansClient() {
     fetchPlans();
   }, []); // Solo ejecutar una vez al montar
 
-  // Filtrar planes según el tab activo
+  // Filtrar y ordenar planes según el tab activo y el orden seleccionado
   useEffect(() => {
-    if (!categorizedPlans) {
-      setFilteredPlans(plans);
-      return;
-    }
-
     let result: EnrichedNutritionPlan[] = [];
 
-    switch (activeTab) {
-      case 'live':
-        result = plans.filter(p => p.plan_type === 'live');
-        break;
-      case 'template':
-        result = plans.filter(p => p.plan_type === 'template');
-        break;
-      case 'archived':
-        result = plans.filter(p => p.plan_type === 'archived' || p.status === 'archived');
-        break;
-      default:
-        result = plans;
+    if (!categorizedPlans) {
+      result = [...plans];
+    } else {
+      switch (activeTab) {
+        case 'live':
+          result = plans.filter(p => p.plan_type === 'live');
+          break;
+        case 'template':
+          result = plans.filter(p => p.plan_type === 'template');
+          break;
+        case 'archived':
+          result = plans.filter(p => p.plan_type === 'archived' || p.status === 'archived');
+          break;
+        default:
+          result = [...plans];
+      }
     }
 
+    // Ordenar por fecha de creación
+    result.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+    });
+
     setFilteredPlans(result);
-  }, [plans, activeTab, categorizedPlans]);
+  }, [plans, activeTab, categorizedPlans, sortOrder]);
 
   // Aplicar filtros automáticamente cuando cambien los filtros o búsqueda (CORREGIDO)
   useEffect(() => {
@@ -814,7 +822,14 @@ export default function NutritionPlansClient() {
                   </span>
                 )}
               </h2>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+                  className="flex items-center space-x-2 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  <ArrowUpDown size={14} />
+                  <span>{sortOrder === 'newest' ? 'Más recientes' : 'Más antiguos'}</span>
+                </button>
                 <span className="text-sm text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
                   Página {pagination.page} de {Math.ceil(pagination.total / pagination.per_page)}
                 </span>
@@ -871,14 +886,43 @@ export default function NutritionPlansClient() {
                     </div>
 
                     {/* Creador */}
-                    <div className="flex items-center space-x-2 mb-6">
+                    <div className="flex items-center space-x-2 mb-3">
                       <User size={16} className="text-slate-400" />
-                      <span 
+                      <span
                         className="text-slate-600 text-sm"
                         title={plan.creator ? `Creado por ${getCreatorDisplayName(plan.creator)}` : 'Información del creador no disponible'}
                       >
                         {getCreatorDisplayName(plan.creator)}
                       </span>
+                    </div>
+
+                    {/* Fechas */}
+                    <div className="flex items-center space-x-2 mb-6 text-sm text-slate-500">
+                      <Calendar size={14} className="text-slate-400" />
+                      {plan.plan_type === 'live' && plan.live_start_date ? (
+                        <span>
+                          {new Date(plan.live_start_date).toLocaleDateString('es-ES', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                          {plan.live_end_date && (
+                            <> - {new Date(plan.live_end_date).toLocaleDateString('es-ES', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}</>
+                          )}
+                        </span>
+                      ) : plan.created_at ? (
+                        <span>
+                          Creado el {new Date(plan.created_at).toLocaleDateString('es-ES', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      ) : null}
                     </div>
 
                     {/* Estado de plan live */}

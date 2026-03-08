@@ -282,10 +282,10 @@ export default function PlanCard({
           </div>
         </div>
 
-        {/* Fecha de creación si es live */}
-        {plan.plan_type === 'live' && plan.live_start_date && (
-          <div className="flex items-center space-x-2 mb-4 text-sm text-slate-500">
-            <Calendar size={14} />
+        {/* Fechas */}
+        <div className="flex items-center space-x-2 mb-4 text-sm text-slate-500">
+          <Calendar size={14} />
+          {plan.plan_type === 'live' && plan.live_start_date ? (
             <span>
               {new Date(plan.live_start_date).toLocaleDateString('es-ES', {
                 day: 'numeric',
@@ -295,12 +295,21 @@ export default function PlanCard({
               {plan.live_end_date && (
                 <> - {new Date(plan.live_end_date).toLocaleDateString('es-ES', {
                   day: 'numeric',
-                  month: 'short'
+                  month: 'short',
+                  year: 'numeric'
                 })}</>
               )}
             </span>
-          </div>
-        )}
+          ) : plan.created_at ? (
+            <span>
+              Creado el {new Date(plan.created_at).toLocaleDateString('es-ES', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+              })}
+            </span>
+          ) : null}
+        </div>
 
         {/* Botones de acción */}
         <div className="flex gap-2">
