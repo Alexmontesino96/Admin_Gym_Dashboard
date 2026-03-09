@@ -14,15 +14,13 @@ import {
   Calendar,
   Loader2
 } from 'lucide-react';
-import { NutritionPlan, DailyPlan, GymParticipant, nutritionAPI } from '@/lib/api';
+import { NutritionPlan, GymParticipant, nutritionAPI } from '@/lib/api';
 import PlanTypeIndicator from '@/components/ui/plan-type-indicator';
 import LivePlanStatus from '@/components/ui/live-plan-status';
 
 interface PlanCardProps {
   plan: NutritionPlan & {
     creator?: GymParticipant;
-    days?: DailyPlan[];
-    daysCount?: number;
   };
   onArchive?: (planId: number) => void;
   onDuplicate?: (planId: number) => void;
@@ -117,10 +115,6 @@ export default function PlanCard({
     setShowMenu(false);
   };
 
-  // Calcular progreso
-  const progress = plan.daysCount !== undefined && plan.duration_days > 0
-    ? Math.round((plan.daysCount / plan.duration_days) * 100)
-    : 0;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
@@ -263,22 +257,6 @@ export default function PlanCard({
           <div className="text-center">
             <p className="text-lg font-semibold text-slate-900">{plan.target_fat_g}g</p>
             <p className="text-xs text-slate-500">Grasas</p>
-          </div>
-        </div>
-
-        {/* Barra de progreso */}
-        <div className="mb-4">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-xs text-slate-500">Progreso</span>
-            <span className="text-xs font-medium text-slate-700">
-              {plan.daysCount !== undefined ? `${plan.daysCount}/${plan.duration_days}` : '?/?'} días
-            </span>
-          </div>
-          <div className="w-full bg-slate-200 rounded-full h-2">
-            <div
-              className="bg-green-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
           </div>
         </div>
 

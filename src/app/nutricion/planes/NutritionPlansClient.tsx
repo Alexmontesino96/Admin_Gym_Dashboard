@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { getUsersAPI, nutritionAPI, NutritionPlan, DailyPlan, GymParticipant, PlanType, ArchivePlanRequest, PlanStatus, CategorizedPlansResponse } from '@/lib/api';
+import { getUsersAPI, nutritionAPI, NutritionPlan, GymParticipant, PlanType, ArchivePlanRequest, PlanStatus, CategorizedPlansResponse } from '@/lib/api';
 import PlanTypeIndicator from '@/components/ui/plan-type-indicator';
 import LivePlanStatus from '@/components/ui/live-plan-status';
 import PlanCategoryTabs, { TabType } from '@/components/nutrition/PlanCategoryTabs';
@@ -38,8 +38,6 @@ import {
 
 interface EnrichedNutritionPlan extends NutritionPlan {
   creator?: GymParticipant;
-  days?: DailyPlan[];
-  daysCount?: number | undefined;
 }
 
 interface PlansResponse {
@@ -127,7 +125,6 @@ export default function NutritionPlansClient() {
       const data = await nutritionAPI.getPlans({
         page,
         per_page: pagination.per_page,
-        include_details: true,
         search_query: searchQuery.trim() || undefined,
         goal: filters.goal || undefined,
         difficulty_level: filters.difficulty_level || undefined,
@@ -166,8 +163,6 @@ export default function NutritionPlansClient() {
       const enrichedPlans: EnrichedNutritionPlan[] = data.plans.map((plan) => ({
         ...plan,
         creator: creatorMap[plan.creator_id],
-        days: plan.daily_plans || [],
-        daysCount: plan.daily_plans?.length ?? 0
       }));
 
       setPlans(enrichedPlans);
@@ -968,38 +963,6 @@ export default function NutritionPlansClient() {
                       <div className="text-center">
                         <p className="text-2xl font-bold text-slate-900">{plan.target_fat_g}g</p>
                         <p className="text-sm text-slate-500">Grasas</p>
-                      </div>
-                    </div>
-
-                    {/* Progreso de días */}
-                    <div className="mb-6">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">PROGRESO</span>
-                        <span className="text-sm font-semibold text-slate-700">
-                          {plan.daysCount}/{plan.duration_days} días
-                        </span>
-                      </div>
-                      <div
-                        className="w-full bg-slate-200 rounded-full h-2.5 cursor-pointer hover:bg-slate-300 transition-colors"
-                        onClick={() => handleEditDays(plan.id)}
-                      >
-                        <div
-                          className="h-2.5 rounded-full transition-all duration-500 bg-blue-500 hover:bg-blue-600"
-                          style={{
-                            width: `${plan.duration_days > 0
-                              ? Math.min(((plan.daysCount || 0) / plan.duration_days) * 100, 100)
-                              : 0}%`
-                          }}
-                          title={`${plan.daysCount || 0} de ${plan.duration_days} días completados (${plan.duration_days > 0 ? Math.round(((plan.daysCount || 0) / plan.duration_days) * 100) : 0}%)`}
-                        />
-                      </div>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-xs text-slate-400">
-                          {plan.duration_days > 0 ? Math.round(((plan.daysCount || 0) / plan.duration_days) * 100) : 0}% completado
-                        </span>
-                        <span className="text-xs text-slate-400">
-                          {Math.max(0, plan.duration_days - (plan.daysCount || 0))} restantes
-                        </span>
                       </div>
                     </div>
 
