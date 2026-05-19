@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { eventsAPI, getUsersAPI, gymsAPI } from '@/lib/api'
+import { eventsAPI, getUsersAPI, gymsAPI, reviewsAPI } from '@/lib/api'
+import type { ClassReviewResponse, ReviewStats } from '@/lib/api'
 import { toGymZonedISO, ensureEndAfterStart } from '@/lib/time'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { 
@@ -16,8 +17,10 @@ import {
   PencilIcon, 
   TrashIcon, 
   ExclamationTriangleIcon,
-  PlusIcon
+  PlusIcon,
+  StarIcon
 } from '@heroicons/react/24/outline'
+import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 
 export default function SessionsClient() {
@@ -58,6 +61,28 @@ export default function SessionsClient() {
 
   const [trainers, setTrainers] = useState<any[]>([])
   const [loadingTrainers, setLoadingTrainers] = useState(false)
+
+  // Reviews state
+  const [showReviewModal, setShowReviewModal] = useState(false)
+  const [reviewSessionId, setReviewSessionId] = useState<number | null>(null)
+  const [reviewSessionName, setReviewSessionName] = useState('')
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewHover, setReviewHover] = useState(0)
+  const [savingReview, setSavingReview] = useState(false)
+  const [reviewError, setReviewError] = useState<string | null>(null)
+  const [editingReview, setEditingReview] = useState<ClassReviewResponse | null>(null)
+
+  // Session detail modal with reviews
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [detailSession, setDetailSession] = useState<any>(null)
+  const [sessionReviews, setSessionReviews] = useState<ClassReviewResponse[]>([])
+  const [sessionReviewStats, setSessionReviewStats] = useState<ReviewStats | null>(null)
+  const [loadingReviews, setLoadingReviews] = useState(false)
+
+  // Cache de stats por sesión para mostrar en tarjetas
+  const [sessionStatsCache, setSessionStatsCache] = useState<Record<number, { average_rating: number; total_reviews: number }>>({})
+  const [reviewSuccessMessage, setReviewSuccessMessage] = useState<string | null>(null)
 
   const daysShort = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
@@ -103,6 +128,8 @@ export default function SessionsClient() {
         setSelectedWeekIdx(0); setSelectedDayIdx(-1)
       }
       if (trainers.length === 0) loadTrainers()
+      // Cargar stats de reviews en background
+      loadReviewStatsForSessions(data)
     } catch (err) { 
       console.error('Error cargando sesiones:', err) 
     } finally { 
@@ -343,6 +370,167 @@ export default function SessionsClient() {
     }
   }
 
+  // Cargar stats de reviews para sesiones completadas
+  const loadReviewStatsForSessions = async (sessions: any[]) => {
+    const completed = sessions.filter((it: any) => (it.session ?? it).status === 'completed')
+    for (const it of completed) {
+      const ses = it.session ?? it
+      try {
+        const stats = await reviewsAPI.getSessionStats(ses.id)
+        setSessionStatsCache(prev => ({ ...prev, [ses.id]: stats }))
+      } catch {
+        // No stats yet - ignore
+      }
+    }
+  }
+
+  // Abrir modal de review (crear o editar)
+  const openReviewModal = async (sessionId: number, className: string) => {
+    setReviewSessionId(sessionId)
+    setReviewSessionName(className)
+    setReviewRating(0)
+    setReviewComment('')
+    setReviewError(null)
+    setEditingReview(null)
+
+    try {
+      const check = await reviewsAPI.canReview(sessionId)
+      if (!check.can_review) {
+        if (check.reason?.includes('Ya existe')) {
+          // Ya tiene review - cargar para editar
+          try {
+            const myReview = await reviewsAPI.getMyReviewForSession(sessionId)
+            setEditingReview(myReview)
+            setReviewRating(myReview.rating)
+            setReviewComment(myReview.comment || '')
+          } catch {
+            setReviewError(check.reason || 'No puedes dejar un review para esta sesión')
+          }
+        } else {
+          setReviewError(check.reason || 'No puedes dejar un review para esta sesión')
+        }
+      }
+    } catch {
+      // Allow opening - server will reject if invalid
+    }
+    setShowReviewModal(true)
+  }
+
+  // Guardar review (crear o editar)
+  const handleSaveReview = async () => {
+    if (!reviewSessionId || reviewRating === 0) {
+      setReviewError('Selecciona una valoración de 1 a 5 estrellas')
+      return
+    }
+
+    try {
+      setSavingReview(true)
+      setReviewError(null)
+
+      if (editingReview) {
+        await reviewsAPI.update(editingReview.id, {
+          rating: reviewRating,
+          comment: reviewComment || undefined,
+        })
+        setReviewSuccessMessage('Review actualizado exitosamente')
+      } else {
+        await reviewsAPI.create({
+          session_id: reviewSessionId,
+          rating: reviewRating,
+          comment: reviewComment || undefined,
+        })
+        setReviewSuccessMessage('Review creado exitosamente')
+      }
+
+      // Actualizar stats en cache
+      try {
+        const stats = await reviewsAPI.getSessionStats(reviewSessionId)
+        setSessionStatsCache(prev => ({ ...prev, [reviewSessionId]: stats }))
+      } catch { /* ignore */ }
+
+      setShowReviewModal(false)
+      setTimeout(() => setReviewSuccessMessage(null), 4000)
+    } catch (err: any) {
+      const msg = err?.data?.detail || err?.message || 'Error al guardar el review'
+      setReviewError(typeof msg === 'string' ? msg : 'Error al guardar el review')
+    } finally {
+      setSavingReview(false)
+    }
+  }
+
+  // Eliminar review
+  const handleDeleteReview = async () => {
+    if (!editingReview || !reviewSessionId) return
+    try {
+      setSavingReview(true)
+      await reviewsAPI.delete(editingReview.id)
+      // Actualizar stats
+      try {
+        const stats = await reviewsAPI.getSessionStats(reviewSessionId)
+        setSessionStatsCache(prev => ({ ...prev, [reviewSessionId]: stats }))
+      } catch {
+        setSessionStatsCache(prev => {
+          const next = { ...prev }
+          delete next[reviewSessionId]
+          return next
+        })
+      }
+      setShowReviewModal(false)
+      setReviewSuccessMessage('Review eliminado')
+      setTimeout(() => setReviewSuccessMessage(null), 4000)
+    } catch (err: any) {
+      setReviewError(err?.data?.detail || 'Error al eliminar el review')
+    } finally {
+      setSavingReview(false)
+    }
+  }
+
+  // Abrir modal de detalle de sesión
+  const openSessionDetail = async (item: any) => {
+    const ses = item.session ?? item
+    setDetailSession(item)
+    setShowDetailModal(true)
+    setSessionReviews([])
+    setSessionReviewStats(null)
+
+    if (ses.status === 'completed') {
+      setLoadingReviews(true)
+      try {
+        const data = await reviewsAPI.getSessionReviews(ses.id)
+        setSessionReviews(data.reviews)
+        setSessionReviewStats(data.stats)
+      } catch {
+        setSessionReviews([])
+        setSessionReviewStats(null)
+      } finally {
+        setLoadingReviews(false)
+      }
+    }
+  }
+
+  // Star Rating helper
+  const renderStars = (value: number, onChange?: (v: number) => void, hover?: number, onHover?: (v: number) => void, size: string = 'w-6 h-6') => (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map(star => {
+        const filled = star <= ((hover && hover > 0 ? hover : value) || 0)
+        return (
+          <button
+            key={star}
+            type="button"
+            onClick={() => onChange?.(star)}
+            onMouseEnter={() => onHover?.(star)}
+            onMouseLeave={() => onHover?.(0)}
+            className={`transition-colors ${onChange ? 'cursor-pointer hover:scale-110' : 'cursor-default'} ${
+              filled ? 'text-yellow-400' : 'text-gray-300'
+            }`}
+          >
+            {filled ? <StarIconSolid className={size} /> : <StarIcon className={size} />}
+          </button>
+        )
+      })}
+    </div>
+  )
+
   useEffect(() => {
     // Inicializar con la semana actual
     const today = new Date()
@@ -390,6 +578,15 @@ export default function SessionsClient() {
             <p className="text-sm text-green-800 font-medium">
               ¡Sesión creada exitosamente! 🎉
             </p>
+          </div>
+        </div>
+      )}
+
+      {reviewSuccessMessage && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <div className="flex items-center">
+            <StarIconSolid className="w-5 h-5 text-yellow-500 mr-3" />
+            <p className="text-sm text-yellow-800 font-medium">{reviewSuccessMessage}</p>
           </div>
         </div>
       )}
@@ -576,9 +773,19 @@ export default function SessionsClient() {
                   )
                 })()}
 
+                {/* Rating de reviews (solo sesiones completadas) */}
+                {s.status === 'completed' && sessionStatsCache[s.id] && sessionStatsCache[s.id].total_reviews > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <StarIconSolid className="w-4 h-4 text-yellow-400" />
+                    <span className="font-medium text-gray-900">{sessionStatsCache[s.id].average_rating.toFixed(1)}</span>
+                    <span className="text-gray-400">({sessionStatsCache[s.id].total_reviews} {sessionStatsCache[s.id].total_reviews === 1 ? 'review' : 'reviews'})</span>
+                  </div>
+                )}
+
                 {/* Botones de acción */}
                 <div className="flex justify-end gap-2 pt-2 border-t">
-                  <button 
+                  <button
+                    onClick={() => openSessionDetail(item)}
                     className="text-gray-400 hover:text-gray-600 transition-colors"
                     title="Ver detalle"
                   >
@@ -587,19 +794,28 @@ export default function SessionsClient() {
                       <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
                   </button>
-                  <button 
+                  {s.status === 'completed' && (
+                    <button
+                      onClick={() => openReviewModal(s.id, c?.name || item.class_name || 'Clase')}
+                      className="text-yellow-400 hover:text-yellow-600 transition-colors"
+                      title="Dejar review"
+                    >
+                      <StarIcon className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
                     className="text-blue-400 hover:text-blue-600 transition-colors"
                     title="Editar sesión"
                   >
                     <PencilIcon className="w-4 h-4" />
                   </button>
-                  <button 
-                    className="text-yellow-400 hover:text-yellow-600 transition-colors"
+                  <button
+                    className="text-yellow-500 hover:text-yellow-700 transition-colors"
                     title="Cancelar sesión"
                   >
                     <ExclamationTriangleIcon className="w-4 h-4" />
                   </button>
-                  <button 
+                  <button
                     className="text-red-400 hover:text-red-600 transition-colors"
                     title="Eliminar sesión"
                   >
@@ -830,6 +1046,245 @@ export default function SessionsClient() {
           </div>
         </div>
       )}
+
+      {/* Modal de crear/editar review */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 mx-4">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-semibold text-gray-900">
+                {editingReview ? 'Editar review' : 'Dejar review'}
+              </h3>
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-500 mb-4">{reviewSessionName}</p>
+
+            {reviewError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                <p className="text-sm text-red-600">{reviewError}</p>
+              </div>
+            )}
+
+            {/* Estrellas */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Valoración *</label>
+              <div className="flex justify-center">
+                {renderStars(reviewRating, (v) => setReviewRating(v), reviewHover, (v) => setReviewHover(v), 'w-10 h-10')}
+              </div>
+              {reviewRating > 0 && (
+                <p className="text-center text-sm text-gray-500 mt-2">
+                  {reviewRating === 1 && 'Muy malo'}
+                  {reviewRating === 2 && 'Malo'}
+                  {reviewRating === 3 && 'Regular'}
+                  {reviewRating === 4 && 'Bueno'}
+                  {reviewRating === 5 && 'Excelente'}
+                </p>
+              )}
+            </div>
+
+            {/* Comentario */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Comentario (opcional)</label>
+              <textarea
+                value={reviewComment}
+                onChange={e => setReviewComment(e.target.value)}
+                placeholder="Comparte tu experiencia en esta clase..."
+                maxLength={1000}
+                rows={4}
+                className="w-full border border-gray-300 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"
+              />
+              <p className="text-xs text-gray-400 text-right mt-1">{reviewComment.length}/1000</p>
+            </div>
+
+            {/* Botones */}
+            <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+              <div>
+                {editingReview && (
+                  <button
+                    onClick={handleDeleteReview}
+                    disabled={savingReview}
+                    className="px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 font-medium rounded-xl transition-colors text-sm"
+                  >
+                    Eliminar review
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowReviewModal(false)}
+                  className="px-5 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium rounded-xl transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveReview}
+                  disabled={savingReview || reviewRating === 0 || !!reviewError}
+                  className="px-5 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingReview ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Guardando...
+                    </div>
+                  ) : editingReview ? 'Actualizar' : 'Enviar review'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de detalle de sesión */}
+      {showDetailModal && detailSession && (() => {
+        const s = detailSession.session ?? detailSession
+        const c = detailSession.class_info ?? undefined
+        const start = new Date(s.start_time_local || s.start_time)
+        const end = (s.end_time_local || s.end_time) ? new Date(s.end_time_local || s.end_time) : null
+        const statusCls = s.status === 'scheduled' ? 'bg-blue-100 text-blue-800' : s.status === 'completed' ? 'bg-green-100 text-green-800' : s.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto mx-4">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">{c?.name || detailSession.class_name || 'Clase'}</h3>
+                  <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${statusCls}`}>{s.status}</span>
+                </div>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Info de la sesión */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <CalendarIcon className="w-4 h-4" />
+                  <span>{start.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <ClockIcon className="w-4 h-4" />
+                  <span>{start.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}{end ? ` - ${end.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <UserIcon className="w-4 h-4" />
+                  <span>{getTrainerName(s.trainer_id)}</span>
+                </div>
+                {s.room && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="text-gray-400">Sala:</span>
+                    <span>{s.room}</span>
+                  </div>
+                )}
+              </div>
+
+              {s.notes && (
+                <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                  <p className="text-sm text-gray-600">{s.notes}</p>
+                </div>
+              )}
+
+              {/* Sección de Reviews (solo completadas) */}
+              {s.status === 'completed' && (
+                <div className="border-t pt-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <StarIconSolid className="w-5 h-5 text-yellow-400" />
+                    Reviews
+                  </h4>
+
+                  {loadingReviews ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Stats resumen */}
+                      {sessionReviewStats && sessionReviewStats.total_reviews > 0 && (
+                        <div className="bg-yellow-50 rounded-xl p-4 mb-4">
+                          <div className="flex items-center gap-4">
+                            <div className="text-center">
+                              <div className="text-3xl font-bold text-gray-900">{sessionReviewStats.average_rating.toFixed(1)}</div>
+                              <div className="flex justify-center mt-1">
+                                {renderStars(Math.round(sessionReviewStats.average_rating), undefined, undefined, undefined, 'w-4 h-4')}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">{sessionReviewStats.total_reviews} {sessionReviewStats.total_reviews === 1 ? 'review' : 'reviews'}</div>
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              {[5, 4, 3, 2, 1].map(star => {
+                                const count = sessionReviewStats.rating_distribution?.[String(star)] || 0
+                                const pct = sessionReviewStats.total_reviews > 0 ? (count / sessionReviewStats.total_reviews) * 100 : 0
+                                return (
+                                  <div key={star} className="flex items-center gap-2 text-xs">
+                                    <span className="w-3 text-gray-500">{star}</span>
+                                    <StarIconSolid className="w-3 h-3 text-yellow-400" />
+                                    <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                                      <div className="bg-yellow-400 h-1.5 rounded-full" style={{ width: `${pct}%` }}></div>
+                                    </div>
+                                    <span className="w-6 text-gray-400 text-right">{count}</span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Lista de reviews */}
+                      {sessionReviews.length > 0 ? (
+                        <div className="space-y-3 max-h-64 overflow-y-auto">
+                          {sessionReviews.map(review => (
+                            <div key={review.id} className="bg-gray-50 rounded-xl p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-900">{review.member_name}</span>
+                                <span className="text-xs text-gray-400">
+                                  {new Date(review.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span>
+                              </div>
+                              <div className="mb-2">
+                                {renderStars(review.rating, undefined, undefined, undefined, 'w-4 h-4')}
+                              </div>
+                              {review.comment && (
+                                <p className="text-sm text-gray-600">{review.comment}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6">
+                          <StarIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500">Aún no hay reviews para esta sesión</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Botón cerrar */}
+              <div className="flex justify-end pt-6 border-t border-gray-100 mt-6">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium rounded-xl transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
-} 
+}

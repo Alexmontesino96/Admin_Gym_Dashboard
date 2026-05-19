@@ -1,15 +1,17 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { eventsAPI } from '@/lib/api'
+import { eventsAPI, reviewsAPI } from '@/lib/api'
 import { getUsersAPI } from '@/lib/api'
 import { gymsAPI } from '@/lib/api'
+import type { ClassReviewStats, TrainerReviewStats } from '@/lib/api'
 import { toGymZonedISO, ensureEndAfterStart } from '@/lib/time'
-import { CalendarIcon, ClockIcon, MapPinIcon, UserGroupIcon, CheckCircleIcon, XCircleIcon, UserIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, TrashIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { CalendarIcon, ClockIcon, MapPinIcon, UserGroupIcon, CheckCircleIcon, XCircleIcon, UserIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, TrashIcon, ExclamationTriangleIcon, StarIcon } from '@heroicons/react/24/outline'
+import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 
 export default function ScheduleClient() {
-  const [activeTab, setActiveTab] = useState<'blank' | 'categories' | 'classes' | 'sessions' | 'gymhours'>('blank')
+  const [activeTab, setActiveTab] = useState<'blank' | 'categories' | 'classes' | 'sessions' | 'gymhours' | 'reviews'>('blank')
   const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -122,6 +124,11 @@ export default function ScheduleClient() {
       setGymHours(data ? [data] : [])
     }catch(e){console.error(e)}finally{setLoadingHours(false)}
   }
+
+  // Reviews tab state
+  const [classReviewStats, setClassReviewStats] = useState<ClassReviewStats[]>([])
+  const [trainerReviewStats, setTrainerReviewStats] = useState<TrainerReviewStats[]>([])
+  const [loadingReviewStats, setLoadingReviewStats] = useState(false)
 
   // Información del gimnasio (timezone)
   const loadGymInfo = async () => {
@@ -579,6 +586,57 @@ export default function ScheduleClient() {
     } finally { setSavingSession(false); }
   }
 
+  // Cargar stats de reviews por clase y entrenador
+  const loadReviewStats = async () => {
+    setLoadingReviewStats(true)
+    try {
+      // Cargar clases si no están cargadas
+      let classes = classesList
+      if (classes.length === 0) {
+        classes = await eventsAPI.getClasses(true, { limit: 100 })
+        setClassesList(classes)
+      }
+
+      // Cargar trainers
+      const trainersData = await getUsersAPI.getGymPublicParticipants({ role: 'TRAINER' })
+
+      // Cargar stats por clase
+      const classStats: ClassReviewStats[] = []
+      for (const cls of classes) {
+        try {
+          const stats = await reviewsAPI.getClassStats(cls.id)
+          if (stats.total_reviews > 0) classStats.push(stats)
+        } catch { /* no stats */ }
+      }
+      setClassReviewStats(classStats)
+
+      // Cargar stats por trainer
+      const trainerStats: TrainerReviewStats[] = []
+      for (const t of trainersData) {
+        try {
+          const stats = await reviewsAPI.getTrainerStats(t.id)
+          if (stats.total_reviews > 0) trainerStats.push(stats)
+        } catch { /* no stats */ }
+      }
+      setTrainerReviewStats(trainerStats)
+    } catch (err) {
+      console.error('Error cargando stats de reviews:', err)
+    } finally {
+      setLoadingReviewStats(false)
+    }
+  }
+
+  // Star rating render helper
+  const renderStars = (value: number, size: string = 'w-4 h-4') => (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map(star => (
+        <span key={star} className={star <= Math.round(value) ? 'text-yellow-400' : 'text-gray-300'}>
+          {star <= Math.round(value) ? <StarIconSolid className={size} /> : <StarIcon className={size} />}
+        </span>
+      ))}
+    </div>
+  )
+
   useEffect(() => {
     if (activeTab === 'categories' && categories.length === 0) {
       loadCategories()
@@ -594,6 +652,7 @@ export default function ScheduleClient() {
       fetchSessionsInRange(start,end)
     }
     if(activeTab==='gymhours') { setSelectedHoursDayIdx(-1); loadGymHours() }
+    if (activeTab === 'reviews') { loadReviewStats() }
   }, [activeTab])
 
   // Seleccionar semana/día actuales cuando se cargan las semanas
@@ -898,6 +957,14 @@ export default function ScheduleClient() {
           >
             Horarios
           </Link>
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className={`py-4 text-sm font-medium border-b-2 ${
+              activeTab === 'reviews' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Reviews
+          </button>
         </nav>
       </div>
 
@@ -1728,6 +1795,96 @@ export default function ScheduleClient() {
           </div>
         </div>
       )}
+
+      {/* Tab de Reviews */}
+      {activeTab === 'reviews' && (
+        <div className="space-y-6">
+          {loadingReviewStats ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-500"></div>
+            </div>
+          ) : (
+            <>
+              {/* Resumen general */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <StarIconSolid className="w-6 h-6 text-yellow-400" />
+                    <h4 className="text-sm font-medium text-gray-500">Clases valoradas</h4>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{classReviewStats.length}</p>
+                </div>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <UserIcon className="w-6 h-6 text-blue-500" />
+                    <h4 className="text-sm font-medium text-gray-500">Entrenadores valorados</h4>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{trainerReviewStats.length}</p>
+                </div>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <CheckCircleIcon className="w-6 h-6 text-green-500" />
+                    <h4 className="text-sm font-medium text-gray-500">Total reviews</h4>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {classReviewStats.reduce((sum, s) => sum + s.total_reviews, 0)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Stats por clase */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Valoraciones por clase</h3>
+                {classReviewStats.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-6">Aún no hay reviews de clases</p>
+                ) : (
+                  <div className="space-y-3">
+                    {classReviewStats
+                      .sort((a, b) => b.average_rating - a.average_rating)
+                      .map(stat => (
+                        <div key={stat.class_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-900">{stat.class_name}</h4>
+                            <p className="text-xs text-gray-500">{stat.total_reviews} {stat.total_reviews === 1 ? 'review' : 'reviews'}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {renderStars(stat.average_rating)}
+                            <span className="text-sm font-semibold text-gray-900">{stat.average_rating.toFixed(1)}</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Stats por entrenador */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Valoraciones por entrenador</h3>
+                {trainerReviewStats.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-6">Aún no hay reviews de entrenadores</p>
+                ) : (
+                  <div className="space-y-3">
+                    {trainerReviewStats
+                      .sort((a, b) => b.average_rating - a.average_rating)
+                      .map(stat => (
+                        <div key={stat.trainer_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-900">{stat.trainer_name}</h4>
+                            <p className="text-xs text-gray-500">{stat.total_reviews} {stat.total_reviews === 1 ? 'review' : 'reviews'}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {renderStars(stat.average_rating)}
+                            <span className="text-sm font-semibold text-gray-900">{stat.average_rating.toFixed(1)}</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
-} 
+}

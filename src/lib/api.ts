@@ -4479,6 +4479,59 @@ export interface StripeAccountCreateResponse {
   message: string;
 }
 
+// ===== CLASS REVIEWS =====
+export interface ClassReviewResponse {
+  id: number;
+  session_id: number;
+  member_id: number;
+  gym_id: number;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  updated_at: string | null;
+  member_name: string;
+  class_name: string;
+  session_date: string;
+}
+
+export interface ClassReviewCreate {
+  session_id: number;
+  rating: number;
+  comment?: string;
+}
+
+export interface ClassReviewUpdate {
+  rating?: number;
+  comment?: string;
+}
+
+export interface CanReviewResponse {
+  can_review: boolean;
+  reason: string | null;
+}
+
+export interface ReviewStats {
+  average_rating: number;
+  total_reviews: number;
+  rating_distribution: Record<string, number>;
+}
+
+export interface SessionReviewsResponse {
+  reviews: ClassReviewResponse[];
+  total: number;
+  stats: ReviewStats;
+}
+
+export interface ClassReviewStats extends ReviewStats {
+  class_id: number;
+  class_name: string;
+}
+
+export interface TrainerReviewStats extends ReviewStats {
+  trainer_id: number;
+  trainer_name: string;
+}
+
 // ===== API CLIENT =====
 export const stripeConnectAPI = {
   /**
@@ -4540,6 +4593,63 @@ export const stripeConnectAPI = {
       method: 'POST'
     });
   }
+};
+
+// ===== CLASS REVIEWS API =====
+export const reviewsAPI = {
+  canReview: async (sessionId: number): Promise<CanReviewResponse> => {
+    return apiCall(`/reviews/session/${sessionId}/can-review`);
+  },
+
+  create: async (data: ClassReviewCreate): Promise<ClassReviewResponse> => {
+    return apiCall('/reviews/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  getMyReviewForSession: async (sessionId: number): Promise<ClassReviewResponse> => {
+    return apiCall(`/reviews/session/${sessionId}/my`);
+  },
+
+  update: async (reviewId: number, data: ClassReviewUpdate): Promise<ClassReviewResponse> => {
+    return apiCall(`/reviews/${reviewId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (reviewId: number): Promise<void> => {
+    return apiCall(`/reviews/${reviewId}`, { method: 'DELETE' });
+  },
+
+  getSessionReviews: async (sessionId: number, skip: number = 0, limit: number = 20): Promise<SessionReviewsResponse> => {
+    const params = new URLSearchParams();
+    if (skip > 0) params.append('skip', skip.toString());
+    if (limit !== 20) params.append('limit', limit.toString());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiCall(`/reviews/session/${sessionId}${query}`);
+  },
+
+  getMyReviews: async (skip: number = 0, limit: number = 20): Promise<ClassReviewResponse[]> => {
+    const params = new URLSearchParams();
+    if (skip > 0) params.append('skip', skip.toString());
+    if (limit !== 20) params.append('limit', limit.toString());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiCall(`/reviews/my${query}`);
+  },
+
+  getClassStats: async (classId: number): Promise<ClassReviewStats> => {
+    return apiCall(`/reviews/stats/class/${classId}`);
+  },
+
+  getSessionStats: async (sessionId: number): Promise<ReviewStats> => {
+    return apiCall(`/reviews/stats/session/${sessionId}`);
+  },
+
+  getTrainerStats: async (trainerId: number): Promise<TrainerReviewStats> => {
+    return apiCall(`/reviews/stats/trainer/${trainerId}`);
+  },
 };
 
 // ===== HELPER FUNCTIONS =====
