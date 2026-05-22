@@ -84,6 +84,14 @@ export default function SessionsClient() {
   const [sessionStatsCache, setSessionStatsCache] = useState<Record<number, { average_rating: number; total_reviews: number }>>({})
   const [reviewSuccessMessage, setReviewSuccessMessage] = useState<string | null>(null)
 
+  // Cancel session state
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelSessionId, setCancelSessionId] = useState<number | null>(null)
+  const [cancelSessionName, setCancelSessionName] = useState('')
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
+  const [cancelSuccessMessage, setCancelSuccessMessage] = useState<string | null>(null)
+
   const daysShort = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
   // Función para verificar si un día ya pasó
@@ -485,6 +493,47 @@ export default function SessionsClient() {
     }
   }
 
+  // Cancelar sesión
+  const openCancelModal = (sessionId: number, className: string) => {
+    setCancelSessionId(sessionId)
+    setCancelSessionName(className)
+    setCancelError(null)
+    setShowCancelModal(true)
+  }
+
+  const handleCancelSession = async () => {
+    if (!cancelSessionId) return
+
+    try {
+      setCancelling(true)
+      setCancelError(null)
+      await eventsAPI.cancelSession(cancelSessionId)
+
+      // Actualizar estado en la lista local
+      setSessionsList(prev =>
+        prev.map(item => {
+          const s = item.session ?? item
+          if (s.id === cancelSessionId) {
+            if (item.session) {
+              return { ...item, session: { ...item.session, status: 'cancelled' } }
+            }
+            return { ...item, status: 'cancelled' }
+          }
+          return item
+        })
+      )
+
+      setShowCancelModal(false)
+      setCancelSuccessMessage('Sesión cancelada exitosamente')
+      setTimeout(() => setCancelSuccessMessage(null), 5000)
+    } catch (err: any) {
+      const msg = err?.data?.detail || err?.message || 'Error al cancelar la sesión'
+      setCancelError(typeof msg === 'string' ? msg : 'Error al cancelar la sesión')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   // Abrir modal de detalle de sesión
   const openSessionDetail = async (item: any) => {
     const ses = item.session ?? item
@@ -578,6 +627,15 @@ export default function SessionsClient() {
             <p className="text-sm text-green-800 font-medium">
               ¡Sesión creada exitosamente! 🎉
             </p>
+          </div>
+        </div>
+      )}
+
+      {cancelSuccessMessage && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <div className="flex items-center">
+            <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600 mr-3" />
+            <p className="text-sm text-yellow-800 font-medium">{cancelSuccessMessage}</p>
           </div>
         </div>
       )}
@@ -711,7 +769,7 @@ export default function SessionsClient() {
             const start = new Date(s.start_time_local || s.start_time)
             const end = (s.end_time_local || s.end_time) ? new Date(s.end_time_local || s.end_time) : null
             const timeRange = `${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}${end ? ' - ' + end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''}`
-            const statusCls = s.status === 'scheduled' ? 'bg-blue-100 text-blue-800' : s.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+            const statusCls = s.status === 'scheduled' ? 'bg-blue-100 text-blue-800' : s.status === 'completed' ? 'bg-green-100 text-green-800' : s.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
             
             return (
               <div key={s.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 p-6 flex flex-col gap-4 relative">
@@ -809,12 +867,15 @@ export default function SessionsClient() {
                   >
                     <PencilIcon className="w-4 h-4" />
                   </button>
-                  <button
-                    className="text-yellow-500 hover:text-yellow-700 transition-colors"
-                    title="Cancelar sesión"
-                  >
-                    <ExclamationTriangleIcon className="w-4 h-4" />
-                  </button>
+                  {s.status !== 'cancelled' && s.status !== 'completed' && (
+                    <button
+                      onClick={() => openCancelModal(s.id, c?.name || item.class_name || 'Clase')}
+                      className="text-yellow-500 hover:text-yellow-700 transition-colors"
+                      title="Cancelar sesión"
+                    >
+                      <ExclamationTriangleIcon className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     className="text-red-400 hover:text-red-600 transition-colors"
                     title="Eliminar sesión"
@@ -1285,6 +1346,57 @@ export default function SessionsClient() {
           </div>
         )
       })()}
+
+      {/* Modal de confirmación de cancelación */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 mx-4">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                <ExclamationTriangleIcon className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">Cancelar sesión</h3>
+                <p className="text-sm text-gray-500">{cancelSessionName}</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-6">
+              ¿Estás seguro de que quieres cancelar esta sesión? Los participantes registrados serán notificados. Esta acción no se puede deshacer.
+            </p>
+
+            {cancelError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                <p className="text-sm text-red-600">{cancelError}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                disabled={cancelling}
+                className="px-5 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium rounded-xl transition-colors"
+              >
+                Volver
+              </button>
+              <button
+                onClick={handleCancelSession}
+                disabled={cancelling}
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {cancelling ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Cancelando...
+                  </div>
+                ) : (
+                  'Confirmar cancelación'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
