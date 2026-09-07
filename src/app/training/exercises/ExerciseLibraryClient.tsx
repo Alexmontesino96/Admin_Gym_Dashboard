@@ -11,9 +11,11 @@ import {
 } from '@/lib/api'
 import { trainingStrings as t } from '@/lib/training/strings'
 import {
+  isModuleDisabled,
   TrainingEmpty,
   TrainingErrorBanner,
   TrainingModal,
+  TrainingModuleInactive,
   TrainingSkeleton,
   TrainingSuccessBanner,
 } from '@/components/training/TrainingStates'
@@ -41,6 +43,7 @@ export default function ExerciseLibraryClient() {
   const [error, setError] = useState<string | null>(null)
   // A failed load must not be dressed up as an empty catalog.
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [moduleInactive, setModuleInactive] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -57,11 +60,16 @@ export default function ExerciseLibraryClient() {
     setLoading(true)
     setError(null)
     setLoadError(null)
+    setModuleInactive(false)
     try {
       const data = await trainingAPI.getExercises({ limit: 500 })
       setExercises(Array.isArray(data) ? data : [])
-    } catch {
-      setLoadError(t.picker.loadError)
+    } catch (err) {
+      if (isModuleDisabled(err)) {
+        setModuleInactive(true)
+      } else {
+        setLoadError(t.picker.loadError)
+      }
     } finally {
       setLoading(false)
     }
@@ -174,6 +182,16 @@ export default function ExerciseLibraryClient() {
     } finally {
       setActionLoading(false)
     }
+  }
+
+  if (moduleInactive) {
+    return (
+      <div className="mx-auto max-w-6xl p-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <TrainingModuleInactive />
+        </div>
+      </div>
+    )
   }
 
   return (

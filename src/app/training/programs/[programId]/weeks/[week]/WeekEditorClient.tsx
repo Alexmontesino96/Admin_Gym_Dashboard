@@ -8,8 +8,10 @@ import { trainingAPI, type TrainingDay, type TrainingProgram } from '@/lib/api'
 import { dayNumbersOfWeek, weekdayIndex } from '@/lib/training/dates'
 import { trainingStrings as t } from '@/lib/training/strings'
 import {
+  isModuleDisabled,
   TrainingErrorBanner,
   TrainingModal,
+  TrainingModuleInactive,
   TrainingSkeleton,
   TrainingSuccessBanner,
 } from '@/components/training/TrainingStates'
@@ -26,6 +28,7 @@ export default function WeekEditorClient({
   const [days, setDays] = useState<TrainingDay[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [moduleInactive, setModuleInactive] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const [showDuplicate, setShowDuplicate] = useState(false)
@@ -37,6 +40,7 @@ export default function WeekEditorClient({
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setModuleInactive(false)
     try {
       const [programData, weekDays] = await Promise.all([
         trainingAPI.getProgram(programId),
@@ -45,8 +49,12 @@ export default function WeekEditorClient({
       setProgram(programData)
       setDays(Array.isArray(weekDays) ? weekDays : [])
     } catch (err) {
-      const status = (err as { status?: number } | null)?.status
-      setError(status === 404 ? t.program.notFound : t.week.loadError)
+      if (isModuleDisabled(err)) {
+        setModuleInactive(true)
+      } else {
+        const status = (err as { status?: number } | null)?.status
+        setError(status === 404 ? t.program.notFound : t.week.loadError)
+      }
     } finally {
       setLoading(false)
     }
@@ -110,6 +118,16 @@ export default function WeekEditorClient({
     return (
       <div className="mx-auto max-w-6xl p-6">
         <TrainingSkeleton rows={4} />
+      </div>
+    )
+  }
+
+  if (moduleInactive) {
+    return (
+      <div className="mx-auto max-w-6xl p-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <TrainingModuleInactive />
+        </div>
       </div>
     )
   }

@@ -23,9 +23,11 @@ import {
 } from '@/lib/api'
 import { trainingStrings as t } from '@/lib/training/strings'
 import {
+  isModuleDisabled,
   TrainingEmpty,
   TrainingErrorBanner,
   TrainingModal,
+  TrainingModuleInactive,
   TrainingSkeleton,
   TrainingSuccessBanner,
 } from '@/components/training/TrainingStates'
@@ -60,6 +62,7 @@ export default function TrainingProgramsClient() {
   // A failed load is not the same thing as "no programs": telling the second story when the first
   // one happened makes the trainer think their work disappeared.
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [moduleInactive, setModuleInactive] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -74,11 +77,16 @@ export default function TrainingProgramsClient() {
     setLoading(true)
     setError(null)
     setLoadError(null)
+    setModuleInactive(false)
     try {
       const data = await trainingAPI.getPrograms({ limit: 100 })
       setPrograms(Array.isArray(data) ? data : [])
-    } catch {
-      setLoadError(t.programs.loadError)
+    } catch (err) {
+      if (isModuleDisabled(err)) {
+        setModuleInactive(true)
+      } else {
+        setLoadError(t.programs.loadError)
+      }
     } finally {
       setLoading(false)
     }
@@ -170,6 +178,16 @@ export default function TrainingProgramsClient() {
     } finally {
       setActionLoading(false)
     }
+  }
+
+  if (moduleInactive) {
+    return (
+      <div className="mx-auto max-w-6xl p-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <TrainingModuleInactive />
+        </div>
+      </div>
+    )
   }
 
   return (

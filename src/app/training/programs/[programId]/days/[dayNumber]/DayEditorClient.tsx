@@ -31,9 +31,11 @@ import { fromUnit, toUnit } from '@/lib/training/units'
 import { useTrainingWeightUnit } from '@/hooks/useTrainingWeightUnit'
 import ExercisePickerModal from '@/components/training/ExercisePickerModal'
 import {
+  isModuleDisabled,
   TrainingEmpty,
   TrainingErrorBanner,
   TrainingModal,
+  TrainingModuleInactive,
   TrainingSkeleton,
   TrainingSuccessBanner,
 } from '@/components/training/TrainingStates'
@@ -91,6 +93,7 @@ export default function DayEditorClient({
   const [program, setProgram] = useState<TrainingProgram | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [moduleInactive, setModuleInactive] = useState(false)
   const [saving, setSaving] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -113,6 +116,7 @@ export default function DayEditorClient({
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setModuleInactive(false)
     try {
       const [programData, weekDays] = await Promise.all([
         trainingAPI.getProgram(programId),
@@ -135,8 +139,12 @@ export default function DayEditorClient({
       draftUnit.current = unit
       setDirty(false)
     } catch (err) {
-      const status = (err as { status?: number } | null)?.status
-      setError(status === 404 ? t.program.notFound : t.common.loadError)
+      if (isModuleDisabled(err)) {
+        setModuleInactive(true)
+      } else {
+        const status = (err as { status?: number } | null)?.status
+        setError(status === 404 ? t.program.notFound : t.common.loadError)
+      }
     } finally {
       setLoading(false)
     }
@@ -382,6 +390,16 @@ export default function DayEditorClient({
     return (
       <div className="mx-auto max-w-4xl p-6">
         <TrainingSkeleton rows={4} />
+      </div>
+    )
+  }
+
+  if (moduleInactive) {
+    return (
+      <div className="mx-auto max-w-4xl p-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <TrainingModuleInactive />
+        </div>
       </div>
     )
   }

@@ -25,9 +25,11 @@ import { trainingStrings as t } from '@/lib/training/strings'
 import { formatDuration, formatVolume, formatWeight, toUnit } from '@/lib/training/units'
 import AssignProgramModal from './AssignProgramModal'
 import {
+  isModuleDisabled,
   TrainingEmpty,
   TrainingErrorBanner,
   TrainingInlineSpinner,
+  TrainingModuleInactive,
   TrainingSuccessBanner,
 } from './TrainingStates'
 
@@ -53,6 +55,7 @@ export default function TrainingPanel({
   const [catalog, setCatalog] = useState<Exercise[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [moduleInactive, setModuleInactive] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [showAssign, setShowAssign] = useState(false)
 
@@ -69,6 +72,7 @@ export default function TrainingPanel({
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setModuleInactive(false)
     try {
       const [programs, logList, exercises] = await Promise.all([
         trainingAPI.getClientPrograms(userId),
@@ -78,9 +82,13 @@ export default function TrainingPanel({
       setActive(programs?.active ?? null)
       setLogs(Array.isArray(logList) ? logList : [])
       setCatalog(Array.isArray(exercises) ? exercises : [])
-    } catch {
-      // Saying "no program" when the request failed makes the trainer think their client dropped out.
-      setError(t.panel.loadError)
+    } catch (err) {
+      if (isModuleDisabled(err)) {
+        setModuleInactive(true)
+      } else {
+        // Saying "no program" when the request failed makes the trainer think their client dropped out.
+        setError(t.panel.loadError)
+      }
     } finally {
       setLoading(false)
     }
@@ -169,6 +177,10 @@ export default function TrainingPanel({
 
   if (loading) {
     return <TrainingInlineSpinner />
+  }
+
+  if (moduleInactive) {
+    return <TrainingModuleInactive />
   }
 
   // With the load failed there is nothing honest to draw: an empty "no program yet" would read as
@@ -455,7 +467,12 @@ export default function TrainingPanel({
           </>
         )}
 
-        {/* Best sets double as the record list for the selected lift. */}
+        {/* Best sets double as the record list for the selected lift.
+            El contrato ya decidio `GET /training/clients/{user_id}/records` con la forma de
+            `/me/records` (`trainingAPI.getClientRecords`). En la segunda pasada esta tabla pasa a
+            leer de ahi —marcas de todos los ejercicios, con su delta— en vez de derivarlas del
+            historial del ejercicio seleccionado. Hasta que el endpoint responda, el
+            comportamiento no cambia. */}
         {(history?.best_sets?.length ?? 0) > 0 && (
           <div className="mt-6">
             <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">

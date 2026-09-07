@@ -43,6 +43,10 @@ export const trainingStrings = {
     genericError: 'Something went wrong. Try again.',
     loadError: 'Could not load this page.',
     saveError: "Couldn't save. Your changes are still here.",
+    // A 403 from the module gate is not a failure: nothing broke, the module is switched off.
+    // Offering "Retry" there would be a lie, so this state has a way forward instead.
+    moduleInactive: "The Training module isn't active in this workspace.",
+    moduleInactiveAction: 'Turn it on in Features',
   },
 
   // ---------------------------------------------------------------- /training

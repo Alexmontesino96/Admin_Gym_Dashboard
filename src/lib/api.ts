@@ -5340,6 +5340,10 @@ export const trainingAPI = {
     params: { limit?: number; before?: number } = {},
   ): Promise<WorkoutLog[]> => apiCall(`/training/clients/${userId}/logs${trainingQuery(params)}`),
 
+  /** Marcas personales de un cliente, con la misma forma que `/me/records`. */
+  getClientRecords: async (userId: number): Promise<PersonalRecord[]> =>
+    apiCall(`/training/clients/${userId}/records`),
+
   getClientExerciseHistory: async (
     userId: number,
     exerciseKey: string,

@@ -1,8 +1,17 @@
 'use client'
 
+import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
-import { AlertCircle, CheckCircle, Loader2, X } from 'lucide-react'
+import { AlertCircle, CheckCircle, Loader2, PowerOff, X } from 'lucide-react'
 import { trainingStrings as t } from '@/lib/training/strings'
+
+/**
+ * The module gate answers 403 on every training route when `training` is off for the workspace.
+ * That is not an error to retry: nothing failed, the module is switched off, and every call will
+ * answer the same until somebody turns it on.
+ */
+export const isModuleDisabled = (error: unknown): boolean =>
+  (error as { status?: number } | null)?.status === 403
 
 /**
  * The three states every training page owes the reader: loading, empty, error.
@@ -70,6 +79,23 @@ export function TrainingEmpty({
           {actionLabel}
         </button>
       )}
+    </div>
+  )
+}
+
+export function TrainingModuleInactive() {
+  return (
+    <div className="py-12 text-center">
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+        <PowerOff size={24} className="text-slate-400" />
+      </div>
+      <h4 className="mb-2 text-lg font-medium text-slate-900">{t.common.moduleInactive}</h4>
+      <Link
+        href="/features"
+        className="inline-block rounded-xl bg-indigo-600 px-6 py-3 font-medium text-white transition-colors hover:bg-indigo-700"
+      >
+        {t.common.moduleInactiveAction}
+      </Link>
     </div>
   )
 }
