@@ -4,17 +4,36 @@ import { NextRequest, NextResponse } from 'next/server'
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Rutas que no requieren autenticación
-  const publicRoutes = ['/', '/login', '/register', '/verify-email']
+  // Rutas que no requieren autenticación.
+  //
+  // /legal y /support son públicas a propósito: App Review las abre sin sesión, y la app enlaza a
+  // ellas desde el alta y desde el perfil.
+  //
+  const publicRoutes = ['/', '/login', '/register', '/verify-email', '/legal', '/support']
 
   // Rutas que requieren autenticación pero no requieren gimnasio seleccionado
   const authOnlyRoutes = ['/select-gym', '/post-login', '/logout']
 
-  // Rutas de API que no necesitan verificación de gimnasio
-  const apiExemptRoutes = ['/api/auth', '/api/token']
+  // Rutas de API que no necesitan verificación de gimnasio.
+  //
+  // Están TODAS las del panel, no solo dos: los manejadores propios responden JSON, y un
+  // redirect a /select-gym donde el navegador espera un objeto rompe la llamada en silencio.
+  // Cada uno comprueba la sesión por su cuenta.
+  const apiExemptRoutes = ['/api/auth', '/api/token', '/api/v1']
 
-  // Permitir acceso a rutas públicas
-  if (publicRoutes.some(route => pathname.startsWith(route))) {
+  // Permitir acceso a rutas públicas.
+  //
+  // El comparador era `startsWith`, y como '/' está en la lista la condición era CIERTA PARA
+  // CUALQUIER RUTA: el middleware devolvía `next()` siempre y la sesión no se verificaba nunca.
+  // La raíz se compara por igualdad y el resto por prefijo con barra, para que '/login' no
+  // haga públicas rutas como '/login-algo'.
+  const isPublic =
+    pathname === '/' ||
+    publicRoutes
+      .filter(route => route !== '/')
+      .some(route => pathname === route || pathname.startsWith(`${route}/`))
+
+  if (isPublic) {
     return NextResponse.next()
   }
 
