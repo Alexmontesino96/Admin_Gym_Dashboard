@@ -5,6 +5,7 @@ import { getUsersAPI, GymParticipant, membershipsAPI, MembershipStatus } from '@
 import { eventsAPI } from '@/lib/api'
 import { CreditCardIcon, ClockIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
+import ClientHealthPanel from '@/components/ClientHealthPanel'
 
 interface UserProfileClientProps {
   userId: number
@@ -311,12 +312,11 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
               <p>{profile.height} cm</p>
             </div>
           )}
-          {profile.weight && profile.weight > 0 && (
-            <div>
-              <p className="font-medium text-gray-500 mb-1">Peso</p>
-              <p>{profile.weight} kg</p>
-            </div>
-          )}
+          {/*
+            El peso estático del perfil ya no se pinta aquí: era un número que la persona tecleó
+            una vez y que no se actualiza nunca. La serie real y los check-ins van abajo, en su
+            propia sección.
+          */}
           {profile.goals && (
             <div className="md:col-span-2">
               <p className="font-medium text-gray-500 mb-1">Objetivos</p>
@@ -355,6 +355,17 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
             </div>
           )}
         </div>
+
+        {/* Check-ins del cliente. Es la mitad que faltaba: la app le dice a la persona que su
+            nota es «para tu entrenador», y hasta ahora no llegaba a ninguna parte. */}
+        {profile.gym_role !== 'TRAINER' && (
+          <div className="mt-8 border-t border-gray-200 pt-6">
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              Check-ins
+            </h3>
+            <ClientHealthPanel userId={userId} />
+          </div>
+        )}
 
         {/* Sesiones programadas (solo entrenadores) */}
         {profile.gym_role === 'TRAINER' && (

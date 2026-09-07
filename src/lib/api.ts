@@ -4683,3 +4683,49 @@ export const canProcessPayments = (accountStatus: StripeAccountStatus | null): b
 export const canReceivePayouts = (accountStatus: StripeAccountStatus | null): boolean => {
   return accountStatus?.payouts_enabled === true;
 };
+// ---------------------------------------------------------------------------
+// Salud del cliente
+//
+// El entrenador no podía leer nada de esto: los endpoints de salud resolvían siempre al usuario
+// autenticado. La ficha del cliente enseñaba `profile.weight`, un número que la persona tecleó
+// una vez en su perfil y que no se actualiza nunca.
+//
+// El servidor guarda kilos. La conversión a libras se hace al pintar, no aquí.
+// ---------------------------------------------------------------------------
+
+export interface WeightHistoryPoint {
+  recorded_at: string
+  weight: number
+}
+
+export interface WeightHistory {
+  days: number
+  points: WeightHistoryPoint[]
+  current_weight: number | null
+  change: number | null
+}
+
+export interface WeeklyCheckIn {
+  id: number
+  week_start: string
+  energy: number | null
+  sleep: number | null
+  soreness: number | null
+  notes: string | null
+  weight: number | null
+  measurement_id: number | null
+  created_at: string
+}
+
+export const clientHealthAPI = {
+  /** Serie de peso del cliente, en kilos. */
+  getWeightHistory: async (userId: number, days = 90): Promise<WeightHistory> =>
+    apiCall(`/health/clients/${userId}/measurements/weight-history?days=${days}`),
+
+  /** Check-ins semanales, del más reciente al más antiguo. */
+  getCheckIns: async (userId: number, weeks = 12): Promise<WeeklyCheckIn[]> =>
+    apiCall(`/health/clients/${userId}/check-ins?weeks=${weeks}`),
+}
+
+/** Kilos a libras, para pintar. El almacenamiento sigue en kilos. */
+export const kgToLb = (kg: number): number => kg * 2.204622621848776

@@ -183,7 +183,9 @@ export default function GymInfoClient() {
       await gymsAPI.deleteGymLogo(gymInfo.id);
 
       // Actualizar gymInfo
-      setGymInfo(prev => prev ? { ...prev, logo_url: null } : null);
+      // `undefined`, no `null`: en GymWithStats el campo es `string | undefined`, y el
+      // `null` rompía la comprobación de tipos del panel entera.
+      setGymInfo(prev => prev ? { ...prev, logo_url: undefined } : null);
       setEditData(prev => ({ ...prev, logo_url: '' }));
 
     } catch (err) {
