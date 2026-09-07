@@ -39,6 +39,8 @@ export default function ExerciseLibraryClient() {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // A failed load must not be dressed up as an empty catalog.
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -54,11 +56,12 @@ export default function ExerciseLibraryClient() {
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setLoadError(null)
     try {
       const data = await trainingAPI.getExercises({ limit: 500 })
       setExercises(Array.isArray(data) ? data : [])
     } catch {
-      setError(t.picker.loadError)
+      setLoadError(t.picker.loadError)
     } finally {
       setLoading(false)
     }
@@ -203,7 +206,7 @@ export default function ExerciseLibraryClient() {
       </div>
 
       {successMessage && <TrainingSuccessBanner message={successMessage} />}
-      {error && <TrainingErrorBanner message={error} onDismiss={() => setError(null)} onRetry={load} />}
+      {error && <TrainingErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       {/* Tabs + search */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -254,6 +257,8 @@ export default function ExerciseLibraryClient() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         {loading ? (
           <TrainingSkeleton rows={5} />
+        ) : loadError ? (
+          <TrainingErrorBanner message={loadError} onRetry={load} />
         ) : visible.length === 0 ? (
           <TrainingEmpty
             icon={Dumbbell}

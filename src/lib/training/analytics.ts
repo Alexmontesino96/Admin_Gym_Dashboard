@@ -34,6 +34,5 @@ export const trackTraining = (
   props: TrainingAnalyticsProps = {},
 ): void => {
   if (!isDebugEnabled()) return
-  // eslint-disable-next-line no-console
   console.debug('[training]', event, props)
 }

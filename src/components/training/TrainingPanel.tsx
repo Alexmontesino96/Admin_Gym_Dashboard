@@ -171,10 +171,15 @@ export default function TrainingPanel({
     return <TrainingInlineSpinner />
   }
 
+  // With the load failed there is nothing honest to draw: an empty "no program yet" would read as
+  // a fact about the client instead of a fact about the network.
+  if (error) {
+    return <TrainingErrorBanner message={error} onRetry={load} />
+  }
+
   return (
     <div className="space-y-6">
       {successMessage && <TrainingSuccessBanner message={successMessage} />}
-      {error && <TrainingErrorBanner message={error} onDismiss={() => setError(null)} onRetry={load} />}
 
       {/* Active program */}
       {active ? (

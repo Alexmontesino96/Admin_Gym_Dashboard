@@ -57,6 +57,9 @@ export default function TrainingProgramsClient() {
   const [programs, setPrograms] = useState<TrainingProgram[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // A failed load is not the same thing as "no programs": telling the second story when the first
+  // one happened makes the trainer think their work disappeared.
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -70,12 +73,12 @@ export default function TrainingProgramsClient() {
   const loadPrograms = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setLoadError(null)
     try {
       const data = await trainingAPI.getPrograms({ limit: 100 })
       setPrograms(Array.isArray(data) ? data : [])
     } catch {
-      // A network failure and "no programs" look identical if we only render the empty state.
-      setError(t.programs.loadError)
+      setLoadError(t.programs.loadError)
     } finally {
       setLoading(false)
     }
@@ -207,13 +210,7 @@ export default function TrainingProgramsClient() {
       </div>
 
       {successMessage && <TrainingSuccessBanner message={successMessage} />}
-      {error && (
-        <TrainingErrorBanner
-          message={error}
-          onDismiss={() => setError(null)}
-          onRetry={loadPrograms}
-        />
-      )}
+      {error && <TrainingErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       {/* Filters */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -252,6 +249,8 @@ export default function TrainingProgramsClient() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         {loading ? (
           <TrainingSkeleton />
+        ) : loadError ? (
+          <TrainingErrorBanner message={loadError} onRetry={loadPrograms} />
         ) : visiblePrograms.length === 0 ? (
           <TrainingEmpty
             icon={Dumbbell}
