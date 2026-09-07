@@ -1,0 +1,33 @@
+{
+  "day_number": 1,
+  "name": "Lower A",
+  "is_rest": false,
+  "focus": null,
+  "notes": null,
+  "is_published": true,
+  "id": 33,
+  "program_id": 3,
+  "week_number": 1,
+  "exercises": [
+    {
+      "exercise_key": "barbell_back_squat",
+      "exercise_name": "Barbell Back Squat",
+      "order_index": 0,
+      "superset_group": null,
+      "sets_count": 3,
+      "reps": "5",
+      "load_mode": "weight",
+      "load_value": "60.00",
+      "rpe_target": null,
+      "rest_seconds": 180,
+      "notes": null,
+      "set_overrides": null,
+      "id": 41,
+      "day_id": 33,
+      "exercise_id": 1,
+      "last_performance": null
+    }
+  ],
+  "coach_note": null,
+  "date": "2026-09-07"
+}

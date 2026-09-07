@@ -1,0 +1,17 @@
+{
+  "name": "Off-season strength (2027)",
+  "description": "12 weeks, three blocks.",
+  "goal": "hypertrophy",
+  "duration_weeks": 12,
+  "visibility": "private",
+  "focus_exercise_keys": [
+    "barbell_back_squat",
+    "barbell_bench_press"
+  ],
+  "id": 2,
+  "gym_id": 1,
+  "creator_id": 1,
+  "status": "draft",
+  "is_template": true,
+  "source_program_id": null
+}

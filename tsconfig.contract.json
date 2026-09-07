@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "plugins": []
+  },
+  "include": [
+    "scripts/check-training-contract.ts",
+    "src/lib/api.ts",
+    "src/lib/training/**/*.ts"
+  ]
+}

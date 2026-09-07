@@ -1,0 +1,54 @@
+{
+  "trained_today": [
+    {
+      "user_id": 1,
+      "name": "Dana User",
+      "picture_url": null,
+      "day_name": "Lower A",
+      "log_id": 1,
+      "kudos_given": false
+    },
+    {
+      "user_id": 2,
+      "name": "Leo User",
+      "picture_url": null,
+      "day_name": "Lower A",
+      "log_id": 2,
+      "kudos_given": true
+    }
+  ],
+  "trained_count": 2,
+  "total_members": 3,
+  "week": [
+    {
+      "date": "2026-09-07",
+      "trained_count": 2
+    },
+    {
+      "date": "2026-09-08",
+      "trained_count": 0
+    },
+    {
+      "date": "2026-09-09",
+      "trained_count": 0
+    },
+    {
+      "date": "2026-09-10",
+      "trained_count": 0
+    },
+    {
+      "date": "2026-09-11",
+      "trained_count": 0
+    },
+    {
+      "date": "2026-09-12",
+      "trained_count": 0
+    },
+    {
+      "date": "2026-09-13",
+      "trained_count": 0
+    }
+  ],
+  "consistency_pct": 66.7,
+  "is_new": true
+}

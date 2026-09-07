@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "exercise_key": "barbell_back_squat",
+    "exercise_name": "Barbell Back Squat",
+    "best_e1rm_kg": "87.50",
+    "best_weight_kg": "75.00",
+    "best_reps": 5,
+    "achieved_at": "2026-09-07T23:31:32.236399",
+    "delta_kg": "0.00"
+  }
+]

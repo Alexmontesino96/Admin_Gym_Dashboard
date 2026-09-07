@@ -1,0 +1,16 @@
+{
+  "name": "Heavy sled push",
+  "category": "strength",
+  "primary_muscles": [
+    "quads",
+    "glutes"
+  ],
+  "equipment": "sled",
+  "is_unilateral": false,
+  "default_rest_seconds": 120,
+  "instructions": "Drive through the legs.\nKeep the torso low.",
+  "id": 4,
+  "exercise_key": "g1_sled_push",
+  "gym_id": 1,
+  "is_active": true
+}

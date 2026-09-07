@@ -1,0 +1,175 @@
+[
+  {
+    "id": 17,
+    "program_id": 2,
+    "day_number": 1,
+    "week_number": 1,
+    "name": "Upper A",
+    "is_rest": false,
+    "focus": "Push/pull",
+    "notes": null,
+    "is_published": true,
+    "exercises": [
+      {
+        "exercise_key": "barbell_bench_press",
+        "exercise_name": "Barbell Bench Press",
+        "order_index": 0,
+        "superset_group": "A",
+        "sets_count": 3,
+        "reps": "5",
+        "load_mode": "weight",
+        "load_value": "80.00",
+        "rpe_target": null,
+        "rest_seconds": 180,
+        "notes": null,
+        "set_overrides": null,
+        "id": 21,
+        "day_id": 17,
+        "exercise_id": 2
+      },
+      {
+        "exercise_key": "pull_up",
+        "exercise_name": "Pull Up",
+        "order_index": 1,
+        "superset_group": "A",
+        "sets_count": 3,
+        "reps": "5",
+        "load_mode": "bodyweight",
+        "load_value": null,
+        "rpe_target": null,
+        "rest_seconds": 180,
+        "notes": null,
+        "set_overrides": null,
+        "id": 22,
+        "day_id": 17,
+        "exercise_id": 3
+      }
+    ]
+  },
+  {
+    "id": 18,
+    "program_id": 2,
+    "day_number": 2,
+    "week_number": 1,
+    "name": "Lower A",
+    "is_rest": false,
+    "focus": null,
+    "notes": null,
+    "is_published": true,
+    "exercises": [
+      {
+        "exercise_key": "barbell_back_squat",
+        "exercise_name": "Barbell Back Squat",
+        "order_index": 0,
+        "superset_group": null,
+        "sets_count": 3,
+        "reps": "5",
+        "load_mode": "weight",
+        "load_value": "100.00",
+        "rpe_target": null,
+        "rest_seconds": 180,
+        "notes": null,
+        "set_overrides": null,
+        "id": 23,
+        "day_id": 18,
+        "exercise_id": 1
+      }
+    ]
+  },
+  {
+    "id": null,
+    "program_id": 2,
+    "day_number": 3,
+    "week_number": 1,
+    "name": null,
+    "is_rest": true,
+    "focus": null,
+    "notes": null,
+    "is_published": true,
+    "exercises": []
+  },
+  {
+    "id": 19,
+    "program_id": 2,
+    "day_number": 4,
+    "week_number": 1,
+    "name": "Upper B",
+    "is_rest": false,
+    "focus": null,
+    "notes": null,
+    "is_published": true,
+    "exercises": [
+      {
+        "exercise_key": "barbell_bench_press",
+        "exercise_name": "Barbell Bench Press",
+        "order_index": 0,
+        "superset_group": null,
+        "sets_count": 1,
+        "reps": "AMRAP",
+        "load_mode": "weight",
+        "load_value": "70.00",
+        "rpe_target": null,
+        "rest_seconds": 180,
+        "notes": null,
+        "set_overrides": null,
+        "id": 24,
+        "day_id": 19,
+        "exercise_id": 2
+      }
+    ]
+  },
+  {
+    "id": 20,
+    "program_id": 2,
+    "day_number": 5,
+    "week_number": 1,
+    "name": "Lower B",
+    "is_rest": false,
+    "focus": null,
+    "notes": null,
+    "is_published": true,
+    "exercises": [
+      {
+        "exercise_key": "barbell_back_squat",
+        "exercise_name": "Barbell Back Squat",
+        "order_index": 0,
+        "superset_group": null,
+        "sets_count": 3,
+        "reps": "5",
+        "load_mode": "weight",
+        "load_value": "90.00",
+        "rpe_target": null,
+        "rest_seconds": 180,
+        "notes": null,
+        "set_overrides": null,
+        "id": 25,
+        "day_id": 20,
+        "exercise_id": 1
+      }
+    ]
+  },
+  {
+    "id": null,
+    "program_id": 2,
+    "day_number": 6,
+    "week_number": 1,
+    "name": null,
+    "is_rest": true,
+    "focus": null,
+    "notes": null,
+    "is_published": true,
+    "exercises": []
+  },
+  {
+    "id": null,
+    "program_id": 2,
+    "day_number": 7,
+    "week_number": 1,
+    "name": null,
+    "is_rest": true,
+    "focus": null,
+    "notes": null,
+    "is_published": true,
+    "exercises": []
+  }
+]

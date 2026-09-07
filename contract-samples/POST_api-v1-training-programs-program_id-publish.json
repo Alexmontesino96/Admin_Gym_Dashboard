@@ -1,0 +1,14 @@
+{
+  "name": "Spring Bootcamp",
+  "description": null,
+  "goal": null,
+  "duration_weeks": 4,
+  "visibility": "group",
+  "focus_exercise_keys": [],
+  "id": 3,
+  "gym_id": 1,
+  "creator_id": 1,
+  "status": "active",
+  "is_template": true,
+  "source_program_id": null
+}
