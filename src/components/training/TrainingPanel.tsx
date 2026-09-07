@@ -16,13 +16,20 @@ import {
   trainingAPI,
   type ClientProgramSummary,
   type Exercise,
-  type ExerciseHistory,
+  type PersonalRecord,
+  type StaffExerciseHistory,
+  type StaffWorkoutLogSummary,
   type WeightUnit,
-  type WorkoutLog,
 } from '@/lib/api'
 import { formatShortDate } from '@/lib/training/dates'
 import { trainingStrings as t } from '@/lib/training/strings'
-import { formatDuration, formatVolume, formatWeight, toUnit } from '@/lib/training/units'
+import {
+  formatDuration,
+  formatVolume,
+  formatWeight,
+  toNumber,
+  toUnit,
+} from '@/lib/training/units'
 import AssignProgramModal from './AssignProgramModal'
 import {
   isModuleDisabled,
@@ -51,7 +58,7 @@ export default function TrainingPanel({
   weightUnit?: WeightUnit
 }) {
   const [active, setActive] = useState<ClientProgramSummary | null>(null)
-  const [logs, setLogs] = useState<WorkoutLog[]>([])
+  const [logs, setLogs] = useState<StaffWorkoutLogSummary[]>([])
   const [catalog, setCatalog] = useState<Exercise[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -59,12 +66,17 @@ export default function TrainingPanel({
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [showAssign, setShowAssign] = useState(false)
 
+  const [records, setRecords] = useState<PersonalRecord[]>([])
+
   const [selectedKey, setSelectedKey] = useState<string>('')
-  const [history, setHistory] = useState<ExerciseHistory | null>(null)
+  const [history, setHistory] = useState<StaffExerciseHistory | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
 
   const [openReview, setOpenReview] = useState<number | null>(null)
+  // El resumen de personal no trae la nota del cliente; el detalle sí. Se pide sólo al abrir la
+  // revisión, que es justo el momento en que el entrenador necesita leerla.
+  const [reviewNote, setReviewNote] = useState<string | null>(null)
   const [comment, setComment] = useState('')
   const [reviewing, setReviewing] = useState(false)
   const [reviewError, setReviewError] = useState<string | null>(null)
@@ -74,14 +86,16 @@ export default function TrainingPanel({
     setError(null)
     setModuleInactive(false)
     try {
-      const [programs, logList, exercises] = await Promise.all([
+      const [programs, logList, exercises, recordList] = await Promise.all([
         trainingAPI.getClientPrograms(userId),
         trainingAPI.getClientLogs(userId, { limit: 8 }),
         trainingAPI.getExercises({ limit: 500 }),
+        trainingAPI.getClientRecords(userId),
       ])
       setActive(programs?.active ?? null)
       setLogs(Array.isArray(logList) ? logList : [])
       setCatalog(Array.isArray(exercises) ? exercises : [])
+      setRecords(Array.isArray(recordList) ? recordList : [])
     } catch (err) {
       if (isModuleDisabled(err)) {
         setModuleInactive(true)
@@ -143,18 +157,37 @@ export default function TrainingPanel({
     }
   }, [userId, selectedKey])
 
+  // `adherence_pct` llega como cadena decimal: comparar "9.5" con 50 sin convertir es pedir un bug.
+  const adherence = toNumber(active?.adherence_pct)
+
   const chartData = useMemo(
     () =>
       (history?.points ?? [])
-        .filter(point => point.e1rm_kg != null)
-        .map(point => ({
-          date: formatShortDate(point.date),
-          e1rm: toUnit(point.e1rm_kg as number, weightUnit),
-        })),
+        .map(point => ({ date: formatShortDate(point.date), kg: toNumber(point.e1rm_kg) }))
+        .filter((point): point is { date: string; kg: number } => point.kg != null)
+        .map(point => ({ date: point.date, e1rm: toUnit(point.kg, weightUnit) })),
     [history, weightUnit],
   )
 
-  const handleReview = async (log: WorkoutLog, congratulate: boolean) => {
+  const openReviewFor = async (log: StaffWorkoutLogSummary) => {
+    if (openReview === log.id) {
+      setOpenReview(null)
+      return
+    }
+    setOpenReview(log.id)
+    setComment(log.coach_comment ?? '')
+    setReviewError(null)
+    setReviewNote(null)
+    try {
+      const detail = await trainingAPI.getLog(log.id)
+      setReviewNote(detail.notes)
+    } catch {
+      // No poder leer la nota no impide comentar: el formulario sigue abierto.
+      setReviewNote(null)
+    }
+  }
+
+  const handleReview = async (log: StaffWorkoutLogSummary, congratulate: boolean) => {
     setReviewing(true)
     setReviewError(null)
     try {
@@ -224,24 +257,24 @@ export default function TrainingPanel({
             </button>
           </div>
 
-          {active.adherence_pct != null && (
+          {adherence != null && (
             <div className="mb-4">
               <div className="mb-1 flex items-center justify-between text-sm">
                 <span className="text-slate-600">{t.panel.adherence}</span>
                 <span
                   className={`font-semibold tabular-nums ${
-                    active.adherence_pct < 50 ? 'text-amber-600' : 'text-slate-900'
+                    adherence < 50 ? 'text-amber-600' : 'text-slate-900'
                   }`}
                 >
-                  {Math.round(active.adherence_pct)}%
+                  {Math.round(adherence)}%
                 </span>
               </div>
               <div className="h-2 w-full rounded-full bg-slate-200">
                 <div
                   className={`h-2 rounded-full transition-all ${
-                    active.adherence_pct < 50 ? 'bg-amber-500' : 'bg-indigo-600'
+                    adherence < 50 ? 'bg-amber-500' : 'bg-indigo-600'
                   }`}
-                  style={{ width: `${Math.min(Math.max(active.adherence_pct, 0), 100)}%` }}
+                  style={{ width: `${Math.min(Math.max(adherence, 0), 100)}%` }}
                 />
               </div>
               {active.missed_in_block != null && active.missed_in_block > 0 && (
@@ -337,12 +370,6 @@ export default function TrainingPanel({
                       {formatDuration(log.duration_seconds)} · {log.total_sets} {t.panel.sets} ·{' '}
                       {formatVolume(log.total_volume_kg, weightUnit)}
                     </p>
-                    {log.notes && (
-                      <p className="mt-1 text-sm text-slate-600">
-                        <span className="text-slate-400">{t.panel.clientNote}: </span>
-                        {log.notes}
-                      </p>
-                    )}
                     {log.coach_comment && (
                       <p className="mt-1 text-sm text-slate-600">{log.coach_comment}</p>
                     )}
@@ -350,11 +377,7 @@ export default function TrainingPanel({
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setOpenReview(openReview === log.id ? null : log.id)
-                      setComment(log.coach_comment ?? '')
-                      setReviewError(null)
-                    }}
+                    onClick={() => openReviewFor(log)}
                     className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
                   >
                     {t.panel.review}
@@ -368,6 +391,12 @@ export default function TrainingPanel({
                         message={reviewError}
                         onDismiss={() => setReviewError(null)}
                       />
+                    )}
+                    {reviewNote && (
+                      <p className="text-sm text-slate-600">
+                        <span className="text-slate-400">{t.panel.clientNote}: </span>
+                        {reviewNote}
+                      </p>
                     )}
                     <div>
                       <label
@@ -467,48 +496,65 @@ export default function TrainingPanel({
           </>
         )}
 
-        {/* Best sets double as the record list for the selected lift.
-            El contrato ya decidio `GET /training/clients/{user_id}/records` con la forma de
-            `/me/records` (`trainingAPI.getClientRecords`). En la segunda pasada esta tabla pasa a
-            leer de ahi —marcas de todos los ejercicios, con su delta— en vez de derivarlas del
-            historial del ejercicio seleccionado. Hasta que el endpoint responda, el
-            comportamiento no cambia. */}
-        {(history?.best_sets?.length ?? 0) > 0 && (
-          <div className="mt-6">
-            <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t.panel.records}
-            </h5>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                    <th className="py-2 pr-4 font-medium">{t.panel.achieved}</th>
-                    <th className="py-2 pr-4 font-medium">{t.panel.bestWeight}</th>
-                    <th className="py-2 pr-4 font-medium">{t.panel.bestReps}</th>
-                    <th className="py-2 font-medium">{t.panel.best1rm}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(history?.best_sets ?? []).map((set, index) => (
-                    <tr
-                      key={set.id ?? `${set.client_uuid}-${index}`}
-                      className="border-b border-slate-100"
-                    >
-                      <td className="py-2 pr-4 whitespace-nowrap text-slate-700">
-                        {formatShortDate(set.completed_at)}
+      </div>
+
+      {/* Records */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h4 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <Award size={14} />
+          {t.panel.records}
+        </h4>
+
+        {records.length === 0 ? (
+          <p className="py-6 text-center text-sm text-slate-500">{t.panel.noRecords}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th className="py-2 pr-4 font-medium">{t.panel.exercise}</th>
+                  <th className="py-2 pr-4 font-medium">{t.panel.best1rm}</th>
+                  <th className="py-2 pr-4 font-medium">{t.panel.bestWeight}</th>
+                  <th className="py-2 pr-4 font-medium">{t.panel.bestReps}</th>
+                  <th className="py-2 font-medium">{t.panel.achieved}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.map(record => {
+                  const delta = toNumber(record.delta_kg)
+                  return (
+                    <tr key={record.id} className="border-b border-slate-100">
+                      <td className="py-2 pr-4 text-slate-900">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedKey(record.exercise_key)}
+                          className="text-left font-medium hover:text-indigo-600"
+                        >
+                          {record.exercise_name}
+                        </button>
                       </td>
                       <td className="py-2 pr-4 tabular-nums text-slate-900">
-                        {formatWeight(set.weight_kg, weightUnit)}
+                        {formatWeight(record.best_e1rm_kg, weightUnit)}
+                        {delta != null && delta > 0 && (
+                          <span className="ml-1 text-xs text-green-600">
+                            +{formatWeight(delta, weightUnit)}
+                          </span>
+                        )}
                       </td>
-                      <td className="py-2 pr-4 tabular-nums text-slate-700">{set.reps}</td>
-                      <td className="py-2 tabular-nums text-slate-900">
-                        {formatWeight(set.e1rm_kg ?? null, weightUnit)}
+                      <td className="py-2 pr-4 tabular-nums text-slate-700">
+                        {formatWeight(record.best_weight_kg, weightUnit)}
+                      </td>
+                      <td className="py-2 pr-4 tabular-nums text-slate-700">
+                        {record.best_reps ?? t.common.none}
+                      </td>
+                      <td className="py-2 whitespace-nowrap text-slate-500">
+                        {formatShortDate(record.achieved_at)}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

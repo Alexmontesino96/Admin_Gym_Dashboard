@@ -16,8 +16,8 @@ import {
 } from 'lucide-react'
 import {
   trainingAPI,
-  type TrainingProgram,
   type TrainingProgramCreateData,
+  type TrainingProgramListItem,
   type TrainingProgramStatus,
   type TrainingVisibility,
 } from '@/lib/api'
@@ -56,7 +56,7 @@ const emptyForm: TrainingProgramCreateData = {
 
 export default function TrainingProgramsClient() {
   const router = useRouter()
-  const [programs, setPrograms] = useState<TrainingProgram[]>([])
+  const [programs, setPrograms] = useState<TrainingProgramListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   // A failed load is not the same thing as "no programs": telling the second story when the first
@@ -150,7 +150,7 @@ export default function TrainingProgramsClient() {
     }
   }
 
-  const handleDuplicate = async (program: TrainingProgram) => {
+  const handleDuplicate = async (program: TrainingProgramListItem) => {
     setActionLoading(true)
     setError(null)
     try {
@@ -164,7 +164,7 @@ export default function TrainingProgramsClient() {
     }
   }
 
-  const handleDelete = async (program: TrainingProgram) => {
+  const handleDelete = async (program: TrainingProgramListItem) => {
     if (!confirm(t.programs.confirmDelete)) return
     setActionLoading(true)
     setError(null)

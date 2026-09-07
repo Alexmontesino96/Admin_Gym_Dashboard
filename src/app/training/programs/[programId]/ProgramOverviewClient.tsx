@@ -21,7 +21,7 @@ import {
   type TrainingBlock,
   type TrainingBlockCreateData,
   type TrainingDay,
-  type TrainingProgram,
+  type TrainingProgramDetail,
 } from '@/lib/api'
 import { dayNumbersOfWeek, weekdayIndex } from '@/lib/training/dates'
 import { trainingStrings as t } from '@/lib/training/strings'
@@ -61,7 +61,7 @@ const loadAllDays = async (programId: number, weeks: number): Promise<TrainingDa
 
 export default function ProgramOverviewClient({ programId }: { programId: number }) {
   const router = useRouter()
-  const [program, setProgram] = useState<TrainingProgram | null>(null)
+  const [program, setProgram] = useState<TrainingProgramDetail | null>(null)
   const [blocks, setBlocks] = useState<TrainingBlock[]>([])
   const [days, setDays] = useState<TrainingDay[]>([])
   const [loading, setLoading] = useState(true)
@@ -84,11 +84,7 @@ export default function ProgramOverviewClient({ programId }: { programId: number
       const programData = await trainingAPI.getProgram(programId)
       setProgram(programData)
       setBlocks(programData.blocks ?? [])
-      if (programData.days && programData.days.length > 0) {
-        setDays(programData.days)
-      } else {
-        setDays(await loadAllDays(programId, programData.duration_weeks))
-      }
+      setDays(await loadAllDays(programId, programData.duration_weeks))
     } catch (err) {
       if (isModuleDisabled(err)) {
         setModuleInactive(true)
@@ -191,7 +187,9 @@ export default function ProgramOverviewClient({ programId }: { programId: number
     setError(null)
     try {
       const updated = await trainingAPI.publishProgram(programId)
-      setProgram(current => (current ? { ...current, ...updated } : updated))
+      // `publish` devuelve el programa sin bloques: se fusiona sobre lo que ya hay para no
+      // vaciar la lista de bloques que el usuario está mirando.
+      setProgram(current => (current ? { ...current, ...updated } : null))
       setSuccessMessage(t.program.published)
     } catch (err) {
       const status = (err as { status?: number } | null)?.status

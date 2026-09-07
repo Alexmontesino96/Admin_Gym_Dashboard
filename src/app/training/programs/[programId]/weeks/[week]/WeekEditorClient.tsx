@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Moon, Pencil, Plus } from 'lucide-react'
-import { trainingAPI, type TrainingDay, type TrainingProgram } from '@/lib/api'
+import { trainingAPI, type TrainingDay, type TrainingProgramDetail } from '@/lib/api'
 import { dayNumbersOfWeek, weekdayIndex } from '@/lib/training/dates'
 import { trainingStrings as t } from '@/lib/training/strings'
 import {
@@ -24,7 +24,7 @@ export default function WeekEditorClient({
   week: number
 }) {
   const router = useRouter()
-  const [program, setProgram] = useState<TrainingProgram | null>(null)
+  const [program, setProgram] = useState<TrainingProgramDetail | null>(null)
   const [days, setDays] = useState<TrainingDay[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

@@ -27,7 +27,7 @@ import {
 } from '@/lib/api'
 import { dayNumbersOfWeek, weekdayIndex, weekNumberOf } from '@/lib/training/dates'
 import { trainingStrings as t } from '@/lib/training/strings'
-import { fromUnit, toUnit } from '@/lib/training/units'
+import { fromUnit, toNumber, toUnit } from '@/lib/training/units'
 import { useTrainingWeightUnit } from '@/hooks/useTrainingWeightUnit'
 import ExercisePickerModal from '@/components/training/ExercisePickerModal'
 import {
@@ -41,10 +41,28 @@ import {
 } from '@/components/training/TrainingStates'
 
 /**
- * A draft exercise row. `load_value` lives here in the unit the trainer is typing in; it becomes
- * kilograms only in `buildPayload`, right before the request. The wire never sees pounds.
+ * A draft override: same shape as the API one, but with real numbers.
  */
-type ExerciseDraft = Omit<TrainingDayExercise, 'id' | 'day_id'> & { rowKey: string }
+type OverrideDraft = Omit<TrainingSetOverride, 'load_value' | 'rpe_target'> & {
+  load_value: number | null
+  rpe_target: number | null
+}
+
+/**
+ * A draft exercise row. Two things separate it from what travels on the wire: `load_value` lives
+ * here in the unit the trainer is typing in (kilograms only in `buildPayload`, right before the
+ * request), and the decimals are real numbers — the backend serialises `Numeric` columns as
+ * strings (`"80.00"`), and a form that does arithmetic on those quietly writes nonsense.
+ */
+type ExerciseDraft = Omit<
+  TrainingDayExercise,
+  'id' | 'day_id' | 'load_value' | 'rpe_target' | 'set_overrides'
+> & {
+  rowKey: string
+  load_value: number | null
+  rpe_target: number | null
+  set_overrides: OverrideDraft[] | null
+}
 
 const LOAD_MODES: Array<{ value: TrainingLoadMode; label: string }> = [
   { value: 'weight', label: t.dayEditor.loadWeight },
@@ -62,22 +80,23 @@ const nextRowKey = () => {
   return `row-${rowCounter}`
 }
 
-const toDraft = (exercise: TrainingDayExercise, unit: WeightUnit): ExerciseDraft => ({
-  ...exercise,
-  load_value:
-    exercise.load_value != null && isWeightMode(exercise.load_mode)
-      ? toUnit(exercise.load_value, unit)
-      : exercise.load_value,
-  set_overrides:
-    exercise.set_overrides?.map(override => ({
-      ...override,
-      load_value:
-        override.load_value != null && isWeightMode(exercise.load_mode)
-          ? toUnit(override.load_value, unit)
-          : override.load_value,
-    })) ?? null,
-  rowKey: nextRowKey(),
-})
+const toDraft = (exercise: TrainingDayExercise, unit: WeightUnit): ExerciseDraft => {
+  const asDisplay = (value: number | null): number | null =>
+    value != null && isWeightMode(exercise.load_mode) ? toUnit(value, unit) : value
+
+  return {
+    ...exercise,
+    load_value: asDisplay(toNumber(exercise.load_value)),
+    rpe_target: toNumber(exercise.rpe_target),
+    set_overrides:
+      exercise.set_overrides?.map(override => ({
+        ...override,
+        load_value: asDisplay(toNumber(override.load_value)),
+        rpe_target: toNumber(override.rpe_target),
+      })) ?? null,
+    rowKey: nextRowKey(),
+  }
+}
 
 export default function DayEditorClient({
   programId,
@@ -266,7 +285,7 @@ export default function DayEditorClient({
   const updateOverride = (
     exercise: ExerciseDraft,
     setNumber: number,
-    patch: Partial<TrainingSetOverride>,
+    patch: Partial<OverrideDraft>,
   ) => {
     updateExercise(exercise.rowKey, {
       set_overrides: (exercise.set_overrides ?? []).map(override =>
