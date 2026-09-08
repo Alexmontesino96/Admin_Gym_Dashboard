@@ -3,24 +3,24 @@
     {
       "exercise_key": "barbell_back_squat",
       "exercise_name": "Barbell Back Squat",
-      "current_e1rm": "116.67",
+      "current_e1rm": 116.67,
       "delta_kg": null,
       "delta_weeks": 0,
       "points": [
-        "116.67"
+        116.67
       ],
-      "last_pr": "2026-09-07T23:31:29.377242"
+      "last_pr": "2026-09-08T03:38:57.155001"
     },
     {
       "exercise_key": "barbell_bench_press",
       "exercise_name": "Barbell Bench Press",
-      "current_e1rm": "99.17",
+      "current_e1rm": 99.17,
       "delta_kg": null,
       "delta_weeks": 0,
       "points": [
-        "99.17"
+        99.17
       ],
-      "last_pr": "2026-09-07T23:31:29.377240"
+      "last_pr": "2026-09-08T03:38:57.154999"
     }
   ]
 }

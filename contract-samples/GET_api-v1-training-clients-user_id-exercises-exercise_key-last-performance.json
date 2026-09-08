@@ -1,10 +1,10 @@
 {
   "exercise_key": "barbell_back_squat",
-  "performed_at": "2026-09-07T23:31:33.806866",
+  "performed_at": "2026-09-08T03:39:02.444871",
   "reps": 5,
-  "weight_kg": "75.00",
-  "e1rm_kg": "87.50",
-  "suggested_weight_kg": "77.50",
+  "weight_kg": 75.0,
+  "e1rm_kg": 87.5,
+  "suggested_weight_kg": 77.5,
   "last_set": {
     "client_uuid": "scenario-dana-set-3",
     "exercise_key": "barbell_back_squat",
@@ -13,13 +13,13 @@
     "order_index": 0,
     "set_number": 3,
     "reps": 5,
-    "weight_kg": "75.00",
+    "weight_kg": 75.0,
     "rpe": null,
     "is_warmup": false,
-    "completed_at": "2026-09-07T23:31:33.806871",
+    "completed_at": "2026-09-08T03:39:02.444876",
     "id": 3,
     "exercise_id": 1,
-    "e1rm_kg": "87.50",
+    "e1rm_kg": 87.5,
     "is_pr": true,
     "pr_kind": "e1rm"
   }

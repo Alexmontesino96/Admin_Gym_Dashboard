@@ -17,7 +17,7 @@
       "sets_count": 3,
       "reps": "5",
       "load_mode": "weight",
-      "load_value": "50.00",
+      "load_value": 50.0,
       "rpe_target": null,
       "rest_seconds": 180,
       "notes": null,

@@ -5042,9 +5042,9 @@ export interface StaffWorkoutLogSummary extends WorkoutLogSummary {
 /**
  * El registro completo: `GET /logs/{id}`, `POST /logs/sync` y `POST /logs/{id}/review`.
  *
- * No hereda de `StaffWorkoutLogSummary` a propósito: el detalle **no** trae `reviewed_by` ni el
- * nombre y la foto del cliente —eso sólo aparece en las listas de personal—, pero sí trae las
- * series, la prescripción y lo que el cliente escribió.
+ * No hereda de `StaffWorkoutLogSummary` a propósito: el detalle no trae el nombre ni la foto del
+ * cliente —eso sólo aparece en las listas de personal—, pero sí las series, la prescripción y lo
+ * que el cliente escribió.
  */
 export interface WorkoutLog extends WorkoutLogSummary {
   gym_id: number;
@@ -5052,6 +5052,12 @@ export interface WorkoutLog extends WorkoutLogSummary {
   program_id: number | null;
   day_id: number | null;
   client_uuid: string;
+  /**
+   * Quién revisó el registro. Lo añadió WP8 para que las tres respuestas del mismo recurso
+   * tengan la misma forma: antes `POST /logs/{id}/review` no lo traía y había que releer el
+   * registro entero para poder pintar «Reviewed by …».
+   */
+  reviewed_by: number | null;
   coach_comment: string | null;
   session_rpe: ApiDecimal | null;
   feeling: number | null;

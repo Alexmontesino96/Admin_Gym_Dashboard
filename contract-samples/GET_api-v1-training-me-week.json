@@ -8,7 +8,7 @@
       "date": "2026-09-07",
       "name": "Lower A",
       "is_rest": false,
-      "status": "today",
+      "status": "rest",
       "exercise_count": 1,
       "exercise_preview": [
         "Barbell Back Squat"

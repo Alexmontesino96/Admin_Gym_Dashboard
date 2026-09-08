@@ -5,9 +5,9 @@
   "points": [
     {
       "log_id": 1,
-      "date": "2026-09-07T23:31:29.377238",
-      "e1rm_kg": "99.17",
-      "top_weight_kg": "85.00",
+      "date": "2026-09-08T03:38:57.154997",
+      "e1rm_kg": 99.17,
+      "top_weight_kg": 85.0,
       "top_reps": 5,
       "total_sets": 1
     }
@@ -15,7 +15,7 @@
   "sessions": [
     {
       "log_id": 1,
-      "date": "2026-09-07T23:31:29.377238",
+      "date": "2026-09-08T03:38:57.154997",
       "sets": [
         {
           "client_uuid": "scn2-set-0001",
@@ -25,13 +25,13 @@
           "order_index": 0,
           "set_number": 1,
           "reps": 5,
-          "weight_kg": "85.00",
+          "weight_kg": 85.0,
           "rpe": null,
           "is_warmup": false,
-          "completed_at": "2026-09-07T23:31:29.377240",
+          "completed_at": "2026-09-08T03:38:57.154999",
           "id": 1,
           "exercise_id": 2,
-          "e1rm_kg": "99.17",
+          "e1rm_kg": 99.17,
           "is_pr": true,
           "pr_kind": "first"
         }
@@ -42,10 +42,10 @@
     "id": 1,
     "exercise_key": "barbell_bench_press",
     "exercise_name": "Barbell Bench Press",
-    "best_e1rm_kg": "99.17",
-    "best_weight_kg": "85.00",
+    "best_e1rm_kg": 99.17,
+    "best_weight_kg": 85.0,
     "best_reps": 5,
-    "achieved_at": "2026-09-07T23:31:29.377240",
+    "achieved_at": "2026-09-08T03:38:57.154999",
     "delta_kg": null
   }
 }
