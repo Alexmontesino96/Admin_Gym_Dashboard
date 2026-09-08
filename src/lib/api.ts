@@ -1,3 +1,5 @@
+import { trackTraining } from '@/lib/training/analytics';
+
 // Configuración de la API
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://gymapi-eh6m.onrender.com/api/v1';
 
@@ -280,7 +282,20 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}, custo
       return {};
     }
 
-    return await response.json();
+    // Hay respuestas correctas sin cuerpo que no son 204: `POST /training/logs/{id}/kudos`
+    // responde 201 y nada más. `response.json()` sobre un cuerpo vacío lanza «Unexpected end of
+    // JSON input», y el llamante veía un error donde la operación había funcionado.
+    const contentLength = response.headers.get('content-length');
+    if (contentLength === '0' || response.status === 205) {
+      return {};
+    }
+
+    const rawBody = await response.text();
+    if (!rawBody) {
+      return {};
+    }
+
+    return JSON.parse(rawBody);
   } catch (error) {
     console.error('Error en API call:', error);
     
@@ -339,6 +354,9 @@ export interface GymParticipant {
   updated_at: string;
   auth0_id: string;
   picture?: string;
+  /** Columna nueva del modulo de entrenamiento (plan §4.6). */
+  preferred_weight_unit?: 'kg' | 'lb' | null;
+  color?: string | null;
 }
 
 export interface GymUserSummary {
@@ -4729,3 +4747,793 @@ export const clientHealthAPI = {
 
 /** Kilos a libras, para pintar. El almacenamiento sigue en kilos. */
 export const kgToLb = (kg: number): number => kg * 2.204622621848776
+
+// ---------------------------------------------------------------------------
+// Módulo de entrenamiento
+// ---------------------------------------------------------------------------
+// Contrato: PLAN_MODULO_ENTRENAMIENTO.md §6 y WP2-informe.md §4. Una función por endpoint, con el
+// mismo método y la misma ruta. Los pesos viajan y se guardan siempre en kilos (§4.4); la
+// conversión a la unidad de quien mira vive en el borde de la interfaz (`src/lib/training/units.ts`).
+//
+// Los tipos de este bloque no usan `any` y se verifican contra 48 respuestas reales del backend
+// con `npm run check:training-contract`. Si el backend cambia una forma, ese comando se pone rojo
+// antes de que un editor de días borre el trabajo de un entrenador en silencio.
+
+/**
+ * Una columna `Numeric(p,s)` de Postgres. Pydantic la serializa como **cadena** decimal
+ * (`"80.00"`), no como número: el backend manda `load_value: "80.00"` y `total_volume_kg:
+ * "1050.00"`. Se acepta también `number` porque algunos porcentajes llegan como float.
+ *
+ * Nunca operes con estos valores directamente: `"80" * 2` funciona por coerción pero `"80" + 2`
+ * concatena. Pasa siempre por `toNumber` (`src/lib/training/units.ts`).
+ */
+export type ApiDecimal = string | number;
+
+/** Unidad de peso de una persona. El almacenamiento es siempre en kilos. */
+export type WeightUnit = 'kg' | 'lb';
+
+export type TrainingProgramStatus = 'draft' | 'active' | 'archived';
+export type TrainingVisibility = 'private' | 'group';
+export type TrainingLoadMode = 'weight' | 'percent_1rm' | 'rpe' | 'bodyweight';
+export type TrainingAssignmentMode = 'copy' | 'shared';
+export type TrainingAssignmentStatus = 'active' | 'completed' | 'ended';
+export type TrainingLogStatus = 'in_progress' | 'completed';
+export type TrainingPRKind = 'e1rm' | 'weight' | 'reps' | 'first';
+export type ExerciseCategory = 'strength' | 'cardio' | 'mobility' | 'other';
+/** Estado de un día para la interfaz (§4.2). */
+export type TrainingDayStatus = 'done' | 'today' | 'rest' | 'pending' | 'skipped';
+export type TrainingHistoryRange = '8w' | '6m' | 'all';
+
+/** Ejercicio del catálogo: global (`gym_id` nulo) o personalizado del espacio. */
+export interface Exercise {
+  id: number;
+  exercise_key: string;
+  name: string;
+  gym_id: number | null;
+  category: ExerciseCategory;
+  primary_muscles: string[];
+  equipment: string | null;
+  is_unilateral: boolean;
+  default_rest_seconds: number;
+  instructions: string | null;
+  is_active: boolean;
+  // El backend no los sirve todavía; el catálogo v1 va sin vídeo (plan §14, decisión 3).
+  demo_video_url?: string | null;
+  thumbnail_url?: string | null;
+  created_by?: number | null;
+}
+
+export interface ExerciseCreateData {
+  name: string;
+  category: ExerciseCategory;
+  primary_muscles: string[];
+  equipment?: string | null;
+  is_unilateral?: boolean;
+  default_rest_seconds?: number;
+  instructions?: string | null;
+}
+
+export type ExerciseUpdateData = Partial<ExerciseCreateData> & { is_active?: boolean };
+
+/** Ajuste de una serie concreta dentro de la prescripción de un ejercicio (§4.4). */
+export interface TrainingSetOverride {
+  set_number: number;
+  reps?: string | null;
+  load_value?: ApiDecimal | null;
+  rpe_target?: ApiDecimal | null;
+  rest_seconds?: number | null;
+}
+
+export interface TrainingDayExercise {
+  id: number;
+  day_id: number;
+  exercise_id: number;
+  exercise_key: string;
+  exercise_name: string;
+  order_index: number;
+  superset_group: string | null;
+  sets_count: number;
+  /** Texto libre: `"5"`, `"8-10"`, `"AMRAP"`. */
+  reps: string;
+  load_mode: TrainingLoadMode;
+  /** Kilos si `weight`, porcentaje si `percent_1rm`, nulo en los demás modos. */
+  load_value: ApiDecimal | null;
+  rpe_target: ApiDecimal | null;
+  rest_seconds: number;
+  notes: string | null;
+  set_overrides: TrainingSetOverride[] | null;
+}
+
+/** Un ejercicio del día tal y como lo manda el editor: sin ids de servidor. */
+export type TrainingDayExerciseInput = Omit<TrainingDayExercise, 'id' | 'day_id' | 'exercise_id'> & {
+  exercise_id?: number;
+};
+
+export interface TrainingDay {
+  /** **Nulo** en los días que aún no existen en base: `GET /programs/{id}/days` devuelve los 7. */
+  id: number | null;
+  program_id: number;
+  day_number: number;
+  week_number: number;
+  name: string | null;
+  is_rest: boolean;
+  focus: string | null;
+  notes: string | null;
+  is_published: boolean;
+  exercises: TrainingDayExercise[];
+}
+
+/** El día del cliente (`/me/days/{id}`, `/me/today`) añade fecha, nota del coach y el último peso. */
+export interface MyTrainingDay extends Omit<TrainingDay, 'id' | 'exercises'> {
+  id: number;
+  date: string;
+  coach_note: string | null;
+  exercises: Array<TrainingDayExercise & { last_performance: ClientLastPerformance | null }>;
+}
+
+/** Cuerpo de `PUT /programs/{id}/days/{day_number}`: reemplazo completo del día. */
+export interface TrainingDayUpsertData {
+  name: string | null;
+  is_rest: boolean;
+  focus: string | null;
+  notes: string | null;
+  is_published?: boolean;
+  exercises: TrainingDayExerciseInput[];
+}
+
+/** Respuesta de los dos duplicados, de semana y de día. */
+export interface TrainingDuplicateResult {
+  copied_days: number;
+  target_day_numbers: number[];
+}
+
+export interface TrainingBlock {
+  id: number;
+  program_id: number;
+  name: string;
+  focus: string | null;
+  week_start: number;
+  week_end: number;
+  order_index: number;
+  notes: string | null;
+}
+
+export interface TrainingBlockCreateData {
+  name: string;
+  focus?: string | null;
+  week_start: number;
+  week_end: number;
+  order_index?: number;
+  notes?: string | null;
+}
+
+export type TrainingBlockUpdateData = Partial<TrainingBlockCreateData>;
+
+export interface TrainingProgram {
+  id: number;
+  gym_id: number;
+  creator_id: number;
+  name: string;
+  description: string | null;
+  goal: string | null;
+  duration_weeks: number;
+  status: TrainingProgramStatus;
+  visibility: TrainingVisibility;
+  is_template: boolean;
+  source_program_id: number | null;
+  focus_exercise_keys: string[];
+}
+
+/** `GET /programs` añade el número de asignaciones activas del programa y de sus copias. */
+export interface TrainingProgramListItem extends TrainingProgram {
+  assigned_count: number;
+}
+
+/** `GET /programs/{id}` trae los bloques embebidos; los días se piden semana a semana. */
+export interface TrainingProgramDetail extends TrainingProgram {
+  blocks: TrainingBlock[];
+}
+
+export interface TrainingProgramCreateData {
+  name: string;
+  description?: string | null;
+  goal?: string | null;
+  duration_weeks: number;
+  visibility: TrainingVisibility;
+  focus_exercise_keys?: string[];
+}
+
+export type TrainingProgramUpdateData = Partial<TrainingProgramCreateData> & {
+  status?: TrainingProgramStatus;
+};
+
+export interface TrainingAssignment {
+  id: number;
+  gym_id: number;
+  program_id: number;
+  user_id: number;
+  assigned_by: number;
+  start_date: string;
+  end_date: string | null;
+  mode: TrainingAssignmentMode;
+  status: TrainingAssignmentStatus;
+}
+
+/** Cuerpo de `POST /programs/{id}/assign`. */
+export interface TrainingAssignData {
+  user_ids: number[];
+  start_date: string;
+  mode: TrainingAssignmentMode;
+  replace: boolean;
+}
+
+/** La asignación en lote responde envuelta: es atómica, o van todas o no va ninguna. */
+export interface TrainingAssignResult {
+  assignments: TrainingAssignment[];
+}
+
+export interface SetLog {
+  id: number;
+  day_exercise_id: number | null;
+  exercise_id: number | null;
+  exercise_key: string;
+  exercise_name: string;
+  order_index: number;
+  set_number: number;
+  reps: number;
+  weight_kg: ApiDecimal | null;
+  rpe: ApiDecimal | null;
+  is_warmup: boolean;
+  completed_at: string;
+  client_uuid: string;
+  e1rm_kg: ApiDecimal | null;
+  is_pr: boolean;
+  pr_kind: TrainingPRKind | null;
+}
+
+/** Una serie tal y como la manda la app al sincronizar: sin ids de servidor. */
+export interface SetLogInput {
+  client_uuid: string;
+  exercise_key: string;
+  day_exercise_id?: number | null;
+  exercise_id?: number | null;
+  order_index: number;
+  set_number: number;
+  reps: number;
+  weight_kg?: number | null;
+  rpe?: number | null;
+  is_warmup: boolean;
+  completed_at: string;
+}
+
+/** Lo que devuelven las listas de registros del propio usuario (`/me/logs`). */
+export interface WorkoutLogSummary {
+  id: number;
+  title: string;
+  status: TrainingLogStatus;
+  scheduled_date: string | null;
+  started_at: string;
+  completed_at: string | null;
+  received_at: string;
+  duration_seconds: number | null;
+  total_sets: number;
+  total_volume_kg: ApiDecimal;
+  pr_count: number;
+  is_partial: boolean;
+  reviewed_at: string | null;
+  coach_congratulated: boolean;
+  client_thanked: boolean;
+}
+
+/**
+ * El resumen que ve el personal (`/clients/{id}/logs`, `/inbox`). Añade de quién es y el estado de
+ * la revisión, pero **no** trae `notes` del cliente ni las series: para eso está `GET /logs/{id}`.
+ */
+export interface StaffWorkoutLogSummary extends WorkoutLogSummary {
+  user_id: number;
+  program_id: number | null;
+  day_id: number | null;
+  reviewed_by: number | null;
+  coach_comment: string | null;
+  user_name: string | null;
+  user_picture_url: string | null;
+}
+
+/**
+ * El registro completo: `GET /logs/{id}`, `POST /logs/sync` y `POST /logs/{id}/review`.
+ *
+ * No hereda de `StaffWorkoutLogSummary` a propósito: el detalle no trae el nombre ni la foto del
+ * cliente —eso sólo aparece en las listas de personal—, pero sí las series, la prescripción y lo
+ * que el cliente escribió.
+ */
+export interface WorkoutLog extends WorkoutLogSummary {
+  gym_id: number;
+  user_id: number;
+  program_id: number | null;
+  day_id: number | null;
+  client_uuid: string;
+  /**
+   * Quién revisó el registro. Lo añadió WP8 para que las tres respuestas del mismo recurso
+   * tengan la misma forma: antes `POST /logs/{id}/review` no lo traía y había que releer el
+   * registro entero para poder pintar «Reviewed by …».
+   */
+  reviewed_by: number | null;
+  coach_comment: string | null;
+  session_rpe: ApiDecimal | null;
+  feeling: number | null;
+  notes: string | null;
+  sets: SetLog[];
+  /** Prescripción del día (instantánea) para calcular desviaciones. */
+  prescription: TrainingDayExercise[];
+}
+
+/** Cuerpo de `POST /logs/sync` (§6.4). */
+export interface WorkoutLogSyncData {
+  client_uuid: string;
+  day_id: number | null;
+  program_id: number | null;
+  scheduled_date: string | null;
+  title: string;
+  status: TrainingLogStatus;
+  started_at: string;
+  completed_at: string | null;
+  session_rpe?: number | null;
+  feeling?: number | null;
+  notes?: string | null;
+  sets: SetLogInput[];
+}
+
+export interface PersonalRecord {
+  id: number;
+  exercise_key: string;
+  exercise_name: string;
+  best_e1rm_kg: ApiDecimal | null;
+  best_weight_kg: ApiDecimal | null;
+  best_reps: number | null;
+  achieved_at: string;
+  /** Mejora respecto a la marca anterior, en kilos. */
+  delta_kg: ApiDecimal | null;
+}
+
+/** Un día dentro de la vista de semana del cliente. */
+export interface TrainingWeekDay {
+  day_number: number;
+  date: string;
+  day_id: number | null;
+  name: string | null;
+  is_rest: boolean;
+  status: TrainingDayStatus;
+  exercise_count: number;
+  exercise_preview: string[];
+  log_id: number | null;
+}
+
+export interface TrainingWeek {
+  week_number: number;
+  done_count: number;
+  planned_count: number;
+  days: TrainingWeekDay[];
+}
+
+export interface TrainingCoach {
+  user_id: number;
+  name: string;
+  picture_url: string | null;
+}
+
+export interface TrainingCoachActivity {
+  log_id: number;
+  reviewed_at: string;
+  comment: string | null;
+  congratulated: boolean;
+  client_thanked: boolean;
+  coach: TrainingCoach;
+}
+
+/** Respuesta de `GET /me/program` (§6.5). */
+export interface MyProgramResponse {
+  assignment: TrainingAssignment | null;
+  program: TrainingProgram | null;
+  current: {
+    day_number: number;
+    week_number: number;
+    block: TrainingBlock | null;
+  } | null;
+  week: TrainingWeek | null;
+  coach: TrainingCoach | null;
+  last_log: WorkoutLogSummary | null;
+  coach_activity: TrainingCoachActivity | null;
+  focus_lifts: StrengthSummaryEntry[];
+}
+
+/** Un punto de la serie de e1RM de un ejercicio: una sesión, su mejor serie efectiva. */
+export interface ExerciseHistoryPoint {
+  date: string;
+  e1rm_kg: ApiDecimal | null;
+  top_weight_kg: ApiDecimal | null;
+  top_reps: number | null;
+  total_sets: number;
+  log_id: number;
+}
+
+export interface ExerciseHistorySession {
+  date: string;
+  log_id: number;
+  sets: SetLog[];
+}
+
+/** `GET /me/exercises/{key}/history`: la serie más las sesiones con sus series. */
+export interface ExerciseHistory {
+  exercise_key: string;
+  exercise_name: string;
+  range: TrainingHistoryRange;
+  points: ExerciseHistoryPoint[];
+  best: PersonalRecord | null;
+  sessions: ExerciseHistorySession[];
+}
+
+/** La versión de personal cambia las sesiones por las mejores series. */
+export interface StaffExerciseHistory {
+  exercise_key: string;
+  exercise_name: string;
+  range: TrainingHistoryRange;
+  points: ExerciseHistoryPoint[];
+  best: PersonalRecord | null;
+  best_sets: SetLog[];
+}
+
+export interface ClientLastPerformance {
+  exercise_key: string;
+  performed_at: string | null;
+  reps: number | null;
+  weight_kg: ApiDecimal | null;
+  e1rm_kg: ApiDecimal | null;
+  /** Carga anterior más 2,5 kg. El redondeo al paso de la unidad lo hace la interfaz. */
+  suggested_weight_kg: ApiDecimal | null;
+  last_set: SetLog | null;
+}
+
+export interface StrengthSummaryEntry {
+  exercise_key: string;
+  exercise_name: string;
+  current_e1rm: ApiDecimal | null;
+  delta_kg: ApiDecimal | null;
+  delta_weeks: number | null;
+  /** Los últimos 8 valores de e1RM, ya en orden. */
+  points: ApiDecimal[];
+  last_pr: string | null;
+}
+
+export interface StrengthSummaryResponse {
+  entries: StrengthSummaryEntry[];
+}
+
+/** Programa de un cliente con su adherencia, para la ficha del entrenador. */
+export interface ClientProgramSummary {
+  assignment: TrainingAssignment;
+  program: TrainingProgram;
+  current_week: number | null;
+  current_day_number: number | null;
+  current_block: TrainingBlock | null;
+  week: TrainingWeek | null;
+  adherence_pct: ApiDecimal | null;
+  missed_in_block: number | null;
+}
+
+export interface ClientProgramsResponse {
+  active: ClientProgramSummary | null;
+  past: ClientProgramSummary[];
+}
+
+export interface TrainingDayNote {
+  id: number;
+  user_id: number;
+  author_id: number;
+  date: string;
+  day_id: number | null;
+  text: string;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface TrainingGroupMember {
+  user_id: number;
+  name: string;
+  picture_url: string | null;
+  day_name: string | null;
+  log_id: number;
+  /** Si el llamante ya le ha dado kudos: es la fuente de verdad, `POST /kudos` no devuelve cuerpo. */
+  kudos_given: boolean;
+}
+
+export interface TrainingGroupToday {
+  trained_today: TrainingGroupMember[];
+  trained_count: number;
+  total_members: number;
+  week: Array<{ date: string; trained_count: number }>;
+  consistency_pct: number | null;
+  is_new: boolean;
+}
+
+/** Cuerpo de `POST /logs/{id}/review`. */
+export interface TrainingReviewData {
+  comment?: string;
+  congratulate?: boolean;
+}
+
+/** `GET|PUT /training/me/preferences`. */
+export interface TrainingPreferences {
+  training_reminders_enabled: boolean;
+}
+
+const trainingQuery = (params: Record<string, string | number | boolean | undefined | null>): string => {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      search.append(key, String(value));
+    }
+  });
+  const qs = search.toString();
+  return qs ? `?${qs}` : '';
+};
+
+export const trainingAPI = {
+  // ===== §6.1 Cliente =====
+
+  /** Asignación activa, programa, día y semana en curso, coach y último registro. */
+  getMyProgram: async (): Promise<MyProgramResponse> => apiCall('/training/me/program'),
+
+  /** Los 7 días de una semana del programa del propio usuario. */
+  getMyWeek: async (weekNumber: number): Promise<TrainingWeek> =>
+    apiCall(`/training/me/week${trainingQuery({ week_number: weekNumber })}`),
+
+  /** Un día del propio programa, con prescripción, nota del coach y último rendimiento. */
+  getMyDay: async (dayId: number): Promise<MyTrainingDay> => apiCall(`/training/me/days/${dayId}`),
+
+  /** El día de hoy, o `null` si toca descanso o no hay programa. */
+  getMyToday: async (): Promise<MyTrainingDay | null> => apiCall('/training/me/today'),
+
+  /** Upsert idempotente de un registro por `client_uuid` (§6.4). */
+  syncLog: async (data: WorkoutLogSyncData): Promise<WorkoutLog> =>
+    apiCall('/training/logs/sync', { method: 'POST', body: JSON.stringify(data) }),
+
+  /** Resúmenes de los propios registros, paginados por cursor. */
+  getMyLogs: async (
+    params: { limit?: number; before?: number } = {},
+  ): Promise<WorkoutLogSummary[]> => apiCall(`/training/me/logs${trainingQuery(params)}`),
+
+  /** Detalle de un registro con sus series y la prescripción del día. Propietario o personal. */
+  getLog: async (logId: number): Promise<WorkoutLog> => apiCall(`/training/logs/${logId}`),
+
+  /** Historial de e1RM del propio usuario para un ejercicio. */
+  getMyExerciseHistory: async (
+    exerciseKey: string,
+    range: TrainingHistoryRange = '8w',
+  ): Promise<ExerciseHistory> =>
+    apiCall(`/training/me/exercises/${exerciseKey}/history${trainingQuery({ range })}`),
+
+  /** Marcas personales propias. */
+  getMyRecords: async (): Promise<PersonalRecord[]> => apiCall('/training/me/records'),
+
+  /** Resumen de fuerza por ejercicio de foco. */
+  getMyStrengthSummary: async (): Promise<StrengthSummaryResponse> =>
+    apiCall('/training/me/strength-summary'),
+
+  /** Acusar el comentario del entrenador. 204 sin cuerpo. */
+  thankLog: async (logId: number): Promise<void> =>
+    apiCall(`/training/logs/${logId}/thank`, { method: 'POST' }),
+
+  /** Preferencias del módulo del propio usuario. */
+  getMyPreferences: async (): Promise<TrainingPreferences> => apiCall('/training/me/preferences'),
+
+  setMyPreferences: async (data: TrainingPreferences): Promise<TrainingPreferences> =>
+    apiCall('/training/me/preferences', { method: 'PUT', body: JSON.stringify(data) }),
+
+  /** Catálogo global más los ejercicios personalizados del espacio. */
+  getExercises: async (
+    params: { q?: string; muscle?: string; limit?: number } = {},
+  ): Promise<Exercise[]> => apiCall(`/training/exercises${trainingQuery(params)}`),
+
+  /** Quién del grupo ha entrenado hoy. Sólo programas con visibilidad de grupo. */
+  getProgramGroupToday: async (programId: number): Promise<TrainingGroupToday> =>
+    apiCall(`/training/programs/${programId}/group/today`),
+
+  /** Kudos sobre el registro de otro miembro del grupo. 201 sin cuerpo. */
+  sendKudos: async (logId: number): Promise<void> =>
+    apiCall(`/training/logs/${logId}/kudos`, { method: 'POST' }),
+
+  // ===== §6.2 Personal =====
+
+  /** Lista de plantillas del espacio con estado, visibilidad y número de asignados. */
+  getPrograms: async (
+    params: { status?: TrainingProgramStatus; limit?: number; skip?: number } = {},
+  ): Promise<TrainingProgramListItem[]> => apiCall(`/training/programs${trainingQuery(params)}`),
+
+  createProgram: async (data: TrainingProgramCreateData): Promise<TrainingProgram> => {
+    const program: TrainingProgram = await apiCall('/training/programs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    trackTraining('program_created', {
+      program_id: program?.id,
+      duration_weeks: data.duration_weeks,
+      visibility: data.visibility,
+    });
+    return program;
+  },
+
+  getProgram: async (programId: number): Promise<TrainingProgramDetail> =>
+    apiCall(`/training/programs/${programId}`),
+
+  updateProgram: async (
+    programId: number,
+    data: TrainingProgramUpdateData,
+  ): Promise<TrainingProgram> =>
+    apiCall(`/training/programs/${programId}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  /** Sólo si no tiene asignaciones activas; si las tiene el backend responde 409. */
+  deleteProgram: async (programId: number): Promise<void> =>
+    apiCall(`/training/programs/${programId}`, { method: 'DELETE' }),
+
+  /** Copia el programa como plantilla en borrador. */
+  duplicateProgram: async (programId: number): Promise<TrainingProgram> =>
+    apiCall(`/training/programs/${programId}/duplicate`, { method: 'POST' }),
+
+  /** Pasa el programa a `active`. Necesita al menos un día con ejercicios. */
+  publishProgram: async (programId: number): Promise<TrainingProgram> => {
+    const program: TrainingProgram = await apiCall(`/training/programs/${programId}/publish`, {
+      method: 'POST',
+    });
+    trackTraining('program_published', { program_id: programId });
+    return program;
+  },
+
+  createBlock: async (
+    programId: number,
+    data: TrainingBlockCreateData,
+  ): Promise<TrainingBlock> =>
+    apiCall(`/training/programs/${programId}/blocks`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateBlock: async (
+    programId: number,
+    blockId: number,
+    data: TrainingBlockUpdateData,
+  ): Promise<TrainingBlock> =>
+    apiCall(`/training/programs/${programId}/blocks/${blockId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteBlock: async (programId: number, blockId: number): Promise<void> =>
+    apiCall(`/training/programs/${programId}/blocks/${blockId}`, { method: 'DELETE' }),
+
+  /** Los 7 días de una semana. Los que no existen en base llegan con `id: null` e `is_rest`. */
+  getProgramDays: async (programId: number, week: number): Promise<TrainingDay[]> =>
+    apiCall(`/training/programs/${programId}/days${trainingQuery({ week })}`),
+
+  /** Upsert del día entero, ejercicios incluidos: es la semántica del editor. */
+  upsertProgramDay: async (
+    programId: number,
+    dayNumber: number,
+    data: TrainingDayUpsertData,
+  ): Promise<TrainingDay> =>
+    apiCall(`/training/programs/${programId}/days/${dayNumber}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  duplicateWeek: async (
+    programId: number,
+    week: number,
+    data: { target_weeks: number[]; keep_loads: boolean },
+  ): Promise<TrainingDuplicateResult> =>
+    apiCall(`/training/programs/${programId}/weeks/${week}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  duplicateDay: async (
+    programId: number,
+    dayNumber: number,
+    data: { target_day_numbers: number[] },
+  ): Promise<TrainingDuplicateResult> =>
+    apiCall(`/training/programs/${programId}/days/${dayNumber}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /** Asigna el programa a uno o varios clientes. `start_date` debe ser lunes. Atómico. */
+  assignProgram: async (
+    programId: number,
+    data: TrainingAssignData,
+  ): Promise<TrainingAssignResult> => {
+    const result: TrainingAssignResult = await apiCall(`/training/programs/${programId}/assign`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    trackTraining('program_assigned', {
+      program_id: programId,
+      client_count: data.user_ids.length,
+      mode: data.mode,
+      replace: data.replace,
+    });
+    return result;
+  },
+
+  /** Cierra una asignación (`status = ended`). */
+  deleteAssignment: async (assignmentId: number): Promise<void> =>
+    apiCall(`/training/assignments/${assignmentId}`, { method: 'DELETE' }),
+
+  /** Programa activo y pasados de un cliente, con adherencia. */
+  getClientPrograms: async (userId: number): Promise<ClientProgramsResponse> =>
+    apiCall(`/training/clients/${userId}/programs`),
+
+  /** Registros de un cliente, con `reviewed_at` para el buzón de revisión. */
+  getClientLogs: async (
+    userId: number,
+    params: { limit?: number; before?: number } = {},
+  ): Promise<StaffWorkoutLogSummary[]> =>
+    apiCall(`/training/clients/${userId}/logs${trainingQuery(params)}`),
+
+  /** Marcas personales de un cliente, con la misma forma que `/me/records`. */
+  getClientRecords: async (userId: number): Promise<PersonalRecord[]> =>
+    apiCall(`/training/clients/${userId}/records`),
+
+  getClientExerciseHistory: async (
+    userId: number,
+    exerciseKey: string,
+    range: TrainingHistoryRange = '8w',
+  ): Promise<StaffExerciseHistory> =>
+    apiCall(
+      `/training/clients/${userId}/exercises/${exerciseKey}/history${trainingQuery({ range })}`,
+    ),
+
+  getClientLastPerformance: async (
+    userId: number,
+    exerciseKey: string,
+  ): Promise<ClientLastPerformance> =>
+    apiCall(`/training/clients/${userId}/exercises/${exerciseKey}/last-performance`),
+
+  /** Comentario y felicitación sobre un registro. Dispara push al cliente. */
+  reviewLog: async (logId: number, data: TrainingReviewData): Promise<WorkoutLog> =>
+    apiCall(`/training/logs/${logId}/review`, { method: 'POST', body: JSON.stringify(data) }),
+
+  /** Una fecha sin nota devuelve `null` con 200, no 404. */
+  getClientDayNote: async (userId: number, date: string): Promise<TrainingDayNote | null> =>
+    apiCall(`/training/clients/${userId}/day-notes/${date}`),
+
+  putClientDayNote: async (
+    userId: number,
+    date: string,
+    data: { text: string },
+  ): Promise<TrainingDayNote> =>
+    apiCall(`/training/clients/${userId}/day-notes/${date}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  /** Exige `recent` o el par `from`/`to`; sin ninguno responde 422. */
+  getClientDayNotes: async (
+    userId: number,
+    params: { from?: string; to?: string; recent?: number } = {},
+  ): Promise<TrainingDayNote[]> =>
+    apiCall(`/training/clients/${userId}/day-notes${trainingQuery(params)}`),
+
+  /** Ejercicios personalizados del espacio. El catálogo global es de sólo lectura. */
+  createExercise: async (data: ExerciseCreateData): Promise<Exercise> =>
+    apiCall('/training/exercises', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateExercise: async (exerciseId: number, data: ExerciseUpdateData): Promise<Exercise> =>
+    apiCall(`/training/exercises/${exerciseId}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  deleteExercise: async (exerciseId: number): Promise<void> =>
+    apiCall(`/training/exercises/${exerciseId}`, { method: 'DELETE' }),
+
+  /** Registros del espacio completados y sin revisar, del más reciente al más antiguo. */
+  getInbox: async (
+    params: { limit?: number; before?: number } = {},
+  ): Promise<StaffWorkoutLogSummary[]> => apiCall(`/training/inbox${trainingQuery(params)}`),
+};

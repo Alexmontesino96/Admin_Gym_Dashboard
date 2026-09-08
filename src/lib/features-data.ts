@@ -574,6 +574,35 @@ export const MODULES_METADATA: Record<string, ModuleMetadata> = {
         role: 'Data Analyst'
       }
     ]
+  },
+
+  // El modulo de entrenamiento se escribe en ingles (plan §14, decision 4), incluidos sus
+  // metadatos, para que la traduccion del panel sea un unico cambio.
+  training: {
+    code: 'training',
+    displayName: 'Training Programs',
+    tagline: 'Write a program once, assign it to everyone',
+    longDescription: 'Build multi-week programs with blocks, weeks and days, assign them to a client or a group, and read every logged session with estimated 1RM, personal records and adherence.',
+    icon: Dumbbell,
+    category: 'clients',
+    benefits: [
+      'Build a 12-week program and duplicate a week in one click',
+      'Assign as a private copy or shared with a group',
+      'Review every session with comments and personal records'
+    ],
+    socialProof: {
+      estimatedGymsUsing: 0,
+      rating: 0,
+      reviewsCount: 0,
+      activationsThisWeek: 0
+    },
+    badges: ['new'],
+    fomoMessages: [
+      'Programs, logs and personal records in one place',
+      'Your clients train offline and sync when they are back',
+      'Every session reaches you with the deviations marked'
+    ],
+    testimonials: []
   }
 };
 

@@ -67,6 +67,7 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
   const [isSurveysExpanded, setIsSurveysExpanded] = useState(false);
   const [isEventosExpanded, setIsEventosExpanded] = useState(false);
   const [isActivityFeedExpanded, setIsActivityFeedExpanded] = useState(false);
+  const [isTrainingExpanded, setIsTrainingExpanded] = useState(false);
   const pathname = usePathname();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const gymSelectorRef = useRef<HTMLDivElement>(null);
@@ -141,6 +142,17 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
       submenu: [
         { key: "nutrition-plans", label: "Ver Planes", href: "/nutricion/planes", icon: FileText },
         { key: "create-plan", label: "Crear Plan", href: "/nutricion/crear", icon: PlusCircle },
+      ]
+    },
+    {
+      key: "training",
+      label: "Training",
+      href: "/training",
+      icon: Dumbbell,
+      hasSubmenu: true,
+      submenu: [
+        { key: "training-programs", label: "Programs", href: "/training", icon: FileText },
+        { key: "training-exercises", label: "Exercises", href: "/training/exercises", icon: Dumbbell },
       ]
     },
     { 
@@ -223,6 +235,9 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
     }
     if (pathname?.startsWith('/activity-feed')) {
       setIsActivityFeedExpanded(true);
+    }
+    if (pathname?.startsWith('/training')) {
+      setIsTrainingExpanded(true);
     }
   }, [pathname]);
 
@@ -410,6 +425,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                               setIsEventosExpanded(!isEventosExpanded);
                             } else if (key === 'activity-feed') {
                               setIsActivityFeedExpanded(!isActivityFeedExpanded);
+                            } else if (key === 'training') {
+                              setIsTrainingExpanded(!isTrainingExpanded);
                             }
                           }}
                           className={`p-1 rounded-md transition-colors ${
@@ -425,7 +442,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                               (key === 'membership' && isMembershipExpanded) ||
                               (key === 'surveys' && isSurveysExpanded) ||
                               (key === 'eventos' && isEventosExpanded) ||
-                              (key === 'activity-feed' && isActivityFeedExpanded) ? 'rotate-90' : ''
+                              (key === 'activity-feed' && isActivityFeedExpanded) ||
+                              (key === 'training' && isTrainingExpanded) ? 'rotate-90' : ''
                             }`}
                           />
                         </button>
@@ -437,7 +455,8 @@ export default function MainLayout({ children, user }: MainLayoutProps) {
                         (key === 'membership' && isMembershipExpanded) ||
                         (key === 'surveys' && isSurveysExpanded) ||
                         (key === 'eventos' && isEventosExpanded) ||
-                        (key === 'activity-feed' && isActivityFeedExpanded)) && submenu && (
+                        (key === 'activity-feed' && isActivityFeedExpanded) ||
+                        (key === 'training' && isTrainingExpanded)) && submenu && (
                         <ul className="ml-6 space-y-1 border-l border-slate-200 pl-4">
                           {submenu.map(({ key: subKey, label: subLabel, href: subHref, icon: SubIcon }) => {
                             const isSubActive = pathname === subHref;

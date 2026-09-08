@@ -1,0 +1,19 @@
+[
+  {
+    "id": 1,
+    "title": "Upper B",
+    "status": "completed",
+    "scheduled_date": null,
+    "started_at": "2026-09-08T02:46:57.837093",
+    "completed_at": "2026-09-08T03:38:57.837099",
+    "received_at": "2026-09-08T03:38:57.841950",
+    "duration_seconds": null,
+    "total_sets": 1,
+    "total_volume_kg": 425.0,
+    "pr_count": 1,
+    "is_partial": true,
+    "reviewed_at": null,
+    "coach_congratulated": false,
+    "client_thanked": false
+  }
+]

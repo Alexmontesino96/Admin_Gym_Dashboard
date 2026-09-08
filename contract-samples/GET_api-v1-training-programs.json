@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Off-season strength",
+    "description": "12 weeks, three blocks.",
+    "goal": "strength",
+    "duration_weeks": 12,
+    "visibility": "private",
+    "focus_exercise_keys": [
+      "barbell_back_squat",
+      "barbell_bench_press"
+    ],
+    "id": 1,
+    "gym_id": 1,
+    "creator_id": 1,
+    "status": "active",
+    "is_template": true,
+    "source_program_id": null,
+    "assigned_count": 1
+  }
+]

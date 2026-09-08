@@ -9,9 +9,10 @@
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
+    "check:training-contract": "tsc --noEmit -p tsconfig.contract.json",
     "build:analyze": "ANALYZE=true next build",
     "pre-deploy": "node scripts/pre-deploy.js",
-    "deploy:check": "npm run lint && npm run type-check && npm run pre-deploy"
+    "deploy:check": "npm run lint && npm run type-check && npm run check:training-contract && npm run pre-deploy"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.7.0",

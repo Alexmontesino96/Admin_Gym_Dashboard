@@ -6,6 +6,7 @@ import { eventsAPI } from '@/lib/api'
 import { CreditCardIcon, ClockIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
 import ClientHealthPanel from '@/components/ClientHealthPanel'
+import TrainingPanel from '@/components/training/TrainingPanel'
 
 interface UserProfileClientProps {
   userId: number
@@ -364,6 +365,21 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
               Check-ins
             </h3>
             <ClientHealthPanel userId={userId} />
+          </div>
+        )}
+
+        {/* Entrenamiento. El programa que sigue, lo que registra y a donde va su fuerza: la otra
+            mitad de la relacion con su entrenador. */}
+        {profile.gym_role !== 'TRAINER' && (
+          <div className="mt-8 border-t border-gray-200 pt-6">
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              Training
+            </h3>
+            <TrainingPanel
+              userId={userId}
+              clientName={[profile.first_name, profile.last_name].filter(Boolean).join(' ') || undefined}
+              weightUnit={profile.preferred_weight_unit ?? 'lb'}
+            />
           </div>
         )}
 

@@ -1,0 +1,45 @@
+{
+  "exercise_key": "barbell_back_squat",
+  "exercise_name": "Barbell Back Squat",
+  "range": "all",
+  "points": [
+    {
+      "log_id": 1,
+      "date": "2026-09-08T03:39:02.444871",
+      "e1rm_kg": 87.5,
+      "top_weight_kg": 75.0,
+      "top_reps": 5,
+      "total_sets": 3
+    }
+  ],
+  "best_sets": [
+    {
+      "client_uuid": "scenario-dana-set-3",
+      "exercise_key": "barbell_back_squat",
+      "exercise_name": "Barbell Back Squat",
+      "day_exercise_id": null,
+      "order_index": 0,
+      "set_number": 3,
+      "reps": 5,
+      "weight_kg": 75.0,
+      "rpe": null,
+      "is_warmup": false,
+      "completed_at": "2026-09-08T03:39:02.444876",
+      "id": 3,
+      "exercise_id": 1,
+      "e1rm_kg": 87.5,
+      "is_pr": true,
+      "pr_kind": "e1rm"
+    }
+  ],
+  "best": {
+    "id": 1,
+    "exercise_key": "barbell_back_squat",
+    "exercise_name": "Barbell Back Squat",
+    "best_e1rm_kg": 87.5,
+    "best_weight_kg": 75.0,
+    "best_reps": 5,
+    "achieved_at": "2026-09-08T03:39:02.444876",
+    "delta_kg": null
+  }
+}

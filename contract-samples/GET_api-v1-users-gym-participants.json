@@ -1,0 +1,26 @@
+[
+  {
+    "email": "dana@test.com",
+    "is_active": true,
+    "is_superuser": false,
+    "first_name": "Dana",
+    "last_name": "User",
+    "role": "MEMBER",
+    "phone_number": null,
+    "birth_date": null,
+    "height": null,
+    "weight": null,
+    "bio": null,
+    "goals": null,
+    "health_conditions": null,
+    "color": null,
+    "gym_role": "MEMBER",
+    "qr_code": null,
+    "preferred_weight_unit": "lb",
+    "id": 2,
+    "created_at": "2026-09-08T03:39:03",
+    "updated_at": "2026-09-08T03:39:03",
+    "auth0_id": "auth0|dana",
+    "picture": null
+  }
+]
