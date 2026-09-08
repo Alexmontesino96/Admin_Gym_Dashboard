@@ -62,7 +62,7 @@ export default function ExerciseLibraryClient() {
     setLoadError(null)
     setModuleInactive(false)
     try {
-      const data = await trainingAPI.getExercises({ limit: 500 })
+      const data = await trainingAPI.getExercises({ limit: 200 })
       setExercises(Array.isArray(data) ? data : [])
     } catch (err) {
       if (isModuleDisabled(err)) {

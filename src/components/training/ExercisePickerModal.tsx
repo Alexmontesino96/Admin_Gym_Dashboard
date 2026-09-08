@@ -59,7 +59,7 @@ export default function ExercisePickerModal({
     setLoading(true)
     setError(null)
     try {
-      const data = await trainingAPI.getExercises({ limit: 300 })
+      const data = await trainingAPI.getExercises({ limit: 200 })
       setExercises(Array.isArray(data) ? data : [])
     } catch {
       setError(t.picker.loadError)

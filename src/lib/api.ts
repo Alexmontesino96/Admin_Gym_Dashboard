@@ -5266,6 +5266,12 @@ export interface TrainingPreferences {
   training_reminders_enabled: boolean;
 }
 
+/**
+ * Tope de `limit` de `GET /training/exercises`, tomado del contrato del backend
+ * (`endpoints/training/exercises.py`: `Query(50, ge=1, le=200)`). Pedir más devuelve 422.
+ */
+const TRAINING_EXERCISES_MAX_LIMIT = 200;
+
 const trainingQuery = (params: Record<string, string | number | boolean | undefined | null>): string => {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -5329,10 +5335,23 @@ export const trainingAPI = {
   setMyPreferences: async (data: TrainingPreferences): Promise<TrainingPreferences> =>
     apiCall('/training/me/preferences', { method: 'PUT', body: JSON.stringify(data) }),
 
-  /** Catálogo global más los ejercicios personalizados del espacio. */
+  /**
+   * Catálogo global más los ejercicios personalizados del espacio.
+   *
+   * El backend rechaza con 422 cualquier `limit` por encima de 200
+   * (`endpoints/training/exercises.py`: `Query(50, ge=1, le=200)`), y ese 422 deja al entrenador
+   * sin ejercicios que prescribir. El tope se aplica aquí, en el único sitio que conoce el
+   * contrato, en vez de confiar en que cada pantalla recuerde el máximo.
+   */
   getExercises: async (
     params: { q?: string; muscle?: string; limit?: number } = {},
-  ): Promise<Exercise[]> => apiCall(`/training/exercises${trainingQuery(params)}`),
+  ): Promise<Exercise[]> =>
+    apiCall(
+      `/training/exercises${trainingQuery({
+        ...params,
+        limit: Math.min(params.limit ?? TRAINING_EXERCISES_MAX_LIMIT, TRAINING_EXERCISES_MAX_LIMIT),
+      })}`,
+    ),
 
   /** Quién del grupo ha entrenado hoy. Sólo programas con visibilidad de grupo. */
   getProgramGroupToday: async (programId: number): Promise<TrainingGroupToday> =>

@@ -89,7 +89,7 @@ export default function TrainingPanel({
       const [programs, logList, exercises, recordList] = await Promise.all([
         trainingAPI.getClientPrograms(userId),
         trainingAPI.getClientLogs(userId, { limit: 8 }),
-        trainingAPI.getExercises({ limit: 500 }),
+        trainingAPI.getExercises({ limit: 200 }),
         trainingAPI.getClientRecords(userId),
       ])
       setActive(programs?.active ?? null)
